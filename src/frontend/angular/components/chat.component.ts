@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject } from "@angular/core";
+import { Component, signal, inject } from "@angular/core";
 import { NgClass } from "@angular/common";
 import { AIStreamService } from "@absolutejs/absolute/angular/ai";
 
@@ -31,11 +31,17 @@ const PROVIDERS = ["anthropic", "openai", "ollama"];
         @for (msg of chat.messages(); track msg.id) {
           <div class="message" [attr.data-role]="msg.role">
             {{ msg.content }}
-            @if (msg.isStreaming) { <span class="cursor"></span> }
+            @if (msg.isStreaming) {
+              <span class="cursor"></span>
+            }
             @if (msg.toolCalls) {
               @for (tool of msg.toolCalls; track tool.name) {
                 <div class="tool-status" [ngClass]="{ running: !tool.result }">
-                  {{ tool.result ? tool.name + ': ' + tool.result : 'Running ' + tool.name + '...' }}
+                  {{
+                    tool.result
+                      ? tool.name + ": " + tool.result
+                      : "Running " + tool.name + "..."
+                  }}
                 </div>
               }
             }
@@ -56,7 +62,9 @@ const PROVIDERS = ["anthropic", "openai", "ollama"];
           #chatInput
         />
         @if (chat.isStreaming()) {
-          <button class="cancel" (click)="chat.cancel()" type="button">Stop</button>
+          <button class="cancel" (click)="chat.cancel()" type="button">
+            Stop
+          </button>
         } @else {
           <button type="submit">Send</button>
         }
@@ -73,8 +81,19 @@ export class ChatComponent {
 
   handleSubmit(evt: Event) {
     evt.preventDefault();
-    const form = evt.target as HTMLFormElement;
-    const input = form.elements.namedItem("input") as HTMLInputElement;
+    const form = evt.target;
+
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+
+    const inputEl = form.elements.namedItem("input");
+
+    if (!(inputEl instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const input = inputEl;
     const value = input.value.trim();
 
     if (!value) {

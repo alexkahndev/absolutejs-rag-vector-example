@@ -41,7 +41,9 @@
         {#if msg.toolCalls}
           {#each msg.toolCalls as tool}
             <div class="tool-status" class:running={!tool.result}>
-              {tool.result ? `${tool.name}: ${tool.result}` : `Running ${tool.name}...`}
+              {tool.result
+                ? `${tool.name}: ${tool.result}`
+                : `Running ${tool.name}...`}
             </div>
           {/each}
         {/if}
@@ -62,7 +64,9 @@
       placeholder={`Ask ${provider} anything...`}
     />
     {#if stream.isStreaming}
-      <button class="cancel" onclick={() => stream.cancel()} type="button">Stop</button>
+      <button class="cancel" onclick={() => stream.cancel()} type="button"
+        >Stop</button
+      >
     {:else}
       <button type="submit">Send</button>
     {/if}

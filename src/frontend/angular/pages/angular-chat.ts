@@ -18,3 +18,5 @@ import { ChatComponent } from "../components/chat.component";
   `,
 })
 export class AngularChatPage {}
+
+export const factory = () => new AngularChatPage();

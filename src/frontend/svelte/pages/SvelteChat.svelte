@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Head } from "@absolutejs/absolute/svelte/components/Head.js";
+  import Head from "@absolutejs/absolute/svelte/components/Head.js";
   import Chat from "../components/Chat.svelte";
 
   type SvelteChatProps = {

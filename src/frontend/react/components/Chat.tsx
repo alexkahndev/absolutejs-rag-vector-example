@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useAIStream } from "@absolutejs/absolute/react/ai";
 
 const PROVIDERS = ["anthropic", "openai", "ollama"];
@@ -13,18 +13,23 @@ export const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = (evt: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (evt: FormEvent<HTMLFormElement>) => {
     evt.preventDefault();
     const form = evt.currentTarget;
-    const input = form.elements.namedItem("input") as HTMLInputElement;
-    const value = input.value.trim();
+    const inputEl = form.elements.namedItem("input");
+
+    if (!(inputEl instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const value = inputEl.value.trim();
 
     if (!value) {
       return;
     }
 
     send(`${provider}:${value}`);
-    input.value = "";
+    inputEl.value = "";
   };
 
   return (
@@ -32,8 +37,8 @@ export const Chat = () => {
       <div className="provider-selector">
         {PROVIDERS.map((prov) => (
           <button
-            key={prov}
             className={prov === provider ? "active" : ""}
+            key={prov}
             onClick={() => setProvider(prov)}
             type="button"
           >
@@ -45,17 +50,18 @@ export const Chat = () => {
       <div className="messages">
         {messages.length === 0 && (
           <div className="empty-state">
-            Send a message to start chatting. Try &quot;What&apos;s the weather in Tokyo?&quot;
+            Send a message to start chatting. Try &quot;What&apos;s the weather
+            in Tokyo?&quot;
           </div>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} className="message" data-role={msg.role}>
+          <div className="message" data-role={msg.role} key={msg.id}>
             {msg.content}
             {msg.isStreaming && <span className="cursor" />}
             {msg.toolCalls?.map((tool) => (
               <div
-                key={`${msg.id}-${tool.name}`}
                 className={`tool-status ${tool.result ? "" : "running"}`}
+                key={`${msg.id}-${tool.name}`}
               >
                 {tool.result
                   ? `${tool.name}: ${tool.result}`
@@ -71,11 +77,11 @@ export const Chat = () => {
 
       <form className="chat-form" onSubmit={handleSubmit}>
         <input
-          ref={inputRef}
           autoComplete="off"
           disabled={isStreaming}
           name="input"
           placeholder={`Ask ${provider} anything...`}
+          ref={inputRef}
         />
         {isStreaming ? (
           <button className="cancel" onClick={cancel} type="button">

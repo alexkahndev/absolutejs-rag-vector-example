@@ -7,7 +7,10 @@
 body {
   background: #0a0a0a;
   color: #e0e0e0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   min-height: 100vh;
 }
 
@@ -114,8 +117,13 @@ header a.active {
 }
 
 @keyframes blink {
-  0%, 100% { background: #e0e0e0; }
-  50% { background: transparent; }
+  0%,
+  100% {
+    background: #e0e0e0;
+  }
+  50% {
+    background: transparent;
+  }
 }
 
 .chat-form {

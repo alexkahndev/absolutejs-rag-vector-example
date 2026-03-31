@@ -50,7 +50,11 @@ const handleSubmit = (evt: Event) => {
             class="tool-status"
             :class="{ running: !tool.result }"
           >
-            {{ tool.result ? `${tool.name}: ${tool.result}` : `Running ${tool.name}...` }}
+            {{
+              tool.result
+                ? `${tool.name}: ${tool.result}`
+                : `Running ${tool.name}...`
+            }}
           </div>
         </template>
       </div>

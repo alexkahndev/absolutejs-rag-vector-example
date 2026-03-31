@@ -14,13 +14,9 @@ import { ReactChat } from "../../frontend/react/pages/ReactChat";
 export const pagesPlugin = (manifest: Record<string, string>) =>
   new Elysia()
     .get("/", () =>
-      handleReactPageRequest(
-        ReactChat,
-        asset(manifest, "ReactChatIndex"),
-        {
-          cssPath: asset(manifest, "ChatCSS"),
-        },
-      ),
+      handleReactPageRequest(ReactChat, asset(manifest, "ReactChatIndex"), {
+        cssPath: asset(manifest, "ChatCSS"),
+      }),
     )
     .get("/svelte", async () => {
       const SvelteChat = (
