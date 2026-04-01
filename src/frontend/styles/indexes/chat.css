@@ -29,7 +29,22 @@ body {
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
+}
+
+.app-main::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-main::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
 }
 
 a {
@@ -105,13 +120,19 @@ nav a.active {
   flex-direction: column;
   margin: 0 auto;
   max-width: 720px;
-  min-height: 0;
   padding: 1rem;
   width: 100%;
 }
 
 .chat-container.has-messages {
-  padding-bottom: 0.5rem;
+  padding-bottom: 0;
+}
+
+.chat-container.has-messages .chat-input-card {
+  background: #0e0e10;
+  bottom: 0;
+  position: sticky;
+  z-index: 10;
 }
 
 /* ── Empty State ───────────────────────────────── */
@@ -410,24 +431,7 @@ nav a.active {
   flex: 1;
   flex-direction: column;
   gap: 1.25rem;
-  min-height: 0;
-  overflow-y: auto;
   padding: 1rem 0;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
-}
-
-.messages::-webkit-scrollbar {
-  width: 4px;
-}
-
-.messages::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.messages::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
 }
 
 .message {
@@ -779,6 +783,8 @@ nav a.active {
 
 .footer {
   align-items: center;
+  background: #0a0a0a;
+  bottom: 0;
   color: #52525b;
   display: flex;
   flex-shrink: 0;
@@ -786,6 +792,8 @@ nav a.active {
   gap: 0.5rem;
   justify-content: center;
   padding: 0.5rem 0;
+  position: sticky;
+  z-index: 5;
 }
 
 .footer img {
@@ -1400,6 +1408,28 @@ nav a.active {
 
 .picker-legacy-toggle:hover {
   color: #aaa;
+}
+
+/* ── HTMX Note ────────────────────────────────── */
+
+.htmx-note {
+  color: #52525b;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.5rem 1rem 0;
+}
+
+/* ── Angular Host Elements ─────────────────────── */
+
+app-chat,
+app-empty-state,
+app-chat-input,
+app-message-item,
+app-sidebar,
+app-input-toolbar,
+app-file-preview-item,
+app-capability-icon {
+  display: contents;
 }
 
 /* ── Responsive ────────────────────────────────── */

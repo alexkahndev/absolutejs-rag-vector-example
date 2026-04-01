@@ -82,6 +82,9 @@ export const MINUTES_PER_HOUR = 60;
 export const HOURS_PER_DAY = 24;
 export const DAYS_PER_WEEK = 7;
 
+// Scroll behavior
+export const SCROLL_NEAR_BOTTOM_PX = 150;
+
 // UI animation delays (ms)
 export const COPY_FEEDBACK_MS = 2000;
 export const FILTER_CLOSE_MS = 150;

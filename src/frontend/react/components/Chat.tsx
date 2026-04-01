@@ -9,7 +9,11 @@ import {
 } from "react";
 import { useAIStream } from "@absolutejs/absolute/react/ai";
 import type { AIMessage } from "@absolutejs/absolute";
-import { COPY_FEEDBACK_MS, stripPrefix } from "../../constants";
+import {
+  COPY_FEEDBACK_MS,
+  SCROLL_NEAR_BOTTOM_PX,
+  stripPrefix,
+} from "../../constants";
 import { MODELS, type ModelDef } from "../../models";
 import { ChatHeader } from "./ChatHeader";
 import { ChatInput } from "./ChatInput";
@@ -113,8 +117,17 @@ export const Chat = () => {
     }>
   >([]);
 
+  const appMainRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = appMainRef.current;
+    if (!container) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom =
+      scrollHeight - scrollTop - clientHeight < SCROLL_NEAR_BOTTOM_PX;
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -179,7 +192,6 @@ export const Chat = () => {
           }))
         : undefined;
 
-    // @ts-expect-error — Library send() type omits 'application/pdf' from attachment media_type
     send(`${selectedModel.provider}:${selectedModel.id}:${text}`, attachments);
     setPendingFiles([]);
   };
@@ -283,6 +295,7 @@ export const Chat = () => {
           open={sidebarOpen}
         />
         <ChatMain
+          appMainRef={appMainRef}
           copiedId={copiedId}
           error={error}
           handleCopy={handleCopy}
@@ -301,6 +314,7 @@ export const Chat = () => {
 };
 
 type ChatMainProps = {
+  appMainRef: RefObject<HTMLDivElement | null>;
   copiedId: string | null;
   error: string | null;
   handleCopy: (id: string, content: string) => void;
@@ -315,6 +329,7 @@ type ChatMainProps = {
 };
 
 const ChatMain = ({
+  appMainRef,
   copiedId,
   error,
   handleCopy,
@@ -327,7 +342,7 @@ const ChatMain = ({
   sendMessage,
   showWaitingIndicator,
 }: ChatMainProps) => (
-  <div className="app-main">
+  <div className="app-main" ref={appMainRef}>
     <div className={`chat-container ${hasMessages ? "has-messages" : ""}`}>
       {!hasMessages ? (
         <EmptyState

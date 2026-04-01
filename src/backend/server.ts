@@ -36,6 +36,8 @@ const TOOL_CAPABLE_MODELS = new Set([
   "llama-4-scout",
   "mistral-large-latest",
   "mistral-small-latest",
+  "o3",
+  "o4-mini",
   "qwen-max",
   "qwen-plus",
   "qwen-turbo",
