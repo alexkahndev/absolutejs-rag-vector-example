@@ -1,15 +1,25 @@
 const WS_OPEN = 1;
 const RECONNECT_DELAY = 1000;
+
+const MODELS: Record<string, string[]> = {
+  anthropic: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5"],
+  ollama: ["qwen3", "llama3.2", "mistral"],
+  openai: ["gpt-4o-mini", "gpt-4o"],
+};
+
 let provider = "anthropic";
+let [model] = MODELS.anthropic;
 const conversationId = crypto.randomUUID();
 let currentMessageEl: HTMLElement | null = null;
 
 const messagesEl = document.getElementById("messages");
 const form = document.getElementById("chat-form");
+const modelContainer = document.getElementById("model-selector");
 
 if (
   !(messagesEl instanceof HTMLElement) ||
-  !(form instanceof HTMLFormElement)
+  !(form instanceof HTMLFormElement) ||
+  !(modelContainer instanceof HTMLElement)
 ) {
   throw new Error("Missing required DOM elements");
 }
@@ -31,24 +41,54 @@ const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
 const wsUrl = `${wsProtocol}//${host}/chat`;
 let socket = new WebSocket(wsUrl);
 
+const renderModelButtons = () => {
+  modelContainer.innerHTML = "";
+  const models = MODELS[provider] ?? [];
+
+  const handleModelClick = (mod: string, btn: HTMLButtonElement) => {
+    model = mod;
+    chatInput.placeholder = `Ask ${mod}...`;
+
+    for (const other of modelContainer.querySelectorAll("button")) {
+      other.classList.remove("active");
+    }
+
+    btn.classList.add("active");
+  };
+
+  for (const mod of models) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = mod;
+    btn.dataset.model = mod;
+    btn.classList.toggle("active", mod === model);
+    btn.addEventListener("click", () => handleModelClick(mod, btn));
+    modelContainer.appendChild(btn);
+  }
+};
+
 const providerButtons = document.querySelectorAll<HTMLButtonElement>(
   ".provider-selector button",
 );
 
 const setActiveProvider = (btn: HTMLButtonElement) => {
   provider = btn.dataset.provider ?? "anthropic";
+  model = (MODELS[provider] ?? [])[0] ?? provider;
 
   for (const other of providerButtons) {
     other.classList.remove("active");
   }
 
   btn.classList.add("active");
-  chatInput.placeholder = `Ask ${provider} anything...`;
+  chatInput.placeholder = `Ask ${model}...`;
+  renderModelButtons();
 };
 
 for (const btn of providerButtons) {
   btn.addEventListener("click", () => setActiveProvider(btn));
 }
+
+renderModelButtons();
 
 const clearEmptyState = () => {
   const empty = messagesEl.querySelector(".empty-state");
@@ -168,7 +208,7 @@ form.addEventListener("submit", (evt: Event) => {
   addUserMessage(value);
   socket.send(
     JSON.stringify({
-      content: `${provider}:${value}`,
+      content: `${provider}:${model}:${value}`,
       conversationId,
       type: "message",
     }),

@@ -30,6 +30,7 @@ export default defineConfig([
       "**/client/**",
       "**/server/**",
       "src/frontend/vue/pages/**/*.js",
+      "**/*.min.js",
     ],
   },
 

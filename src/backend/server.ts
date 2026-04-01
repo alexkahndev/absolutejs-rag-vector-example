@@ -1,173 +1,80 @@
-import {
-  networking,
-  prepare,
-  type AIProviderConfig,
-  type AIToolMap,
-} from "@absolutejs/absolute";
-import {
-  streamAI,
-  createConversationManager,
-  parseAIMessage,
-} from "@absolutejs/absolute/ai";
-import { anthropic } from "@absolutejs/absolute/ai/anthropic";
-import { openai } from "@absolutejs/absolute/ai/openai";
-import { ollama } from "@absolutejs/absolute/ai/ollama";
+import { networking, prepare } from "@absolutejs/absolute";
+import { aiChat } from "@absolutejs/absolute/ai";
 import { Elysia } from "elysia";
+import { SYSTEM_PROMPT, getProvider, parseMessage } from "./handlers/providers";
+import { tools } from "./handlers/tools";
 import { pagesPlugin } from "./plugins/pagesPlugin";
 
 const { absolutejs, manifest } = await prepare();
 
-const conversations = createConversationManager();
+// Models that support function calling
+const TOOL_CAPABLE_MODELS = new Set([
+  "claude-3-5-sonnet-20241022",
+  "claude-haiku-4-5",
+  "claude-opus-4-6",
+  "claude-sonnet-4-6",
+  "codestral-latest",
+  "deepseek-chat",
+  "gemini-2.0-flash",
+  "gemini-2.5-flash-preview-05-20",
+  "gemini-2.5-pro-preview-06-05",
+  "gemini-3-flash",
+  "gemini-3-pro",
+  "gpt-4.1",
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-5.3",
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "gpt-5.4-nano",
+  "grok-3",
+  "grok-4",
+  "grok-4-fast",
+  "kimi-k2",
+  "llama-3.3-70b",
+  "llama-4-maverick",
+  "llama-4-scout",
+  "mistral-large-latest",
+  "mistral-small-latest",
+  "qwen-max",
+  "qwen-plus",
+  "qwen-turbo",
+  "qwen3",
+]);
 
-const MAX_PROVIDER_PREFIX_LEN = 12;
-
-const PROVIDERS: Record<string, AIProviderConfig> = {
-  anthropic: anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? "" }),
-  ollama: ollama(),
-  openai: openai({ apiKey: process.env.OPENAI_API_KEY ?? "" }),
-};
-
-const WEATHER_DATA: Record<string, string> = {
-  london: "London: 12C, cloudy with light rain",
-  nyc: "New York: 24C, sunny and clear",
-  paris: "Paris: 18C, partly cloudy",
-  tokyo: "Tokyo: 28C, humid with scattered showers",
-};
-
-const extractCity = (input: unknown) => {
-  if (typeof input !== "object" || input === null || !("city" in input)) {
-    return "unknown";
+const getTools = (_provider: string, model: string) => {
+  if (!TOOL_CAPABLE_MODELS.has(model)) {
+    return undefined;
   }
 
-  const record = input;
-
-  if (typeof record !== "object" || record === null) {
-    return "unknown";
-  }
-
-  const city = "city" in record ? record.city : undefined;
-
-  return typeof city === "string" ? city : "unknown";
+  return tools;
 };
 
-const lookupWeather = (input: unknown) => {
-  const city = extractCity(input);
+// Models that support extended thinking / reasoning
+const THINKING_MODELS = new Set([
+  "claude-opus-4-6",
+  "claude-sonnet-4-6",
+  "o3",
+  "o4-mini",
+  "deepseek-reasoner",
+]);
 
-  return WEATHER_DATA[city.toLowerCase()] ?? `No weather data for ${city}`;
-};
-
-const tools: AIToolMap = {
-  get_weather: {
-    description: "Get the current weather for a city",
-    handler: lookupWeather,
-    input: {
-      properties: { city: { description: "City name", type: "string" } },
-      required: ["city"],
-      type: "object",
-    },
-  },
-};
-
-const MODEL_MAP: Record<string, string> = {
-  anthropic: "claude-sonnet-4-5-20250514",
-  ollama: "llama3.2",
-  openai: "gpt-4o-mini",
-};
-
-const resolveProvider = (providerName: string) =>
-  PROVIDERS[providerName] ?? PROVIDERS.anthropic;
-
-const parseProviderPrefix = (content: string) => {
-  const colonIdx = content.indexOf(":");
-  const hasProvider = colonIdx > 0 && colonIdx < MAX_PROVIDER_PREFIX_LEN;
-
-  return {
-    content: hasProvider ? content.slice(colonIdx + 1) : content,
-    providerName: hasProvider ? content.slice(0, colonIdx) : "anthropic",
-  };
-};
-
-const notifyBranch = (
-  ws: { send: (data: string) => void },
-  newConvId: string | null,
-) => {
-  if (!newConvId) {
-    return;
-  }
-
-  ws.send(JSON.stringify({ conversationId: newConvId, type: "branched" }));
-};
-
-const handleMessage = async (
-  ws: { readyState: number; send: (data: string) => void },
-  raw: unknown,
-) => {
-  const msg = parseAIMessage(raw);
-
-  if (!msg) {
-    return;
-  }
-
-  if (msg.type === "cancel" && msg.conversationId) {
-    conversations.abort(msg.conversationId);
-
-    return;
-  }
-
-  if (msg.type === "branch") {
-    const newConvId = conversations.branch(msg.messageId, msg.conversationId);
-    notifyBranch(ws, newConvId);
-
-    return;
-  }
-
-  if (msg.type !== "message") {
-    return;
-  }
-
-  const conversationId = msg.conversationId ?? crypto.randomUUID();
-  const messageId = crypto.randomUUID();
-  conversations.getOrCreate(conversationId);
-  const history = conversations.getHistory(conversationId);
-  const controller = conversations.getAbortController(conversationId);
-
-  const { content, providerName } = parseProviderPrefix(msg.content);
-
-  conversations.appendMessage(conversationId, {
-    content,
-    conversationId,
-    id: messageId,
-    role: "user",
-    timestamp: Date.now(),
-  });
-
-  await streamAI(ws, conversationId, messageId, {
-    maxTurns: 5,
-    messages: [...history, { content, role: "user" }],
-    model: MODEL_MAP[providerName] ?? MODEL_MAP.anthropic,
-    provider: resolveProvider(providerName),
-    signal: controller.signal,
-    systemPrompt:
-      "You are a helpful assistant. You have access to a weather tool. Keep responses concise.",
-    tools,
-    onComplete: (fullResponse) => {
-      conversations.appendMessage(conversationId, {
-        content: fullResponse,
-        conversationId,
-        id: crypto.randomUUID(),
-        role: "assistant",
-        timestamp: Date.now(),
-      });
-    },
-  });
-};
+const getThinking = (_provider: string, model: string) =>
+  THINKING_MODELS.has(model) ? { budgetTokens: 8000 } : undefined;
 
 const server = new Elysia()
   .use(absolutejs)
   .use(pagesPlugin(manifest))
-  .ws("/chat", {
-    message: handleMessage,
-  })
+  .use(
+    aiChat({
+      maxTurns: 5,
+      parseProvider: parseMessage,
+      provider: getProvider,
+      systemPrompt: SYSTEM_PROMPT,
+      thinking: getThinking,
+      tools: getTools,
+    }),
+  )
   .use(networking)
   .on("error", (error) => {
     const { request } = error;

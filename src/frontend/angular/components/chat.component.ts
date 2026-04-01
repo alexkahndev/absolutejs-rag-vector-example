@@ -1,8 +1,11 @@
 import { Component, signal, inject } from "@angular/core";
 import { NgClass } from "@angular/common";
 import { AIStreamService } from "@absolutejs/absolute/angular/ai";
-
-const PROVIDERS = ["anthropic", "openai", "ollama"];
+import {
+  MODELS_BY_PROVIDER as MODELS,
+  PROVIDER_IDS as PROVIDERS,
+} from "../../models";
+import { stripPrefix } from "../../constants";
 
 @Component({
   imports: [NgClass],
@@ -10,27 +13,40 @@ const PROVIDERS = ["anthropic", "openai", "ollama"];
   standalone: true,
   template: `
     <div class="chat-container">
-      <div class="provider-selector">
-        @for (prov of providers; track prov) {
-          <button
-            [ngClass]="{ active: prov === provider() }"
-            (click)="provider.set(prov)"
-            type="button"
-          >
-            {{ prov }}
-          </button>
-        }
+      <div class="selector-row">
+        <div class="provider-selector">
+          @for (prov of providers; track prov) {
+            <button
+              [ngClass]="{ active: prov === provider() }"
+              (click)="selectProvider(prov)"
+              type="button"
+            >
+              {{ prov }}
+            </button>
+          }
+        </div>
+        <div class="model-selector">
+          @for (mod of currentModels(); track mod) {
+            <button
+              [ngClass]="{ active: mod === model() }"
+              (click)="model.set(mod)"
+              type="button"
+            >
+              {{ mod }}
+            </button>
+          }
+        </div>
       </div>
 
       <div class="messages">
         @if (chat.messages().length === 0) {
           <div class="empty-state">
-            Send a message to start chatting. Try "What's the weather in Tokyo?"
+            Send a message to start chatting. Try "What do you have under $50?"
           </div>
         }
         @for (msg of chat.messages(); track msg.id) {
           <div class="message" [attr.data-role]="msg.role">
-            {{ msg.content }}
+            {{ msg.role === "user" ? cleanContent(msg.content) : msg.content }}
             @if (msg.isStreaming) {
               <span class="cursor"></span>
             }
@@ -58,8 +74,7 @@ const PROVIDERS = ["anthropic", "openai", "ollama"];
           autocomplete="off"
           [disabled]="chat.isStreaming()"
           name="input"
-          [placeholder]="'Ask ' + provider() + ' anything...'"
-          #chatInput
+          [placeholder]="'Ask ' + model() + '...'"
         />
         @if (chat.isStreaming()) {
           <button class="cancel" (click)="chat.cancel()" type="button">
@@ -74,10 +89,21 @@ const PROVIDERS = ["anthropic", "openai", "ollama"];
 })
 export class ChatComponent {
   providers = PROVIDERS;
+  models = MODELS;
   provider = signal("anthropic");
+  model = signal(MODELS["anthropic"][0]);
+
+  currentModels = () => this.models[this.provider()] ?? [];
 
   private aiService = inject(AIStreamService);
   chat = this.aiService.connect("/chat");
+
+  cleanContent = stripPrefix;
+
+  selectProvider(prov: string) {
+    this.provider.set(prov);
+    this.model.set((this.models[prov] ?? [])[0] ?? prov);
+  }
 
   handleSubmit(evt: Event) {
     evt.preventDefault();
@@ -93,14 +119,13 @@ export class ChatComponent {
       return;
     }
 
-    const input = inputEl;
-    const value = input.value.trim();
+    const value = inputEl.value.trim();
 
     if (!value) {
       return;
     }
 
-    this.chat.send(`${this.provider()}:${value}`);
-    input.value = "";
+    this.chat.send(`${this.provider()}:${this.model()}:${value}`);
+    inputEl.value = "";
   }
 }
