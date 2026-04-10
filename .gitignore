@@ -5,6 +5,7 @@ build/
 .cache/
 bun.lock
 *.log
+rag-store.sqlite
 .DS_Store
 **/*.env
 .claude/

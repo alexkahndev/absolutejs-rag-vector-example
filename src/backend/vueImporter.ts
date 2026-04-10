@@ -1,5 +1,5 @@
-import VueChat from "../frontend/vue/pages/VueChat.vue";
+import VueRAGVectorDemo from "../frontend/vue/pages/VueRAGVectorDemo.vue";
 
 export const vueImports = {
-  VueChat,
+  VueRAGVectorDemo,
 } as const;

@@ -1,6 +1,9 @@
 {
+  "angularCompilerOptions": {
+    "strictInjectionParameters": true,
+    "strictTemplates": true
+  },
   "compilerOptions": {
-    "baseUrl": ".",
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "incremental": true,

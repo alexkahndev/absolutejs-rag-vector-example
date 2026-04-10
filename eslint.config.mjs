@@ -19,18 +19,17 @@ export default defineConfig([
       "node_modules/**",
       "dist/**",
       "build/**",
+      "**/*.min.js",
+      "**/*.min.css",
       "**/compiled/**",
       ".absolutejs/**",
+      ".absolutejs-tsconfig.vue-check.json",
       ".cache/**",
       ".claude/**",
-      "playwright.config.ts",
-      "tests/**",
-      "test-results/**",
       "**/indexes/**",
       "**/client/**",
       "**/server/**",
       "src/frontend/vue/pages/**/*.js",
-      "**/*.min.js",
     ],
   },
 
@@ -205,7 +204,11 @@ export default defineConfig([
     },
   },
   {
-    files: ["eslint.config.mjs", "**/absolute.config.ts"],
+    files: [
+      "eslint.config.mjs",
+      "**/absolute.config.ts",
+      "src/frontend/angular/pages/**/*.ts",
+    ],
     rules: {
       "no-restricted-exports": "off",
     },
@@ -228,15 +231,9 @@ export default defineConfig([
     },
   },
   {
-    files: ["eslint.config.mjs", "src/frontend/constants.ts"],
+    files: ["eslint.config.mjs"],
     rules: {
       "no-magic-numbers": "off",
-    },
-  },
-  {
-    files: ["src/frontend/constants.ts"],
-    rules: {
-      "absolute/sort-exports": "off",
     },
   },
   {

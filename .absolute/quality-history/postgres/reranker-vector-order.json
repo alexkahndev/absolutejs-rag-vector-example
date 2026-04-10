@@ -1,0 +1,244 @@
+[
+	{
+		"id": "d030b435-6ac4-4a0b-9bb1-9ad0a88f0da7",
+		"suiteId": "absolutejs-rag-demo-suite:reranker:vector-order",
+		"label": "Vector order only",
+		"startedAt": 1775782825378,
+		"finishedAt": 1775782827034,
+		"elapsedMs": 1656,
+		"response": {
+			"cases": [
+				{
+					"caseId": "support-policy-source",
+					"elapsedMs": 160,
+					"expectedCount": 1,
+					"expectedIds": [
+						"guide/demo.md"
+					],
+					"f1": 0.6666666666666666,
+					"label": "Support policy benchmark",
+					"matchedCount": 1,
+					"matchedIds": [
+						"guide/demo.md"
+					],
+					"missingIds": [],
+					"mode": "source",
+					"precision": 0.5,
+					"query": "List support policies for shipping and returns.",
+					"recall": 1,
+					"retrievedCount": 2,
+					"retrievedIds": [
+						"guide/demo.md",
+						"files/platform-overview.txt"
+					],
+					"status": "pass",
+					"topK": 4
+				},
+				{
+					"caseId": "metadata-discipline-source",
+					"elapsedMs": 222,
+					"expectedCount": 1,
+					"expectedIds": [
+						"guides/metadata.md"
+					],
+					"f1": 0,
+					"label": "Metadata discipline benchmark",
+					"matchedCount": 0,
+					"matchedIds": [],
+					"missingIds": [
+						"guides/metadata.md"
+					],
+					"mode": "source",
+					"precision": 0,
+					"query": "Why should metadata be stable?",
+					"recall": 0,
+					"retrievedCount": 2,
+					"retrievedIds": [
+						"archives/ops-bundle.tgz#notes/coverage.txt",
+						"files/field-notes.txt"
+					],
+					"status": "fail",
+					"topK": 4
+				},
+				{
+					"caseId": "postgres-portability-source",
+					"elapsedMs": 207,
+					"expectedCount": 1,
+					"expectedIds": [
+						"guide/welcome.md"
+					],
+					"f1": 0.4,
+					"label": "PostgreSQL parity benchmark",
+					"matchedCount": 1,
+					"matchedIds": [
+						"guide/welcome.md"
+					],
+					"missingIds": [],
+					"mode": "source",
+					"precision": 0.25,
+					"query": "Which frameworks stay aligned in the retrieval workflow?",
+					"recall": 1,
+					"retrievedCount": 4,
+					"retrievedIds": [
+						"files/operator-handbook.epub",
+						"archives/ops-bundle.tgz#notes/coverage.txt",
+						"files/launch-plan.docx",
+						"guide/welcome.md"
+					],
+					"status": "pass",
+					"topK": 4
+				},
+				{
+					"caseId": "pdf-citation-source",
+					"elapsedMs": 207,
+					"expectedCount": 1,
+					"expectedIds": [
+						"files/native-handbook.pdf"
+					],
+					"f1": 1,
+					"label": "PDF page provenance benchmark",
+					"matchedCount": 1,
+					"matchedIds": [
+						"files/native-handbook.pdf"
+					],
+					"missingIds": [],
+					"mode": "source",
+					"precision": 1,
+					"query": "Which PDF page says page-aware evidence should remain inspectable in retrieval diagnostics?",
+					"recall": 1,
+					"retrievedCount": 1,
+					"retrievedIds": [
+						"files/native-handbook.pdf"
+					],
+					"status": "pass",
+					"topK": 4
+				},
+				{
+					"caseId": "ocr-fallback-source",
+					"elapsedMs": 210,
+					"expectedCount": 1,
+					"expectedIds": [
+						"files/scanned-receipt.pdf"
+					],
+					"f1": 0,
+					"label": "OCR receipt benchmark",
+					"matchedCount": 0,
+					"matchedIds": [],
+					"missingIds": [
+						"files/scanned-receipt.pdf"
+					],
+					"mode": "source",
+					"precision": 0,
+					"query": "Which scanned PDF receipt contains invoice INV-2048?",
+					"recall": 0,
+					"retrievedCount": 3,
+					"retrievedIds": [
+						"files/native-handbook.pdf",
+						"sync-folder/checklists/reconciliation.md",
+						"sync/folder/checklists/reconciliation.md"
+					],
+					"status": "fail",
+					"topK": 4
+				},
+				{
+					"caseId": "spreadsheet-source",
+					"elapsedMs": 221,
+					"expectedCount": 1,
+					"expectedIds": [
+						"files/revenue-forecast.xlsx"
+					],
+					"f1": 0,
+					"label": "Spreadsheet benchmark",
+					"matchedCount": 0,
+					"matchedIds": [],
+					"missingIds": [
+						"files/revenue-forecast.xlsx"
+					],
+					"mode": "source",
+					"precision": 0,
+					"query": "Which revenue forecast workbook sheet named Regional Growth tracks market expansion by territory?",
+					"recall": 0,
+					"retrievedCount": 2,
+					"retrievedIds": [
+						"files/operator-handbook.epub",
+						"files/retro-notes.rtf"
+					],
+					"status": "fail",
+					"topK": 4
+				},
+				{
+					"caseId": "archive-source",
+					"elapsedMs": 222,
+					"expectedCount": 1,
+					"expectedIds": [
+						"archives/support-bundle.zip#runbooks/recovery.md"
+					],
+					"f1": 0,
+					"label": "Archive benchmark",
+					"matchedCount": 0,
+					"matchedIds": [],
+					"missingIds": [
+						"archives/support-bundle.zip#runbooks/recovery.md"
+					],
+					"mode": "source",
+					"precision": 0,
+					"query": "Which archive entry explains recovery procedures?",
+					"recall": 0,
+					"retrievedCount": 1,
+					"retrievedIds": [
+						"files/retro-notes.rtf"
+					],
+					"status": "fail",
+					"topK": 4
+				},
+				{
+					"caseId": "media-source",
+					"elapsedMs": 207,
+					"expectedCount": 1,
+					"expectedIds": [
+						"files/daily-standup.mp3"
+					],
+					"f1": 0,
+					"label": "Media timestamp benchmark",
+					"matchedCount": 0,
+					"matchedIds": [],
+					"missingIds": [
+						"files/daily-standup.mp3"
+					],
+					"mode": "source",
+					"precision": 0,
+					"query": "Which daily standup audio timestamp 00:00 to 00:08 says retrieval, citations, evaluation, and ingest workflows stay aligned across every frontend?",
+					"recall": 0,
+					"retrievedCount": 4,
+					"retrievedIds": [
+						"sync/email/sync-email-imap/imap-support-refunds/attachments/imap-resolution-checklist.md",
+						"sync/email/sync-email-imap/imap-support-refunds",
+						"files/receipt.jpg",
+						"files/legacy-audit.msg"
+					],
+					"status": "fail",
+					"topK": 4
+				}
+			],
+			"elapsedMs": 1656,
+			"ok": true,
+			"passingRate": 37.5,
+			"summary": {
+				"averageF1": 0.2583333333333333,
+				"averageLatencyMs": 207,
+				"averagePrecision": 0.21875,
+				"averageRecall": 0.375,
+				"failedCases": 5,
+				"partialCases": 0,
+				"passedCases": 3,
+				"totalCases": 8
+			},
+			"totalCases": 8
+		},
+		"metadata": {
+			"backendMode": "postgres",
+			"benchmarkKind": "reranker",
+			"candidateId": "vector-order"
+		}
+	}
+]
