@@ -1,20 +1,21 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import {
-  buildRAGUpsertInputFromDocuments,
+  createPostgresRAGStore,
+  createRAGCollection,
   loadRAGDocumentsFromDirectory,
   prepareRAGDocument,
+  type RAGBackendCapabilities,
   type RAGChunkingStrategy,
+  type RAGCollection,
   type RAGContentFormat,
   type RAGDocumentIngestInput,
-  type RAGIngestDocument,
   type RAGPreparedDocument,
   type RAGVectorStore,
-} from "@absolutejs/absolute/ai";
+  type RAGVectorStoreStatus,
+} from "@absolutejs/rag";
 import { createSQLiteRAG } from "@absolutejs/absolute-rag-sqlite";
-import { createPostgresRAG } from "@absolutejs/absolute-rag-postgresql";
 import type { SQLiteRAG } from "@absolutejs/absolute-rag-sqlite";
-import type { PostgreSQLRAG } from "@absolutejs/absolute-rag-postgresql";
 import type { Database } from "bun:sqlite";
 import { ragDemoExtractors } from "./ragDemoExtractors";
 
@@ -22,6 +23,13 @@ export type RagDocumentKind = "seed" | "custom";
 export type DemoBackendMode = "sqlite-native" | "sqlite-fallback" | "postgres";
 export type DemoContentFormat = RAGContentFormat;
 export type DemoChunkingStrategy = RAGChunkingStrategy;
+
+export type RagSeedEmbeddingVariant = {
+  id: string;
+  label?: string;
+  text?: string;
+  metadata?: Record<string, unknown>;
+};
 
 export type RagSeedDocument = {
   id: string;
@@ -32,6 +40,7 @@ export type RagSeedDocument = {
   chunkStrategy?: DemoChunkingStrategy;
   kind?: RagDocumentKind;
   metadata?: Record<string, unknown>;
+  embeddingVariants?: RagSeedEmbeddingVariant[];
 };
 
 export type DemoBackendDescriptor = {
@@ -43,7 +52,12 @@ export type DemoBackendDescriptor = {
 };
 
 type SQLiteRagAdapter = SQLiteRAG;
-type PostgresRagAdapter = PostgreSQLRAG;
+type PostgresRagAdapter = {
+  collection: RAGCollection;
+  getCapabilities?: () => RAGBackendCapabilities;
+  getStatus?: () => RAGVectorStoreStatus;
+  store: RAGVectorStore;
+};
 export type DemoRAGAdapter = SQLiteRagAdapter | PostgresRagAdapter;
 
 export type DemoRAGBackend = DemoBackendDescriptor & {
@@ -128,21 +142,52 @@ const loadSeedCorpusInput = async (): Promise<RAGDocumentIngestInput> =>
     extractors: ragDemoExtractors,
   });
 
+const multivectorSeedDocument: RagSeedDocument = {
+  id: "multivector-release-guide",
+  title: "Late interaction release guide",
+  source: "guide/multivector-release-guide.md",
+  format: "markdown",
+  chunkStrategy: "source_aware",
+  text: "AbsoluteJS late interaction retrieval keeps one parent chunk while indexing phrase-level embeddings for release-readiness callouts, operator recovery drills, and follow-up diagnostics. The demo should prove that exact sub-span wording can win retrieval without splitting the parent document into separate source chunks.",
+  metadata: {
+    feature: "multivector",
+    retrievalFocus: "late-interaction",
+    sourceKind: "virtual-demo-doc",
+  },
+  embeddingVariants: [
+    {
+      id: "launch-checklist",
+      label: "Launch checklist",
+      text: "aurora launch packet sign-off checklist",
+      metadata: { phraseFamily: "launch" },
+    },
+    {
+      id: "rollback-steps",
+      label: "Rollback steps",
+      text: "tungsten recovery drill for operators",
+      metadata: { phraseFamily: "rollback" },
+    },
+  ],
+};
+
 export const getSeedDocuments = async (): Promise<RagSeedDocument[]> => {
   const loaded = await loadSeedCorpusInput();
-  return loaded.documents.map((doc) => {
-    const prepared = prepareRAGDocument(doc, createChunkingDefaults(DEFAULT_SEED_STRATEGY, RAG_DEMO_DEFAULT_CHUNK_SIZE));
-    return {
-      chunkStrategy: DEFAULT_SEED_STRATEGY,
-      format: prepared.format,
-      id: prepared.documentId,
-      source: prepared.source,
-      text: doc.text,
-      title: prepared.title,
-      kind: "seed",
-      metadata: prepared.metadata,
-    } satisfies RagSeedDocument;
-  });
+  return [
+    ...loaded.documents.map((doc) => {
+      const prepared = prepareRAGDocument(doc, createChunkingDefaults(DEFAULT_SEED_STRATEGY, RAG_DEMO_DEFAULT_CHUNK_SIZE));
+      return {
+        chunkStrategy: DEFAULT_SEED_STRATEGY,
+        format: prepared.format,
+        id: prepared.documentId,
+        source: prepared.source,
+        text: doc.text,
+        title: prepared.title,
+        kind: "seed",
+        metadata: prepared.metadata,
+      } satisfies RagSeedDocument;
+    }),
+    multivectorSeedDocument,
+  ];
 };
 
 type RAGStoreOptions = {
@@ -176,30 +221,24 @@ const createSQLiteFallbackRAG = (opts: RAGStoreOptions = {}): SQLiteRagAdapter =
     },
   });
 
-const createPostgresDemoRAG = (connectionString: string): PostgresRagAdapter =>
-  createPostgresRAG({
+const createPostgresDemoRAG = (connectionString: string): PostgresRagAdapter => {
+  const store = createPostgresRAGStore({
     connectionString,
-    vector: {
-      provider: "pgvector",
-      dimensions: 24,
-      distanceMetric: "cosine",
-      autoCreateExtension: true,
-      autoCreateSchema: true,
-      autoCreateTables: true,
-      autoCreateIndex: true,
-      index: {
-        type: "hnsw",
-        m: 16,
-        efConstruction: 64,
-        efSearch: 80,
-      },
-    },
-    schema: {
-      schemaName: "absolute_rag_demo",
-      chunkTableName: "chunks",
-      migrationTableName: "migrations",
-    },
+    dimensions: 24,
+    distanceMetric: "cosine",
+    queryMultiplier: 4,
+    schemaName: "absolute_rag_demo",
+    tableName: "chunks",
   });
+  const collection = createRAGCollection({ store });
+
+  return {
+    collection,
+    getCapabilities: () => store.getCapabilities!(),
+    getStatus: () => store.getStatus!(),
+    store,
+  };
+};
 
 export const getBackendPath = (mode: DemoBackendMode) => {
   switch (mode) {
@@ -281,31 +320,35 @@ export const seedRAGStore = async (
   ragStore: RAGVectorStore,
   documents: RagSeedDocument[],
 ) => {
-  const upsert = buildRAGUpsertInputFromDocuments({
-    documents: documents.map((document) => {
-      const kind = document.kind ?? "seed";
-      const strategy = document.chunkStrategy ?? (kind === "seed" ? DEFAULT_SEED_STRATEGY : DEFAULT_CUSTOM_STRATEGY);
-      const maxChunkLength = kind === "seed"
-        ? RAG_DEMO_DEFAULT_CHUNK_SIZE
-        : RAG_DEMO_DEFAULT_CUSTOM_CHUNK_SIZE;
+  const chunks = documents.flatMap((document) => {
+    const kind = document.kind ?? "seed";
+    const strategy = document.chunkStrategy ?? (kind === "seed" ? DEFAULT_SEED_STRATEGY : DEFAULT_CUSTOM_STRATEGY);
+    const maxChunkLength = kind === "seed"
+      ? RAG_DEMO_DEFAULT_CHUNK_SIZE
+      : RAG_DEMO_DEFAULT_CUSTOM_CHUNK_SIZE;
+    const prepared = prepareRAGDocument({
+      format: document.format,
+      id: document.id,
+      metadata: {
+        ...(document.metadata ?? {}),
+        documentId: document.id,
+        kind,
+      },
+      source: document.source,
+      text: document.text,
+      title: document.title,
+      chunking: createChunkingDefaults(strategy, maxChunkLength),
+    });
 
-      return {
-        format: document.format,
-        id: document.id,
-        metadata: {
-          ...(document.metadata ?? {}),
-          documentId: document.id,
-          kind,
-        },
-        source: document.source,
-        text: document.text,
-        title: document.title,
-        chunking: createChunkingDefaults(strategy, maxChunkLength),
-      } satisfies RAGIngestDocument;
-    }),
+    return prepared.chunks.map((chunk, index) =>
+      index === 0 && document.embeddingVariants && document.embeddingVariants.length > 0
+        ? { ...chunk, embeddingVariants: document.embeddingVariants }
+        : chunk
+    );
   });
 
-  await ragStore.upsert(upsert);
+  const collection = createRAGCollection({ store: ragStore });
+  await collection.ingest({ chunks });
 
-  return upsert.chunks.length;
+  return chunks.length;
 };

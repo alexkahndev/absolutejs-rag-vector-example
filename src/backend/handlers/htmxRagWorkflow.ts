@@ -1,65 +1,150 @@
+const templateLiteral = (value: string) => value;
+
+const renderTracePanel = ({
+  title,
+  summary,
+  trace,
+}: {
+  title: string;
+  summary: string;
+  trace?: Parameters<typeof buildTracePresentation>[0];
+}) => {
+  if (!trace) {
+    return "";
+  }
+
+  const presentation = buildTracePresentation(trace);
+  return [
+    '<div class="demo-results">',
+    `<h4>${escapeHtml(title)}</h4>`,
+    `<p class="demo-metadata">${escapeHtml(summary)}</p>`,
+    '<div class="demo-stat-grid">',
+    presentation.stats
+      .map((row) => `<article class="demo-stat-card"><p class="demo-section-caption">${escapeHtml(row.label)}</p><strong>${escapeHtml(row.value)}</strong></article>`)
+      .join(""),
+    '</div>',
+    '<div>',
+    presentation.details
+      .map((row) => `<p class="demo-key-value-row"><strong>${escapeHtml(row.label)}</strong><span>${escapeHtml(row.value)}</span></p>`)
+      .join(""),
+    '</div>',
+    '<div class="demo-result-grid">',
+    presentation.steps
+      .map(
+        (step, index) => `
+          <details class="demo-collapsible demo-result-item" ${index === 0 ? 'open' : ''}>
+            <summary><strong>${index + 1}. ${escapeHtml(step.label)}</strong></summary>
+            ${step.rows.map((row) => `<p class="demo-key-value-row"><strong>${escapeHtml(row.label)}</strong><span>${escapeHtml(row.value)}</span></p>`).join("")}
+          </details>`,
+      )
+      .join(""),
+    '</div>',
+    '</div>',
+  ].join("");
+};
 import {
-  buildRAGCitations,
-  buildRAGGroundedAnswer,
-  buildRAGGroundingReferences,
-  buildRAGSourceGroups,
-  buildRAGSourceSummaries,
   createRAGHTMXWorkflowRenderConfig,
   type AIHTMXRenderConfig,
   type RAGEvaluationCaseResult,
   type RAGEvaluationSummary,
   type RAGHTMXWorkflowRenderConfig,
   type RAGSourceGroup,
-} from "@absolutejs/absolute/ai";
+} from "@absolutejs/rag";
+import {
+  buildRAGCitations,
+  buildRAGGroundedAnswer,
+  buildRAGGroundingReferences,
+  buildRAGSourceGroups,
+  buildRAGSourceSummaries,
+} from "@absolutejs/rag/ui";
+import { buildRAGChunkPreviewNavigation } from "@absolutejs/rag/client/ui";
 import type {
   RAGAdminActionRecord,
   RAGAdminJobRecord,
   RAGCorpusHealth,
   RAGExtractorReadiness,
+  RAGGroundedAnswerPart,
+  RAGGroundedAnswerSectionSummary,
   RAGSyncSourceRecord,
-} from "@absolutejs/absolute";
+} from "@absolutejs/rag";
 import {
   DEMO_RERANKER_LABEL,
   DEMO_RERANKER_SUMMARY,
+  buildActiveChunkPreviewSectionDiagnostic,
+  attributionBenchmarkNotes,
+  benchmarkOutcomeRail,
+  formatBenchmarkOutcomeRailLabel,
+  resolveBenchmarkRetrievalPresetId,
+  buildSearchResponse,
+  buildSearchSectionGroups,
+  buildTracePresentation,
   formatAdminActionList,
   formatAdminJobList,
   formatCitationDetails,
   formatCitationExcerpt,
   formatCitationLabel,
   formatCitationSummary,
+  formatChunkNavigationNodeLabel,
+  formatChunkNavigationSectionLabel,
+  formatChunkSectionGroupLabel,
+  formatSectionDiagnosticAttributionFocus,
+  formatSectionDiagnosticChannels,
+  formatSectionDiagnosticCompetition,
+  formatSectionDiagnosticDistributionRows,
+  formatSectionDiagnosticPipeline,
+  formatSectionDiagnosticStageBounds,
+  formatSectionDiagnosticStageFlow,
+  formatSectionDiagnosticStageWeightReasons,
+  formatSectionDiagnosticStageWeightRows,
+  formatSectionDiagnosticReasons,
+  formatSectionDiagnosticTopEntry,
   formatDemoMetadataSummary,
   formatEvaluationHistoryDiff,
+  formatEvaluationHistoryDetails,
+  formatEvaluationHistoryRows,
   formatEvaluationHistorySummary,
+  formatEvaluationHistoryTracePresentations,
   formatEvaluationLeaderboardEntry,
   formatGroundingEvaluationCase,
   formatGroundingEvaluationDetails,
   formatGroundingEvaluationSummary,
-  formatGroundingHistoryDiff,
-  formatGroundingHistoryArtifactTrail,
-  formatGroundingHistorySnapshots,
   formatGroundingHistorySummary,
+  formatGroundingHistoryDetails,
+  formatGroundingHistorySnapshotPresentations,
   formatGroundingCaseDifficultyEntry,
-  formatGroundingDifficultyHistoryDiff,
   formatGroundingDifficultyHistorySummary,
-  formatGroundingProviderCaseDetails,
-  formatGroundingProviderCaseEntry,
-  formatGroundingProviderCaseSummary,
-  formatGroundingProviderEntry,
-  formatGroundingProviderSummary,
+  formatGroundingDifficultyHistoryDetails,
+  formatGroundingProviderCasePresentations,
+  formatGroundingProviderPresentations,
+  formatGroundingProviderOverviewPresentation,
+  formatQualityOverviewPresentation,
+  formatQualityOverviewNotes,
+  buildDemoReleasePanelState,
+  buildCitationGroups,
+  buildGroundingReferenceGroups,
+  buildSourceSummarySectionGroups,
   formatFailureSummary,
+  buildInspectionEntries,
+  formatInspectionSamples,
+  formatInspectionSummary,
   formatGroundingCoverage,
   formatGroundedAnswerPartDetails,
+  formatGroundedAnswerPartExcerpt,
   formatGroundingPartReferences,
   formatGroundingReferenceDetails,
   formatGroundingReferenceExcerpt,
   formatGroundingReferenceLabel,
   formatGroundingReferenceSummary,
+  formatGroundedAnswerSectionSummaryDetails,
+  formatGroundedAnswerSectionSummaryExcerpt,
   formatGroundingSummary,
   formatHealthSummary,
   formatReadinessSummary,
-  formatRerankerComparisonEntry,
+  formatRerankerComparisonPresentations,
+  formatRerankerComparisonOverviewPresentation,
   formatRerankerComparisonSummary,
-  formatRetrievalComparisonEntry,
+  formatRetrievalComparisonPresentations,
+  formatRetrievalComparisonOverviewPresentation,
   formatRetrievalComparisonSummary,
   formatSourceSummaryDetails,
   formatSyncSourceDetails,
@@ -67,6 +152,9 @@ import {
   formatSyncSourceRecentRuns,
   formatSyncSourceSubtype,
   formatSyncSourceSummary,
+  demoReleaseWorkspaces,
+  type DemoBackendMode,
+  type DemoReleaseOpsResponse,
   type DemoRetrievalQualityResponse,
 } from "../../frontend/demo-backends";
 
@@ -126,6 +214,68 @@ type RAGDocumentChunkPreview = {
   normalizedText: string;
   chunks: RAGDocumentChunk[];
 };
+
+const DOCUMENTS_PER_PAGE = 10;
+const SUPPORTED_FILE_TYPE_OPTIONS = [
+  ['all', 'All supported types'],
+  ['.txt', '.txt'],
+  ['.md', '.md'],
+  ['.mdx', '.mdx'],
+  ['.html', '.html'],
+  ['.htm', '.htm'],
+  ['.json', '.json'],
+  ['.csv', '.csv'],
+  ['.xml', '.xml'],
+  ['.yaml', '.yaml'],
+  ['.yml', '.yml'],
+  ['.log', '.log'],
+  ['.ts', '.ts'],
+  ['.tsx', '.tsx'],
+  ['.js', '.js'],
+  ['.jsx', '.jsx'],
+  ['.pdf', '.pdf'],
+  ['.epub', '.epub'],
+  ['.docx', '.docx'],
+  ['.xlsx', '.xlsx'],
+  ['.pptx', '.pptx'],
+  ['.odt', '.odt'],
+  ['.ods', '.ods'],
+  ['.odp', '.odp'],
+  ['.rtf', '.rtf'],
+  ['.doc', '.doc'],
+  ['.xls', '.xls'],
+  ['.ppt', '.ppt'],
+  ['.msg', '.msg'],
+  ['.eml', '.eml'],
+  ['.png', '.png'],
+  ['.jpg', '.jpg'],
+  ['.jpeg', '.jpeg'],
+  ['.webp', '.webp'],
+  ['.tiff', '.tiff'],
+  ['.tif', '.tif'],
+  ['.bmp', '.bmp'],
+  ['.gif', '.gif'],
+  ['.heic', '.heic'],
+  ['.mp3', '.mp3'],
+  ['.wav', '.wav'],
+  ['.m4a', '.m4a'],
+  ['.aac', '.aac'],
+  ['.flac', '.flac'],
+  ['.ogg', '.ogg'],
+  ['.opus', '.opus'],
+  ['.mp4', '.mp4'],
+  ['.mov', '.mov'],
+  ['.mkv', '.mkv'],
+  ['.webm', '.webm'],
+  ['.avi', '.avi'],
+  ['.m4v', '.m4v'],
+  ['.zip', '.zip'],
+  ['.tar', '.tar'],
+  ['.gz', '.gz'],
+  ['.tgz', '.tgz'],
+  ['.bz2', '.bz2'],
+  ['.xz', '.xz'],
+] as const;
 
 type RAGMutationResponse = {
   ok: boolean;
@@ -335,16 +485,28 @@ const renderSourceSummaries = (sources: RAGSource[]) => {
     return '<p class="demo-metadata">Retrieved source groups: 0</p>';
   }
 
+  const groups = buildSourceSummarySectionGroups(summaries);
   return [
     `<p class="demo-metadata">Retrieved source groups: ${summaries.length}</p>`,
     '<div class="demo-result-grid">',
-    summaries
+    groups
       .map(
-        (summary) => `
-          <article class="demo-result-item">
-            <h3>${escapeHtml(summary.label)}</h3>
-            ${formatSourceSummaryDetails(summary).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}
-            <p class="demo-result-text">${escapeHtml(summary.excerpt)}</p>
+        (group) => `
+          <article class="demo-result-item" id="${escapeHtml(group.targetId)}">
+            <h3>${escapeHtml(group.label)}</h3>
+            <p class="demo-result-source">${escapeHtml(group.summary)}</p>
+            <div class="demo-result-grid">
+              ${group.summaries
+                .map(
+                  (summary) => `
+                    <article class="demo-result-item">
+                      <h4>${escapeHtml(summary.label)}</h4>
+                      ${formatSourceSummaryDetails(summary).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}
+                      <p class="demo-result-text">${escapeHtml(summary.excerpt)}</p>
+                    </article>`,
+                )
+                .join("")}
+            </div>
           </article>`,
       )
       .join(""),
@@ -363,25 +525,297 @@ const renderCitations = (sources: RAGSource[]) => {
     '<h4>Citation Trail</h4>',
     '<p class="demo-metadata">Each citation maps a concrete retrieved chunk to a stable reference number you can carry into the answer UI.</p>',
     '<div class="demo-result-grid">',
-    citations
+    buildCitationGroups(citations)
       .map(
-        (citation, index) => `
-          <article class="demo-result-item demo-citation-card">
-            <p class="demo-citation-badge">[${String(index + 1)}] ${escapeHtml(formatCitationLabel(citation))}</p>
-            <p class="demo-result-score">${escapeHtml(formatCitationSummary(citation))}</p>
-            ${formatCitationDetails(citation).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}
-            <p class="demo-result-text">${escapeHtml(formatCitationExcerpt(citation))}</p>
+        (group) => `
+          <article class="demo-result-item" id="${escapeHtml(group.targetId)}">
+            <h3>${escapeHtml(group.label)}</h3>
+            <p class="demo-result-source">${escapeHtml(group.summary)}</p>
+            <div class="demo-result-grid">
+              ${group.citations
+                .map(
+                  (citation, index) => `
+                    <article class="demo-result-item demo-citation-card">
+                      <p class="demo-citation-badge">[${index + 1}] ${escapeHtml(formatCitationLabel(citation))}</p>
+                      <p class="demo-result-score">${escapeHtml(formatCitationSummary(citation))}</p>
+                      ${formatCitationDetails(citation).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}
+                      <p class="demo-result-text">${escapeHtml(formatCitationExcerpt(citation))}</p>
+                    </article>`,
+                )
+                .join("")}
+            </div>
           </article>`,
       )
       .join(""),
     '</div>',
-    '</div>',
+    '</div></details>',
   ].join('');
 };
 
 const renderDetailList = (lines: string[], fallback: string) => {
   const values = lines.length > 0 ? lines : [fallback];
   return `<ul class="demo-detail-list">${values.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`;
+};
+
+const inferDocumentExtension = (document: RAGIndexedDocument) => {
+  const candidates = [document.source, document.title];
+  for (const candidate of candidates) {
+    const match = candidate.toLowerCase().match(/(\.[a-z0-9]+)(?:[#?].*)?$/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  if (document.format === 'markdown') {
+    return '.md';
+  }
+  if (document.format === 'html') {
+    return '.html';
+  }
+  return '.txt';
+};
+
+const getChunkIndexText = (chunk: { metadata?: Record<string, unknown> }, fallbackCount: number) => {
+  const chunkIndex = typeof chunk.metadata?.chunkIndex === 'number' ? chunk.metadata.chunkIndex : 0;
+  const chunkCount = typeof chunk.metadata?.chunkCount === 'number' ? chunk.metadata.chunkCount : fallbackCount;
+  return `chunk index: ${String(chunkIndex)} / count: ${String(chunkCount)}`;
+};
+
+const renderSectionDiagnosticCard = (diagnostic: {
+  key: string;
+  label: string;
+  summary: string;
+}) => [
+  `<article class="demo-result-item">`,
+  `<h4>${escapeHtml(diagnostic.label)}</h4>`,
+  `<p class="demo-result-source">${escapeHtml(diagnostic.summary)}</p>`,
+  `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticChannels(diagnostic as never))}</p>`,
+  `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticAttributionFocus(diagnostic as never))}</p>`,
+  `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticPipeline(diagnostic as never))}</p>`,
+  `${formatSectionDiagnosticStageFlow(diagnostic as never) ? `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticStageFlow(diagnostic as never) ?? "")}</p>` : ""}`,
+  `${formatSectionDiagnosticStageBounds(diagnostic as never) ? `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticStageBounds(diagnostic as never) ?? "")}</p>` : ""}`,
+  `${formatSectionDiagnosticStageWeightRows(diagnostic as never).map((line: string) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}`,
+  `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticTopEntry(diagnostic as never))}</p>`,
+  `${formatSectionDiagnosticCompetition(diagnostic as never) ? `<p class="demo-metadata">${escapeHtml(formatSectionDiagnosticCompetition(diagnostic as never) ?? "")}</p>` : ""}`,
+  `${[...formatSectionDiagnosticReasons(diagnostic as never), ...formatSectionDiagnosticStageWeightReasons(diagnostic as never)].length > 0 ? `<div class="demo-badge-row">${[...formatSectionDiagnosticReasons(diagnostic as never), ...formatSectionDiagnosticStageWeightReasons(diagnostic as never)].map((reason) => `<span class="demo-state-chip">${escapeHtml(reason)}</span>`).join("")}</div>` : ""}`,
+  `${formatSectionDiagnosticDistributionRows(diagnostic as never).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}`,
+  `</article>`,
+].join("");
+
+export const renderHtmxChunkPreviewFragment = (
+  preview: RAGDocumentChunkPreview,
+  options?: {
+    mode?: string;
+    query?: string;
+    fileType?: string;
+    page?: number;
+    selectedChunkId?: string;
+  },
+) => {
+  const navigation = buildRAGChunkPreviewNavigation(
+    preview as Parameters<typeof buildRAGChunkPreviewNavigation>[0],
+    options?.selectedChunkId,
+  );
+  const activeChunkId = navigation.activeChunkId;
+  const query = options?.query ?? "";
+  const fileType = options?.fileType ?? "all";
+  const page = options?.page ?? 1;
+  const previewUrlBase =
+    options?.mode
+      ? `/demo/documents/${encodeURIComponent(options.mode)}/${encodeURIComponent(preview.document.id)}/chunks?query=${encodeURIComponent(query)}&fileType=${encodeURIComponent(fileType)}&page=${page}`
+      : undefined;
+
+  const activeSectionDiagnostic = buildActiveChunkPreviewSectionDiagnostic(preview as never, activeChunkId ?? undefined);
+
+  return [
+    '<p class="demo-section-caption">Chunk Preview</p>',
+    `<p class="demo-metadata">${escapeHtml(preview.document.title)} · ${escapeHtml(preview.document.format ?? 'text')} · ${escapeHtml(preview.document.chunkStrategy ?? 'paragraphs')} · ${preview.chunks.length} chunk(s)</p>`,
+    '<article class="demo-result-item">',
+    '<h3>Normalized text</h3>',
+    `<p class="demo-result-text">${escapeHtml(preview.normalizedText)}</p>`,
+    '</article>',
+    navigation.activeNode
+      ? [
+          '<div class="demo-chunk-nav">',
+          '<div class="demo-chunk-nav-row">',
+          `<p class="demo-metadata">Section · ${escapeHtml(formatChunkNavigationSectionLabel(navigation))}</p>`,
+          '<div class="demo-actions">',
+          navigation.previousNode && previewUrlBase
+            ? `<button type="button" hx-get="${escapeHtml(`${previewUrlBase}&chunkId=${encodeURIComponent(navigation.previousNode.chunkId)}`)}" hx-target="#chunk-preview-${escapeHtml(preview.document.id)}" hx-swap="innerHTML">Previous chunk</button>`
+            : '<button type="button" disabled>Previous chunk</button>',
+          navigation.nextNode && previewUrlBase
+            ? `<button type="button" hx-get="${escapeHtml(`${previewUrlBase}&chunkId=${encodeURIComponent(navigation.nextNode.chunkId)}`)}" hx-target="#chunk-preview-${escapeHtml(preview.document.id)}" hx-swap="innerHTML">Next chunk</button>`
+            : '<button type="button" disabled>Next chunk</button>',
+          '</div>',
+          '</div>',
+          navigation.sectionNodes.length > 0
+            ? `<div class="demo-chunk-nav-strip">${navigation.sectionNodes
+                .map((node) =>
+                  previewUrlBase
+                    ? `<button type="button" class="${node.chunkId === activeChunkId ? 'demo-chunk-nav-chip demo-chunk-nav-chip-active' : 'demo-chunk-nav-chip'}" hx-get="${escapeHtml(`${previewUrlBase}&chunkId=${encodeURIComponent(node.chunkId)}`)}" hx-target="#chunk-preview-${escapeHtml(preview.document.id)}" hx-swap="innerHTML">${escapeHtml(formatChunkNavigationNodeLabel(node))}</button>`
+                    : `<span class="${node.chunkId === activeChunkId ? 'demo-chunk-nav-chip demo-chunk-nav-chip-active' : 'demo-chunk-nav-chip'}">${escapeHtml(formatChunkNavigationNodeLabel(node))}</span>`,
+                )
+                .join("")}</div>`
+            : "",
+          navigation.parentSection || navigation.siblingSections.length > 0 || navigation.childSections.length > 0
+            ? `<div class="demo-chunk-nav-strip">${[
+                navigation.parentSection && previewUrlBase && navigation.parentSection.leadChunkId
+                  ? `<button type="button" class="demo-chunk-nav-chip" hx-get="${escapeHtml(`${previewUrlBase}&chunkId=${encodeURIComponent(navigation.parentSection.leadChunkId)}`)}" hx-target="#chunk-preview-${escapeHtml(preview.document.id)}" hx-swap="innerHTML">Parent · ${escapeHtml(formatChunkSectionGroupLabel(navigation.parentSection))}</button>`
+                  : '',
+                ...navigation.siblingSections.map((section) =>
+                  previewUrlBase && section.leadChunkId
+                    ? `<button type="button" class="demo-chunk-nav-chip" hx-get="${escapeHtml(`${previewUrlBase}&chunkId=${encodeURIComponent(section.leadChunkId)}`)}" hx-target="#chunk-preview-${escapeHtml(preview.document.id)}" hx-swap="innerHTML">Sibling · ${escapeHtml(formatChunkSectionGroupLabel(section))}</button>`
+                    : ''
+                ),
+                ...navigation.childSections.map((section) =>
+                  previewUrlBase && section.leadChunkId
+                    ? `<button type="button" class="demo-chunk-nav-chip" hx-get="${escapeHtml(`${previewUrlBase}&chunkId=${encodeURIComponent(section.leadChunkId)}`)}" hx-target="#chunk-preview-${escapeHtml(preview.document.id)}" hx-swap="innerHTML">Child · ${escapeHtml(formatChunkSectionGroupLabel(section))}</button>`
+                    : ''
+                )
+              ].join('')}</div>`
+            : "",
+          '</div>',
+        ].join("")
+      : "",
+    activeSectionDiagnostic
+      ? renderSectionDiagnosticCard(activeSectionDiagnostic)
+      : "",
+    '<div class="demo-result-grid">',
+    preview.chunks
+      .map(
+        (chunk) => `
+        <article class="${chunk.chunkId === activeChunkId ? 'demo-result-item demo-result-item-active' : 'demo-result-item'}">
+          <h3>${escapeHtml(chunk.chunkId)}</h3>
+          <p class="demo-result-source">source: ${escapeHtml(chunk.source ?? preview.document.source)}</p>
+          <p class="demo-metadata">${escapeHtml(getChunkIndexText(chunk, preview.chunks.length))}</p>
+          <p class="demo-result-text">${escapeHtml(chunk.text)}</p>
+        </article>`,
+      )
+      .join(''),
+    '</div>',
+  ].join('');
+};
+
+export const renderHtmxDocumentsPanel = ({
+  documents,
+  mode,
+  query = '',
+  fileType = 'all',
+  page = 1,
+  activeDocumentId,
+  activePreviewHtml,
+}: {
+  documents: RAGIndexedDocument[];
+  mode: string;
+  query?: string;
+  fileType?: string;
+  page?: number;
+  activeDocumentId?: string;
+  activePreviewHtml?: string;
+}) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredDocuments = documents.filter((document) => {
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      document.title.toLowerCase().includes(normalizedQuery) ||
+      document.source.toLowerCase().includes(normalizedQuery) ||
+      (document as { text?: string }).text?.toLowerCase().includes(normalizedQuery) === true;
+    const matchesType =
+      fileType === 'all' || inferDocumentExtension(document) === fileType;
+    return matchesQuery && matchesType;
+  });
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / DOCUMENTS_PER_PAGE));
+  const activeDocumentPage =
+    activeDocumentId
+      ? Math.floor(
+          Math.max(
+            0,
+            filteredDocuments.findIndex((document) => document.id === activeDocumentId),
+          ) / DOCUMENTS_PER_PAGE,
+        ) + 1
+      : undefined;
+  const currentPage = Math.min(
+    totalPages,
+    Math.max(1, activeDocumentPage ?? page),
+  );
+  const paginatedDocuments = filteredDocuments.slice((currentPage - 1) * DOCUMENTS_PER_PAGE, currentPage * DOCUMENTS_PER_PAGE);
+
+  const renderPageButton = (pageNumber: number) => `
+    <button
+      class="${pageNumber === currentPage ? 'demo-page-button demo-page-button-active' : 'demo-page-button'}"
+      type="button"
+      hx-get="/demo/documents/${escapeHtml(mode)}?query=${encodeURIComponent(query)}&fileType=${encodeURIComponent(fileType)}&page=${pageNumber}"
+      hx-target="#document-list"
+      hx-swap="innerHTML"
+    >${pageNumber}</button>`;
+
+  return [
+    '<div class="demo-stat-grid">',
+    `<article class="demo-stat-card"><span class="demo-stat-label">Indexed documents</span><strong>${filteredDocuments.length}</strong><p>${filteredDocuments.filter((document) => document.kind === 'seed').length} seed · ${filteredDocuments.filter((document) => document.kind === 'custom').length} custom</p></article>`,
+    '</div>',
+    '<div class="demo-source-filter-row">',
+    `<input name="query" value="${escapeHtml(query)}" placeholder="Search indexed sources by title, source, or text" type="text" hx-get="/demo/documents/${escapeHtml(mode)}" hx-trigger="input changed delay:150ms" hx-target="#document-list" hx-swap="innerHTML" hx-include="#document-type-filter" />`,
+    `<select id="document-type-filter" name="fileType" hx-get="/demo/documents/${escapeHtml(mode)}" hx-trigger="change" hx-target="#document-list" hx-swap="innerHTML" hx-include="previous input">`,
+    SUPPORTED_FILE_TYPE_OPTIONS.map(([value, label]) => `<option value="${value}"${value === fileType ? ' selected' : ''}>${label}</option>`).join(''),
+    '</select>',
+    '</div>',
+    `<div class="demo-pagination-row"><p class="demo-metadata">Showing ${paginatedDocuments.length} of ${filteredDocuments.length} matching documents</p><div class="demo-pagination-controls">`,
+    `<button type="button" ${currentPage <= 1 ? 'disabled' : ''} hx-get="/demo/documents/${escapeHtml(mode)}?query=${encodeURIComponent(query)}&fileType=${encodeURIComponent(fileType)}&page=${Math.max(1, currentPage - 1)}" hx-target="#document-list" hx-swap="innerHTML">Prev</button>`,
+    Array.from({ length: totalPages }, (_, index) => renderPageButton(index + 1)).join(''),
+    `<button type="button" ${currentPage >= totalPages ? 'disabled' : ''} hx-get="/demo/documents/${escapeHtml(mode)}?query=${encodeURIComponent(query)}&fileType=${encodeURIComponent(fileType)}&page=${Math.min(totalPages, currentPage + 1)}" hx-target="#document-list" hx-swap="innerHTML">Next</button>`,
+    '</div></div>',
+    paginatedDocuments.length === 0
+      ? '<p class="demo-metadata">No indexed sources match the current filters.</p>'
+      : `<div class="demo-document-list">${paginatedDocuments.map((doc) => {
+          const inspectUrl = `/demo/documents/${mode}/${encodeURIComponent(doc.id)}/chunks`;
+          const searchBySourceVals = escapeHtml(JSON.stringify({
+            query: `Source search for ${doc.source}`,
+            source: doc.source,
+            topK: 6,
+          }));
+          const searchByDocumentVals = escapeHtml(JSON.stringify({
+            query: `Explain ${doc.title}`,
+            documentId: doc.id,
+            topK: 6,
+          }));
+          const deleteButton =
+            doc.kind === 'custom'
+              ? `<button type="button" hx-delete="/rag/${escapeHtml(mode)}/documents/${encodeURIComponent(doc.id)}" hx-target="#mutation-status" hx-swap="innerHTML" hx-confirm="Delete ${escapeHtml(doc.title)}?">Delete</button>`
+              : '';
+
+          return `
+            <details class="demo-document-item demo-document-collapsible"${doc.id === activeDocumentId ? ' open' : ''}>
+              <summary>
+                <div class="demo-document-header">
+                  <div>
+                    <h3>${escapeHtml(doc.title)}</h3>
+                    <p class="demo-metadata">${escapeHtml(doc.source)} · ${escapeHtml(doc.kind ?? 'unknown')} · ${doc.chunkCount ?? 0} chunk(s)</p>
+                  </div>
+                  <div class="demo-badge-row">
+                    <span class="demo-badge">${escapeHtml(doc.format ?? 'text')}</span>
+                    <span class="demo-badge">${escapeHtml(doc.chunkStrategy ?? 'paragraphs')}</span>
+                    <span class="demo-badge">chunk target ${doc.chunkSize ?? 0} chars</span>
+                  </div>
+                </div>
+              </summary>
+              <div class="demo-collapsible-content">
+                <div class="demo-actions">
+                  <button type="button" hx-get="${escapeHtml(inspectUrl)}" hx-target="#chunk-preview-${escapeHtml(doc.id)}" hx-swap="innerHTML">Inspect chunks</button>
+                  <button type="button" hx-post="/demo/message/${escapeHtml(mode)}/search" hx-vals='${searchBySourceVals}' hx-target="#search-results" hx-swap="innerHTML" hx-on::after-request="document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Search source</button>
+                  <button type="button" hx-post="/demo/message/${escapeHtml(mode)}/search" hx-vals='${searchByDocumentVals}' hx-target="#search-results" hx-swap="innerHTML" hx-on::after-request="document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Search document</button>
+                  ${deleteButton}
+                </div>
+                <div class="demo-key-value-grid">
+                  <div class="demo-key-value-row"><span>Source</span><strong>${escapeHtml(doc.source)}</strong></div>
+                  <div class="demo-key-value-row"><span>Kind</span><strong>${escapeHtml(doc.kind ?? 'unknown')}</strong></div>
+                  <div class="demo-key-value-row"><span>Chunks</span><strong>${doc.chunkCount ?? 0}</strong></div>
+                  ${formatDemoMetadataSummary(doc.metadata).map((line) => `<div class="demo-key-value-row"><span>Metadata</span><strong>${escapeHtml(line)}</strong></div>`).join('')}
+                </div>
+                <div id="chunk-preview-${escapeHtml(doc.id)}" class="demo-inline-preview">${doc.id === activeDocumentId && activePreviewHtml ? activePreviewHtml : '<p class="demo-metadata">Pick Inspect chunks to compare normalized text with final chunk boundaries.</p>'}</div>
+              </div>
+            </details>`;
+        }).join('')}</div>`,
+  ].join('');
 };
 
 const renderWorkflowSummary = ({
@@ -440,28 +874,42 @@ const renderMutationRefreshes = () => [
 ].join('');
 
 export const renderHtmxQualityPanel = ({ groundingEvaluation, providerGroundingComparison, providerGroundingDifficultyHistory, providerGroundingHistories, retrievalComparison, rerankerComparison, retrievalHistories, rerankerHistories, suite }: DemoRetrievalQualityResponse) => [
-  `<div class="demo-results">`,
+  (() => {
+    const overview = formatQualityOverviewPresentation({
+      retrievalComparison,
+      rerankerComparison,
+      groundingEvaluation,
+      groundingProviderOverview: providerGroundingComparison
+        ? formatGroundingProviderOverviewPresentation(providerGroundingComparison)
+        : undefined,
+    });
+    return [
+  `<div class="demo-results demo-quality-card">`,
   `<h3>Retrieval Quality Tooling</h3>`,
-  `<p class="demo-metadata">Saved suite: <strong>${escapeHtml(suite.label ?? suite.id)}</strong> · ${suite.input.cases.length} case(s)</p>`,
-  suite.description ? `<p class="demo-metadata">${escapeHtml(suite.description)}</p>` : "",
+  `<p class="demo-metadata">This server-rendered HTMX version keeps the same summary-first hierarchy as the framework pages: winners up top, strategy cards next, grounding drill-downs after that, and history behind collapsible sections.</p>`,
+  `<div class="demo-pill-row"><span class="demo-pill">${escapeHtml(suite.label ?? suite.id)} · ${suite.input.cases.length} cases</span></div>`,
+  `<div class="demo-stat-grid">`,
+  `<article class="demo-stat-card"><span class="demo-stat-label">Retrieval winner</span><strong>${escapeHtml(formatRetrievalComparisonOverviewPresentation(retrievalComparison).winnerLabel)}</strong><p>${escapeHtml(formatRetrievalComparisonOverviewPresentation(retrievalComparison).summary)}</p></article>`,
+  `<article class="demo-stat-card"><span class="demo-stat-label">Reranker winner</span><strong>${escapeHtml(formatRerankerComparisonOverviewPresentation(rerankerComparison).winnerLabel)}</strong><p>${escapeHtml(formatRerankerComparisonOverviewPresentation(rerankerComparison).summary)}</p></article>`,
+  `<article class="demo-stat-card"><span class="demo-stat-label">Grounding winner</span><strong>${escapeHtml(providerGroundingComparison ? formatGroundingProviderOverviewPresentation(providerGroundingComparison).winnerLabel : "Stored workflow evaluation")}</strong><p>${escapeHtml(providerGroundingComparison ? formatGroundingProviderOverviewPresentation(providerGroundingComparison).summary : formatGroundingEvaluationSummary(groundingEvaluation))}</p></article>`,
+  `<article class="demo-stat-card"><span class="demo-stat-label">Why this matters</span><strong>Summary first</strong><p>Detailed evidence stays collapsed until you need to inspect regressions or grounding drift.</p></article>`,
+  `</div>`,
   `<div class="demo-result-grid">`,
-  `<article class="demo-result-item"><h4>Retrieval winners</h4><ul class="demo-detail-list">${formatRetrievalComparisonSummary(retrievalComparison).map((line: string) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></article>`,
-  `<article class="demo-result-item"><h4>Reranker winners</h4><ul class="demo-detail-list">${formatRerankerComparisonSummary(rerankerComparison).map((line: string) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></article>`,
-  `<article class="demo-result-item"><h4>Grounded answer fidelity</h4><ul class="demo-detail-list">${formatGroundingEvaluationSummary(groundingEvaluation).split(" · ").map((line: string) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></article>`,
-  `<article class="demo-result-item"><h4>Provider answer fidelity</h4><ul class="demo-detail-list">${(providerGroundingComparison ? formatGroundingProviderSummary(providerGroundingComparison) : ['Configure an AI provider to compare real model-grounded answers.']).map((line: string) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></article>`,
+  `<article class="demo-result-item"><h4>Winners at a glance</h4><div class="demo-key-value-grid">${overview.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></article>`,
+  `<article class="demo-result-item"><h4>Why this matters</h4><div class="demo-insight-stack">${formatQualityOverviewNotes().map((insight) => `<p class="demo-insight-card">${escapeHtml(insight)}</p>`).join("")}</div></article>`,
   `</div>`,
-  `<div class="demo-result-grid">${retrievalComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)}</h4><p class="demo-metadata">${escapeHtml(formatRetrievalComparisonEntry(entry))}</p></article>`).join("")}</div>`,
-  `<div class="demo-result-grid">${rerankerComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)}</h4><p class="demo-metadata">${escapeHtml(formatRerankerComparisonEntry(entry))}</p></article>`).join("")}</div>`,
-  `<div class="demo-result-grid">${groundingEvaluation.cases.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label ?? entry.caseId)}</h4><p class="demo-metadata">${escapeHtml(formatGroundingEvaluationCase(entry))}</p>${renderDetailList(formatGroundingEvaluationDetails(entry), 'No grounding details available.')}</article>`).join("")}</div>`,
-  `${providerGroundingComparison ? `<div class="demo-result-grid">${providerGroundingComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)}</h4><p class="demo-metadata">${escapeHtml(formatGroundingProviderEntry(entry))}</p></article>`).join("")}</div>` : ''}`,
-  `${providerGroundingComparison ? `<div class="demo-result-grid">${providerGroundingComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)} history</h4>${renderDetailList([...formatGroundingHistorySummary(providerGroundingHistories[entry.providerKey]), ...formatGroundingHistoryDiff(providerGroundingHistories[entry.providerKey]), ...formatGroundingHistorySnapshots(providerGroundingHistories[entry.providerKey])], 'No persisted provider runs yet.')}</article>`).join("")}</div>` : ''}`,
-  `${providerGroundingComparison ? `<div class="demo-result-grid">${providerGroundingComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)} artifact trail</h4>${renderDetailList(formatGroundingHistoryArtifactTrail(providerGroundingHistories[entry.providerKey]), 'No grounding artifact trail yet.')}</article>`).join("")}</div>` : ''}`,
-  `${providerGroundingComparison ? `<div class="demo-result-grid"><article class="demo-result-item"><h4>Hardest grounding cases</h4>${renderDetailList(providerGroundingComparison.difficultyLeaderboard.map((entry) => formatGroundingCaseDifficultyEntry(entry)), 'No provider difficulty rankings available.')}</article><article class="demo-result-item"><h4>Grounding difficulty history</h4>${renderDetailList([...formatGroundingDifficultyHistorySummary(providerGroundingDifficultyHistory), ...formatGroundingDifficultyHistoryDiff(providerGroundingDifficultyHistory)], 'No persisted difficulty runs yet.')}</article></div>` : ''}`,
-  `${providerGroundingComparison ? `<div class="demo-result-grid">${providerGroundingComparison.caseComparisons.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)}</h4>${renderDetailList([...formatGroundingProviderCaseSummary(entry), ...entry.entries.flatMap((candidate) => [formatGroundingProviderCaseEntry(candidate), ...formatGroundingProviderCaseDetails(candidate)])], 'No provider case comparisons available.')}</article>`).join("")}</div>` : ''}`,
-  `<div class="demo-result-grid">${retrievalComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)} history</h4>${renderDetailList([...formatEvaluationHistorySummary(retrievalHistories[entry.retrievalId]), ...formatEvaluationHistoryDiff(retrievalHistories[entry.retrievalId])], 'No persisted benchmark runs yet.')}</article>`).join("")}</div>`,
-  `<div class="demo-result-grid">${rerankerComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${escapeHtml(entry.label)} history</h4>${renderDetailList([...formatEvaluationHistorySummary(rerankerHistories[entry.rerankerId]), ...formatEvaluationHistoryDiff(rerankerHistories[entry.rerankerId])], 'No persisted benchmark runs yet.')}</article>`).join("")}</div>`,
-  `<article class="demo-result-item"><h4>Comparison leaderboard</h4><ul class="demo-detail-list">${rerankerComparison.leaderboard.map((entry) => `<li>${escapeHtml(formatEvaluationLeaderboardEntry(entry))}</li>`).join("")}</ul></article>`,
+  `<div class="demo-result-grid">${formatRetrievalComparisonPresentations(retrievalComparison).map((card) => `<article class="demo-result-item demo-score-card"><h4>${escapeHtml(card.label)}</h4><p class="demo-score-headline">${escapeHtml(card.summary)}</p><div class="demo-key-value-grid demo-trace-summary-grid">${card.traceSummaryRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div><details class="demo-collapsible demo-trace-diff"><summary><span>Trace diff vs leader</span><strong>${escapeHtml(card.diffLabel)}</strong></summary><div class="demo-collapsible-content demo-trace-diff-grid">${card.diffRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details></article>`).join("")}${formatRerankerComparisonPresentations(rerankerComparison).map((card) => `<article class="demo-result-item demo-score-card"><h4>${escapeHtml(card.label)}</h4><p class="demo-score-headline">${escapeHtml(card.summary)}</p><div class="demo-key-value-grid demo-trace-summary-grid">${card.traceSummaryRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div><details class="demo-collapsible demo-trace-diff"><summary><span>Trace diff vs leader</span><strong>${escapeHtml(card.diffLabel)}</strong></summary><div class="demo-collapsible-content demo-trace-diff-grid">${card.diffRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details></article>`).join("")}</div>`,
+  `<div class="demo-result-grid">${groundingEvaluation.cases.map((entry) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label ?? entry.caseId)}</span><strong>${escapeHtml(formatGroundingEvaluationCase(entry))}</strong></summary><div class="demo-collapsible-content">${formatGroundingEvaluationDetails(entry).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</div></details>`).join("")}</div>`,
+  `${providerGroundingComparison ? `<div class="demo-result-grid">${formatGroundingProviderPresentations(providerGroundingComparison.entries).map((card: { label: string; summary: string }) => `<article class="demo-result-item demo-score-card"><h4>${escapeHtml(card.label)}</h4><p class="demo-score-headline">${escapeHtml(card.summary)}</p></article>`).join("")}<article class="demo-result-item"><h4>Hardest cases</h4><div class="demo-pill-row">${providerGroundingComparison.difficultyLeaderboard.map((entry) => `<span class="demo-pill">${escapeHtml(formatGroundingCaseDifficultyEntry(entry))}</span>`).join("")}</div></article></div>` : ''}`,
+  `${providerGroundingComparison ? `<div class="demo-result-grid">${formatGroundingProviderCasePresentations(providerGroundingComparison.caseComparisons).map((card: { label: string; summary: string; rows: Array<{ label: string; value: string }> }) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(card.label)}</span><strong>${escapeHtml(card.summary)}</strong></summary><div class="demo-collapsible-content">${card.rows.map((row: { label: string; value: string }) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details>`).join("")}</div>` : ''}`,
+  `<div class="demo-result-grid">${retrievalComparison.entries.map((entry) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label)} history</span><strong>${escapeHtml(formatEvaluationHistorySummary(retrievalHistories[entry.retrievalId])[0] ?? 'No runs yet')}</strong></summary><div class="demo-collapsible-content">${formatEvaluationHistoryRows(retrievalHistories[entry.retrievalId]).map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}<div class="demo-result-grid">${formatEvaluationHistoryTracePresentations(retrievalHistories[entry.retrievalId]).map((traceCase) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(traceCase.label)}</span><strong>${escapeHtml(traceCase.summary)}</strong></summary><div class="demo-collapsible-content">${traceCase.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details>`).join("")}</div></div></details>`).join("")}${rerankerComparison.entries.map((entry) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label)} history</span><strong>${escapeHtml(formatEvaluationHistorySummary(rerankerHistories[entry.rerankerId])[0] ?? 'No runs yet')}</strong></summary><div class="demo-collapsible-content">${formatEvaluationHistoryRows(rerankerHistories[entry.rerankerId]).map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}<div class="demo-result-grid">${formatEvaluationHistoryTracePresentations(rerankerHistories[entry.rerankerId]).map((traceCase) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(traceCase.label)}</span><strong>${escapeHtml(traceCase.summary)}</strong></summary><div class="demo-collapsible-content">${traceCase.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details>`).join("")}</div></div></details>`).join("")}</div>`,
+  `${providerGroundingComparison ? `<div class="demo-result-grid">${providerGroundingComparison.entries.map((entry) => {
+    const history = providerGroundingHistories[entry.providerKey];
+    return `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label)} history</span><strong>${escapeHtml(formatGroundingHistorySummary(history)[0] ?? 'No runs yet')}</strong></summary><div class="demo-collapsible-content">${formatGroundingHistoryDetails(history).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}${formatGroundingHistorySnapshotPresentations(history).length ? `<div class="demo-result-grid">${formatGroundingHistorySnapshotPresentations(history).map((snapshot) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(snapshot.label)}</span><strong>${escapeHtml(snapshot.summary)}</strong></summary><div class="demo-collapsible-content">${snapshot.rows.map((row) => `<p class="demo-key-value-row"><strong>${escapeHtml(row.label)}</strong><span>${escapeHtml(row.value)}</span></p>`).join("")}</div></details>`).join("")}</div>` : ''}</div></details>`;
+  }).join("")}<details class="demo-result-item demo-collapsible"><summary><span>Grounding difficulty history</span><strong>${escapeHtml(formatGroundingDifficultyHistorySummary(providerGroundingDifficultyHistory)[0] ?? 'No history yet')}</strong></summary><div class="demo-collapsible-content">${formatGroundingDifficultyHistoryDetails(providerGroundingDifficultyHistory).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</div></details></div>` : ''}`,
   `</div>`,
+].join('');
+  })()
 ].join('');
 
 export const renderHtmxOpsPanel = (ops: RAGOperationsResponse, mode?: string) => [
@@ -566,7 +1014,15 @@ export const renderHtmxOpsPanel = (ops: RAGOperationsResponse, mode?: string) =>
           ? `Failed ingest jobs ${ops.health.failedIngestJobs} · Failed admin jobs ${ops.health.failedAdminJobs}`
           : 'Waiting for corpus health...'
       )}</p>
-      ${renderDetailList(formatFailureSummary(ops.health), 'No recorded failures.')}
+      ${renderDetailList([...formatFailureSummary(ops.health), ...formatInspectionSummary(ops.health), ...formatInspectionSamples(ops.health)], 'No recorded failures.')}
+      ${buildInspectionEntries(ops.health).length > 0 ? `<div class="demo-actions">${buildInspectionEntries(ops.health).map((entry) => {
+        const targetMode = escapeHtml(mode ?? "sqlite-native");
+        const query = entry.sourceQuery ? `query=${encodeURIComponent(entry.sourceQuery)}` : '';
+        const documentId = entry.documentId ? `documentId=${encodeURIComponent(entry.documentId)}` : '';
+        const inspect = entry.documentId ? 'inspect=true' : '';
+        const href = `/demo/documents/${targetMode}${query || documentId || inspect ? `?${[query, documentId, inspect].filter(Boolean).join('&')}` : ''}`;
+        return `<a class="demo-release-action demo-release-action-neutral" href="${href}">${escapeHtml(entry.documentId ? `Inspect ${entry.kind}` : "Open documents")} · ${escapeHtml(entry.label)}</a>`;
+      }).join("")}</div>` : ""}
     </article>`,
   '</div>',
   '<div class="demo-result-grid">',
@@ -638,6 +1094,80 @@ export const renderHtmxOpsPanel = (ops: RAGOperationsResponse, mode?: string) =>
   '</div>',
   '</div>',
 ].join('');
+
+export const renderHtmxReleasePanel = (
+  releaseData: DemoReleaseOpsResponse,
+  actionMessage?: string,
+  mode: DemoBackendMode = "sqlite-native",
+) => {
+  const releasePanel = buildDemoReleasePanelState(releaseData);
+  const activeWorkspace = releaseData.workspace?.id ?? "alpha";
+
+  return [
+    '<div id="release-panel" class="demo-results demo-release-card">',
+    '<h3>Release Control</h3>',
+    '<p class="demo-metadata">This panel exercises the same AbsoluteJS release-control surface that backs retrieval baselines, lane readiness, incidents, and remediation execution tracking.</p>',
+    actionMessage ? `<p class="demo-banner">${escapeHtml(actionMessage)}</p>` : '',
+    '<div class="demo-release-hero">',
+    '<div class="demo-release-hero-copy">',
+    '<p class="demo-release-kicker">AbsoluteJS release workflow</p>',
+    `<p class="demo-release-banner">${escapeHtml(releasePanel.releaseHero)}</p>`,
+    `<p class="demo-release-summary">${escapeHtml(releasePanel.releaseHeroSummary)}</p>`,
+    `<p class="demo-metadata">${escapeHtml(releasePanel.releaseHeroMeta)}</p>`,
+    `<p class="demo-metadata">${escapeHtml(releasePanel.releaseScopeNote)}</p>`,
+    `<div class="demo-release-pills">${releasePanel.releaseHeroPills.map((pill) => pill.targetCardId || pill.targetActivityId ? `<a class="demo-release-pill demo-release-pill-${escapeHtml(pill.tone)}" href="#${escapeHtml(pill.targetActivityId ?? pill.targetCardId ?? '')}" data-target-card="${escapeHtml(pill.targetCardId ?? '')}" onclick="const targetCard=this.dataset.targetCard; if(targetCard==='release-promotion-candidates-card'||targetCard==='release-stable-handoff-card'||targetCard==='release-remediation-history-card'){document.getElementById('release-diagnostics')?.setAttribute('open','open');}"><span class="demo-release-pill-label">${escapeHtml(pill.label)}</span><span class="demo-release-pill-value">${escapeHtml(pill.value)}</span></a>` : `<span class="demo-release-pill demo-release-pill-${escapeHtml(pill.tone)}"><span class="demo-release-pill-label">${escapeHtml(pill.label)}</span><span class="demo-release-pill-value">${escapeHtml(pill.value)}</span></span>`).join('')}</div>`,
+    `<div class="demo-release-scenario-switcher">${demoReleaseWorkspaces.map((entry) => `<span class="demo-release-scenario-chip demo-release-workspace-chip${entry.id === activeWorkspace ? ' demo-release-scenario-chip-active' : ''}"><button type="button" title="${escapeHtml(entry.description)}" hx-get="${escapeHtml(`/demo/release/${mode}/htmx?workspace=${entry.id}`)}" hx-target="#htmx-release" hx-swap="innerHTML" ${entry.id === activeWorkspace ? "disabled" : ""}>Workspace · ${escapeHtml(entry.label)}</button></span>`).join('')}${releasePanel.releaseScenarioActions.map((entry) => `<span class="demo-release-scenario-chip${entry.active ? ' demo-release-scenario-chip-active' : ''}">${entry.action ? `<button type="button" title="${escapeHtml(entry.action.description)}" hx-post="${escapeHtml(entry.action.path)}" hx-vals='${escapeHtml(JSON.stringify(entry.action.payload))}' hx-target="#htmx-release" hx-swap="innerHTML">${escapeHtml(entry.label)}</button>` : `<span>${escapeHtml(entry.label)}</span>`}</span>`).join('')}</div>`,
+    `<div class="demo-release-path">${releasePanel.releasePathSteps.map((step) => `<article class="demo-release-path-step demo-release-path-step-${escapeHtml(step.status)}"><div class="demo-release-path-step-header"><h4>${escapeHtml(step.label)}</h4><span class="demo-release-path-status demo-release-path-status-${escapeHtml(step.status)}">${escapeHtml(step.status)}</span></div><p>${escapeHtml(step.summary)}</p><p class="demo-release-path-detail">${escapeHtml(step.detail)}</p>${step.action ? `<button class="demo-release-path-action" type="button" title="${escapeHtml(step.action.description)}" hx-post="${escapeHtml(step.action.path)}" hx-vals='${escapeHtml(JSON.stringify(step.action.payload))}' hx-target="#htmx-release" hx-swap="innerHTML">${escapeHtml(step.action.label)}</button>` : ''}</article>`).join('')}</div>`,
+    '</div>',
+    '<div class="demo-release-action-rail">',
+    '<span class="demo-release-action-label">Live actions</span>',
+    `<div class="demo-release-action-state"><span class="demo-release-action-state-badge">Scenario · ${escapeHtml(releasePanel.scenario?.label ?? 'Blocked stable lane')}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.releaseRailDeltaChip.tone)}">${escapeHtml(releasePanel.releaseRailDeltaChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railIncidentPostureChip.tone)}">Incident posture · ${escapeHtml(releasePanel.railIncidentPostureChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railGateChip.tone)}">Gate posture · ${escapeHtml(releasePanel.railGateChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railApprovalChip.tone)}">Approval posture · ${escapeHtml(releasePanel.railApprovalChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railRemediationChip.tone)}">Remediation posture · ${escapeHtml(releasePanel.railRemediationChip.label)}</span></div>`,
+    `<div class="demo-release-rail-meta">${releasePanel.releaseRailUpdateSource.targetCardId || releasePanel.releaseRailUpdateSource.targetActivityId ? `<a class="demo-release-activity-lane demo-release-activity-lane-${escapeHtml(releasePanel.releaseRailUpdateSource.tone)}" href="#${escapeHtml(releasePanel.releaseRailUpdateSource.targetActivityId ?? releasePanel.releaseRailUpdateSource.targetCardId ?? '')}" data-target-card="${escapeHtml(releasePanel.releaseRailUpdateSource.targetCardId ?? '')}" onclick="const targetCard=this.dataset.targetCard; if(targetCard==='release-promotion-candidates-card'||targetCard==='release-stable-handoff-card'||targetCard==='release-remediation-history-card'){document.getElementById('release-diagnostics')?.setAttribute('open','open');}">${escapeHtml(releasePanel.releaseRailUpdateSource.label)}</a>` : `<span class="demo-release-activity-lane demo-release-activity-lane-${escapeHtml(releasePanel.releaseRailUpdateSource.tone)}">${escapeHtml(releasePanel.releaseRailUpdateSource.label)}</span>`}<p class="demo-release-updated">${escapeHtml(releasePanel.releaseRailUpdatedLabel)}</p></div>`,
+    releasePanel.latestReleaseAction
+      ? `<details class="demo-collapsible demo-release-action-latest demo-release-action-latest-${escapeHtml(releasePanel.latestReleaseAction.tone)}"><summary>Latest action · ${escapeHtml(releasePanel.latestReleaseAction.title)}</summary>${releasePanel.latestReleaseAction.detail ? `<p>${escapeHtml(releasePanel.latestReleaseAction.detail)}</p>` : ''}<p class="demo-release-next-step">${escapeHtml(releasePanel.latestReleaseAction.nextStep)}</p></details>`
+      : '',
+    `<details class="demo-collapsible demo-release-rail-callout demo-release-rail-callout-${escapeHtml(releasePanel.releaseRailCallout.tone)}"><summary>${escapeHtml(releasePanel.releaseRailCallout.title)}</summary><p>${escapeHtml(releasePanel.releaseRailCallout.message)}</p>${releasePanel.releaseRailCallout.detail ? `<p>${escapeHtml(releasePanel.releaseRailCallout.detail)}</p>` : ''}<p class="demo-release-next-step">${escapeHtml(releasePanel.releaseRailCallout.nextStep)}</p></details>`,
+    releasePanel.recentReleaseActivity.length
+      ? `<div class="demo-release-activity-stack"><span class="demo-release-action-subtitle">Recent activity</span>${releasePanel.recentReleaseActivity.map((entry) => `<a id="${escapeHtml(entry.id)}" class="demo-release-activity demo-release-activity-${escapeHtml(entry.tone)}" href="#${escapeHtml(entry.targetCardId)}" onclick="if(this.getAttribute('href')==='#release-promotion-candidates-card'||this.getAttribute('href')==='#release-stable-handoff-card'){document.getElementById('release-diagnostics')?.setAttribute('open','open');}"><span class="demo-release-activity-lane demo-release-activity-lane-${escapeHtml(entry.tone)}">${escapeHtml(entry.laneLabel)}</span><strong>${escapeHtml(entry.title)}</strong>${entry.detail ? ` · ${escapeHtml(entry.detail)}` : ''}</a>`).join('')}</div>`
+      : '',
+    `<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Release</span><div class="demo-release-actions">${releasePanel.primaryReleaseActions.map((action) => `<button class="demo-release-action demo-release-action-${escapeHtml(action.tone ?? 'neutral')}" type="button" title="${escapeHtml(action.description)}" hx-post="${escapeHtml(action.path)}" hx-vals='${escapeHtml(JSON.stringify(action.payload))}' hx-target="#htmx-release" hx-swap="innerHTML">${escapeHtml(action.label)}</button>`).join('')}</div></div>`,
+    releasePanel.secondaryReleaseActions.length > 0
+      ? `<details class="demo-collapsible demo-release-more-actions"><summary>More actions</summary><div class="demo-release-actions">${releasePanel.secondaryReleaseActions.map((action) => `<button class="demo-release-action demo-release-action-${escapeHtml(action.tone ?? 'neutral')}" type="button" title="${escapeHtml(action.description)}" hx-post="${escapeHtml(action.path)}" hx-vals='${escapeHtml(JSON.stringify(action.payload))}' hx-target="#htmx-release" hx-swap="innerHTML">${escapeHtml(action.label)}</button>`).join('')}</div></details>`
+      : '',
+    releasePanel.handoffActions.length > 0
+      ? `<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Handoff</span><div class="demo-release-actions">${releasePanel.handoffActions.map((action) => `<button class="demo-release-action demo-release-action-${escapeHtml(action.tone ?? 'neutral')}" type="button" title="${escapeHtml(action.description)}" hx-post="${escapeHtml(action.path)}" hx-vals='${escapeHtml(JSON.stringify(action.payload))}' hx-target="#htmx-release" hx-swap="innerHTML">${escapeHtml(action.label)}</button>`).join('')}</div></div>`
+      : '',
+    `<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Evidence drills</span><div class="demo-release-actions">${releasePanel.releaseEvidenceDrills.map((drill) => `<button class="demo-release-action demo-release-action-${escapeHtml(drill.active ? 'primary' : 'neutral')}" type="button" hx-post="/demo/message/${escapeHtml(mode)}/search" hx-vals='${escapeHtml(JSON.stringify({ query: drill.query ?? "", topK: drill.topK, retrievalPresetId: drill.retrievalPresetId || undefined }))}' hx-target="#search-results" hx-swap="innerHTML" hx-on::after-request="document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">${escapeHtml(drill.label ?? "")}</button>`).join('')}</div>${releasePanel.releaseEvidenceDrills.map((drill) => `<p class="demo-metadata"><strong>${escapeHtml(drill.classificationLabel ?? "")}:</strong> ${escapeHtml(drill.summary ?? "")} Expected source · ${escapeHtml(drill.expectedSource ?? "")}</p><p class="demo-metadata">${escapeHtml(drill.traceExpectation ?? "")}</p>`).join('')}</div>`,
+    '</div>',
+    '</div>',
+    '<div class="demo-stat-grid">',
+    `<article class="demo-stat-card"><span class="demo-stat-label">Stable baseline</span><strong>${escapeHtml(releasePanel.stableBaseline?.label ?? 'Not promoted')}</strong><p>${escapeHtml(releasePanel.stableBaseline ? `${releasePanel.stableBaseline.retrievalId} · v${releasePanel.stableBaseline.version}${releasePanel.stableBaseline.approvedBy ? ` · approved by ${releasePanel.stableBaseline.approvedBy}` : ''}` : 'No stable baseline has been promoted yet.')}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Canary baseline</span><strong>${escapeHtml(releasePanel.canaryBaseline?.label ?? 'Not promoted')}</strong><p>${escapeHtml(releasePanel.canaryBaseline ? `${releasePanel.canaryBaseline.retrievalId} · v${releasePanel.canaryBaseline.version}${releasePanel.canaryBaseline.approvedAt ? ` · ${new Date(releasePanel.canaryBaseline.approvedAt).toLocaleString()}` : ''}` : 'No canary baseline has been promoted yet.')}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Stable readiness</span><strong>${escapeHtml(releasePanel.stableReadiness?.ready ? 'Ready' : 'Blocked')}</strong><p>${escapeHtml(releasePanel.stableReadinessStatSummary)}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Remediation guardrails</span><strong>${escapeHtml(releasePanel.remediationSummary ? `${releasePanel.remediationSummary.guardrailBlockedCount} blocked · ${releasePanel.remediationSummary.replayCount} replays` : 'No remediation executions')}</strong><p>${escapeHtml(releasePanel.remediationGuardrailSummary)}</p></article>`,
+    '</div>',
+    '<div class="demo-result-grid">',
+    `<article class="demo-result-item"><h4>Blocker comparison</h4><p class="demo-score-headline">${escapeHtml(releasePanel.scenarioClassificationLabel ? `Active blocker · ${releasePanel.scenarioClassificationLabel}` : 'Compare both blocker classes')}</p><div class="demo-result-grid">${releasePanel.releaseBlockerComparisonCards.map((card) => `<article class="demo-result-item"><h4>${escapeHtml(card.label)}${card.active ? ' · active' : ''}</h4>${card.detailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}</article>`).join('')}</div></article>`,
+    `<article id="release-runtime-history-card" class="demo-result-item"><h4>Runtime planner history</h4><p class="demo-score-headline">${escapeHtml(releasePanel.runtimePlannerHistorySummary)}</p>${releasePanel.runtimePlannerHistoryLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}</article>`,
+    `<article id="release-benchmark-snapshots-card" class="demo-result-item"><h4>Adaptive planner benchmark</h4><p class="demo-score-headline">${escapeHtml(releasePanel.benchmarkSnapshotSummary)}</p>${releasePanel.benchmarkSnapshotLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}</article>`,
+    `<article id="release-active-deltas-card" class="demo-result-item"><h4>Active blocker deltas</h4><p class="demo-score-headline">${escapeHtml(releasePanel.activeBlockerDeltaSummary)}</p>${releasePanel.activeBlockerDeltaLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}</article>`,
+    `<article id="release-lane-readiness-card" class="demo-result-item"><h4>Lane readiness</h4><div class="demo-key-value-grid">${releasePanel.laneReadinessEntries.map((entry) => `<div class="demo-key-value-row"><span>${escapeHtml(entry.targetRolloutLabel ?? 'lane')}</span><strong>${escapeHtml(entry.ready ? 'ready' : 'blocked')}</strong></div>${entry.reasons.slice(0, 2).map((reason) => `<p class="demo-metadata">${escapeHtml(reason)}</p>`).join('')}`).join('') || '<p class="demo-metadata">No lane readiness snapshots are available yet.</p>'}</div></article>`,
+    `<article class="demo-result-item"><h4>Lane recommendations</h4><div class="demo-insight-stack">${releasePanel.releaseRecommendations.length > 0 ? releasePanel.releaseRecommendations.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.targetRolloutLabel ?? 'lane')} · ${escapeHtml(entry.classificationLabel ?? 'release recommendation')}:</strong> ${escapeHtml(entry.recommendedAction.replaceAll('_', ' '))}${entry.reasons[0] ? ` · ${escapeHtml(entry.reasons[0])}` : ''}</p>`).join('') : '<p class="demo-insight-card">No lane recommendations are available yet.</p>'}</div></article>`,
+    `<article id="release-open-incidents-card" class="demo-result-item"><h4>Open incidents</h4><p class="demo-score-headline">${escapeHtml(releasePanel.incidentSummaryLabel)}</p>${releasePanel.incidentClassificationDetailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}<div class="demo-insight-stack">${releasePanel.recentIncidents.slice(0, 3).map((incident) => `<p class="demo-insight-card"><strong>${escapeHtml(incident.targetRolloutLabel ?? 'lane')} · ${escapeHtml(incident.kind)} · ${escapeHtml(incident.classificationLabel ?? 'general regression')}</strong><br />${escapeHtml(incident.message)}</p>`).join('') || '<p class="demo-insight-card">No incidents recorded.</p>'}</div></article>`,
+    `<article id="release-remediation-history-card" class="demo-result-item"><h4>Remediation execution history</h4>${releasePanel.remediationDetailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}<div class="demo-key-value-grid">${releasePanel.recentIncidentRemediationExecutions.slice(0, 4).map((entry) => `<div class="demo-key-value-row"><span>${escapeHtml(entry.action?.kind ?? 'execution')}</span><strong>${escapeHtml(`${entry.code ?? 'unknown'}${entry.idempotentReplay ? ' · replay' : ''}${entry.blockedByGuardrail ? ' · blocked' : ''}`)}</strong></div>`).join('') || '<p class="demo-metadata">No remediation executions recorded yet.</p>'}</div></article>`,
+    '</div>',
+    `<details id="release-diagnostics" class="demo-collapsible demo-release-diagnostics"><summary>Advanced release diagnostics · ${escapeHtml(releasePanel.releaseDiagnosticsSummary)}</summary><p class="demo-release-updated">${escapeHtml(releasePanel.releaseDiagnosticsUpdatedLabel)}</p><p class="demo-release-card-state demo-release-card-state-${escapeHtml(releasePanel.releaseStateBadge.tone)}">State · ${escapeHtml(releasePanel.releaseStateBadge.label)}</p><div class="demo-result-grid">`,
+    `<article id="release-promotion-candidates-card" class="demo-result-item"><h4>Promotion candidates</h4><div class="demo-key-value-grid">${releasePanel.releaseCandidates.length > 0 ? releasePanel.releaseCandidates.slice(0, 3).map((candidate) => `<div class="demo-key-value-row"><span>${escapeHtml(candidate.targetRolloutLabel ?? 'lane')} · ${escapeHtml(candidate.candidateRetrievalId ?? 'candidate')}</span><strong>${escapeHtml(candidate.reviewStatus)}</strong></div><p class="demo-metadata">${escapeHtml(candidate.reasons[0] ?? 'No release reasons recorded.')}</p>`).join('') : '<p class="demo-metadata">No promotion candidates recorded yet.</p>'}</div></article>`,
+    `<article class="demo-result-item"><h4>Release alerts</h4><div class="demo-insight-stack">${releasePanel.releaseAlerts.length > 0 ? releasePanel.releaseAlerts.slice(0, 4).map((alert) => `<p class="demo-insight-card"><strong>${escapeHtml(alert.targetRolloutLabel ?? 'lane')} · ${escapeHtml(alert.kind)} · ${escapeHtml(alert.classificationLabel ?? 'general regression')}</strong><br />${escapeHtml(alert.message ?? 'No alert detail')}</p>`).join('') : '<p class="demo-insight-card">No release alerts are active.</p>'}</div></article>`,
+    `<article id="release-policy-history-card" class="demo-result-item"><h4>Policy history</h4>${releasePanel.policyHistoryDetailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join('')}<div class="demo-insight-stack">${releasePanel.policyHistoryEntries.length > 0 ? releasePanel.policyHistoryEntries.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.title)}</strong><br />${escapeHtml(entry.detail)}</p>`).join('') : `<p class="demo-insight-card">${escapeHtml(releasePanel.policyHistorySummary)}</p>`}</div></article>`,
+    `<article id="release-audit-surfaces-card" class="demo-result-item"><h4>Audit surfaces</h4><div class="demo-insight-stack">${releasePanel.auditSurfaceEntries.length > 0 ? releasePanel.auditSurfaceEntries.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.title)}</strong><br />${escapeHtml(entry.detail)}</p>`).join("") : `<p class="demo-insight-card">${escapeHtml(releasePanel.auditSurfaceSummary)}</p>`}</div></article>`,
+    `<article id="release-polling-surfaces-card" class="demo-result-item"><h4>Polling surfaces</h4><div class="demo-insight-stack">${releasePanel.pollingSurfaceEntries.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.title)}</strong><br />${escapeHtml(entry.detail)}</p>`).join("")}</div></article>`,
+    `<article id="release-handoff-incidents-card" class="demo-result-item"><h4>Handoff incidents</h4><p class="demo-score-headline">${escapeHtml(releasePanel.stableHandoffIncidentSummaryLabel)}</p><div class="demo-insight-stack">${releasePanel.handoffIncidents.length > 0 ? releasePanel.handoffIncidents.slice(0, 2).map((incident) => `<p class="demo-insight-card"><strong>${escapeHtml(incident.status ?? "incident")} · ${escapeHtml(incident.kind ?? "handoff_stale")}</strong><br />${escapeHtml(incident.message ?? "No handoff incident detail")}</p>`).join("") : `<p class="demo-insight-card">No handoff incidents recorded.</p>`}${releasePanel.handoffIncidentHistory.slice(0, 3).map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.action ?? "history")}</strong><br />${escapeHtml([entry.notes, entry.recordedAt ? new Date(entry.recordedAt).toLocaleString() : undefined].filter(Boolean).join(" · "))}</p>`).join("")}</div></article>`,
+    `<article id="release-stable-handoff-card" class="demo-result-item"><h4>Stable handoff</h4><div class="demo-key-value-grid">${releasePanel.stableHandoff ? `<div class="demo-key-value-row"><span>${escapeHtml(releasePanel.stableHandoff.sourceRolloutLabel)} -&gt; ${escapeHtml(releasePanel.stableHandoff.targetRolloutLabel)}</span><strong>${escapeHtml(releasePanel.stableHandoff.readyForHandoff ? 'ready' : 'blocked')}</strong></div><p class="demo-metadata">${escapeHtml(releasePanel.stableHandoff.candidateRetrievalId ? `candidate ${releasePanel.stableHandoff.candidateRetrievalId}` : 'No candidate retrieval is attached to the handoff yet.')}${releasePanel.stableHandoffDecision?.kind ? ` · ${escapeHtml(`latest ${releasePanel.stableHandoffDecision.kind}`)}` : ''}</p>${releasePanel.stableHandoffDisplayReasons.map((reason) => `<p class="demo-metadata">${escapeHtml(reason)}</p>`).join('')}${releasePanel.stableHandoffAutoCompleteLabel ? `<p class="demo-metadata">${escapeHtml(releasePanel.stableHandoffAutoCompleteLabel)}</p>` : ''}<div class="demo-key-value-row"><span>Drift events</span><strong>${escapeHtml(String(releasePanel.stableHandoffDrift?.totalCount ?? 0))}</strong></div>` : '<p class="demo-metadata">No stable handoff posture is available yet.</p>'}</div></article>`,
+    '</div>',
+    '</div>',
+  ].join('');
+};
 
 const renderEvaluationResults = (
   cases: RAGEvaluationCaseResult[],
@@ -775,6 +1305,11 @@ export const createHtmxAIStreamRenderConfig = (): AIHTMXRenderConfig => {
       `<div><dt>Source groups</dt><dd>${buildRAGSourceGroups(sources).length}</dd></div>`,
       '</dl>',
       renderSourceSummaries(sources),
+      renderTracePanel({
+        summary: "This is the first-class retrieval trace from AbsoluteJS for the streamed workflow path. It shows how retrieval executed before answer generation.",
+        title: "Workflow Retrieval Trace",
+        trace: details?.trace,
+      }),
       renderCitations(sources),
       '</div>',
     ].join('');
@@ -801,12 +1336,15 @@ export const createHtmxAIStreamRenderConfig = (): AIHTMXRenderConfig => {
       '<h4>Answer Grounding</h4>',
       `<p class="demo-grounding-badge demo-grounding-${escapeHtml(groundedAnswer.coverage)}">${escapeHtml(formatGroundingCoverage(groundedAnswer.coverage))}</p>`,
       renderDetailList(formatGroundingSummary(groundedAnswer), 'No grounding summary available.'),
-      groundedAnswer.parts.some((part) => part.type === 'citation')
-        ? '<div class="demo-result-grid">' + groundedAnswer.parts.map((part) => part.type === 'citation' ? `<article class="demo-result-item demo-grounding-card"><p class="demo-citation-badge">${escapeHtml(formatGroundingPartReferences(part.referenceNumbers))}</p>${formatGroundedAnswerPartDetails(part).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<p class="demo-result-text">${escapeHtml(part.text)}</p></article>` : '').join('') + '</div>'
+      groundedAnswer.parts.some((part: RAGGroundedAnswerPart) => part.type === 'citation')
+        ? '<div class="demo-result-grid">' + groundedAnswer.parts.map((part: RAGGroundedAnswerPart) => part.type === 'citation' ? `<article class="demo-result-item demo-grounding-card"><p class="demo-citation-badge">${escapeHtml(formatGroundingPartReferences(part.referenceNumbers))}</p>${formatGroundedAnswerPartDetails(part).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<p class="demo-result-text">${escapeHtml(formatGroundedAnswerPartExcerpt(part))}</p></article>` : '').join('') + '</div>'
         : '',
       '</div>',
+      groundedAnswer.sectionSummaries.length > 0
+        ? '<div class="demo-results"><h4>Grounding by Section</h4><div class="demo-result-grid">' + groundedAnswer.sectionSummaries.map((summary: RAGGroundedAnswerSectionSummary) => `<article class="demo-result-item demo-grounding-card"><h3>${escapeHtml(summary.label)}</h3><p class="demo-result-source">${escapeHtml(summary.summary)}</p>${formatGroundedAnswerSectionSummaryDetails(summary).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<p class="demo-result-text">${escapeHtml(formatGroundedAnswerSectionSummaryExcerpt(summary))}</p></article>`).join('') + '</div></div>'
+        : '',
       groundingReferences.length > 0
-        ? '<div class="demo-results"><h4>Grounding Reference Map</h4><p class="demo-metadata">Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.</p><div class="demo-result-grid">' + groundingReferences.map((reference) => `<article class="demo-result-item demo-grounding-card"><p class="demo-citation-badge">[${String(reference.number)}] ${escapeHtml(formatGroundingReferenceLabel(reference))}</p><p class="demo-result-score">${escapeHtml(formatGroundingReferenceSummary(reference))}</p>${formatGroundingReferenceDetails(reference).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<p class="demo-result-text">${escapeHtml(formatGroundingReferenceExcerpt(reference))}</p></article>`).join('') + '</div></div>'
+        ? '<div class="demo-results"><h4>Grounding Reference Map</h4><p class="demo-metadata">Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.</p><div class="demo-result-grid">' + buildGroundingReferenceGroups(groundingReferences).map((group) => `<article class="demo-result-item" id="${escapeHtml(group.targetId)}"><h3>${escapeHtml(group.label)}</h3><p class="demo-result-source">${escapeHtml(group.summary)}</p><div class="demo-result-grid">${group.references.map((reference) => `<article class="demo-result-item demo-grounding-card"><p class="demo-citation-badge">[${String(reference.number)}] ${escapeHtml(formatGroundingReferenceLabel(reference))}</p><p class="demo-result-score">${escapeHtml(formatGroundingReferenceSummary(reference))}</p>${formatGroundingReferenceDetails(reference).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<p class="demo-result-text">${escapeHtml(formatGroundingReferenceExcerpt(reference))}</p></article>`).join('')}</div></article>`).join('') + '</div></div>'
         : '',
     ].join('');
   },
@@ -895,34 +1433,57 @@ export const createHtmxWorkflowRenderConfig = (
         '</div>',
       ].join('');
     },
-    searchResults: ({ query, results }) => {
+    searchResults: ({ query, results, trace }) => {
+      const traceSummary = renderTracePanel({
+        summary: "This is the first-class retrieval trace from AbsoluteJS. It shows how the query was transformed, which retrieval stages ran, and how many candidates survived each step.",
+        title: "Retrieval Trace",
+        trace,
+      });
+
       if (results.length === 0) {
         return [
           '<div class="demo-results">',
           `<p id="search-count">0 results for “${escapeHtml(query)}”</p>`,
           '<div class="demo-result-grid"><p>No matching chunks.</p></div>',
           '</div>',
+          traceSummary,
         ].join('');
       }
+
+      const response = buildSearchResponse(query, {}, results, 0, trace);
+      const sectionGroups = buildSearchSectionGroups(response);
 
       return [
         '<div class="demo-results">',
         `<p id="search-count">${results.length} results for “${escapeHtml(query)}”</p>`,
         '<p class="demo-metadata">Reranking is active: AbsoluteJS reorders the first vector hits with the built-in heuristic provider before these results render.</p>',
+        response.storyHighlights.length > 0 ? `<div class="demo-results"><h3>Retrieval Story</h3>${response.storyHighlights.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</div>` : "",
+        response.attributionOverview.length > 0 ? `<div class="demo-results"><h3>Attribution Overview</h3>${response.attributionOverview.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</div>` : "",
+        response.sectionDiagnostics.length > 0 ? `<div class="demo-results"><h3>Section Diagnostics</h3><div class="demo-result-grid">${response.sectionDiagnostics.map((diagnostic) => renderSectionDiagnosticCard(diagnostic)).join("")}</div></div>` : "",
         '<div class="demo-result-grid">',
-        results
+        sectionGroups
           .map(
-            (result) => `
-              <article class="demo-result-item">
-                <h3>${escapeHtml(result.title ?? result.chunkId)}</h3>
-                <p class="demo-result-source">${escapeHtml(result.source ?? 'unknown source')}</p>
-                <p class="demo-metadata">score ${formatScore(result.score)}</p>
-                ${formatDemoMetadataSummary(result.metadata).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}
-                <p class="demo-result-text">${escapeHtml(result.text)}</p>
+            (group) => `
+              <article class="demo-result-item" id="${escapeHtml(group.targetId)}">
+                <h3>${escapeHtml(group.label)}</h3>
+                <p class="demo-result-source">${escapeHtml(group.summary)}</p>
+                ${group.jumps.length > 0 ? `<div class="demo-badge-row">${group.jumps.map((jump) => `<a class="demo-state-chip" href="#${escapeHtml(jump.targetId)}">${escapeHtml(jump.label)}</a>`).join("")}</div>` : ""}
+                <div class="demo-result-grid">
+                  ${group.chunks.map((result) => `
+                    <article class="demo-result-item" id="${escapeHtml(result.targetId)}">
+                      <h4>${escapeHtml(result.title ?? result.chunkId)}</h4>
+                      <p class="demo-result-source">${escapeHtml(result.source ?? 'unknown source')}</p>
+                      <p class="demo-metadata">score ${formatScore(result.score)}</p>
+                      ${[result.labels?.contextLabel, result.labels?.locatorLabel, result.labels?.provenanceLabel].filter(Boolean).map((line) => `<p class="demo-metadata">${escapeHtml(String(line))}</p>`).join("")}
+                      ${formatDemoMetadataSummary(result.metadata).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}
+                      <p class="demo-result-text">${escapeHtml(result.text)}</p>
+                    </article>`).join("")}
+                </div>
               </article>`,
           )
           .join(''),
         '</div>',
+        traceSummary,
         '</div>',
       ].join('');
     },
@@ -983,6 +1544,7 @@ export const createHtmxWorkflowRenderConfig = (
                     hx-vals='${searchBySourceVals}'
                     hx-target="#search-results"
                     hx-swap="innerHTML"
+                    hx-on::after-request="document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
                   >Search source</button>
                   <button
                     type="button"
@@ -990,6 +1552,7 @@ export const createHtmxWorkflowRenderConfig = (
                     hx-vals='${searchByDocumentVals}'
                     hx-target="#search-results"
                     hx-swap="innerHTML"
+                    hx-on::after-request="document.getElementById('search-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
                   >Search document</button>
                   ${deleteButton}
                 </div>
@@ -1025,6 +1588,7 @@ export const createHtmxWorkflowRenderConfig = (
       '<div class="demo-results">',
       '<h3>Benchmark Retrieval</h3>',
       '<p class="demo-metadata">This section runs the built-in benchmark suite through the server-side HTMX workflow so you can compare expected, retrieved, and missing evidence without client state.</p>',
+      `<div class="demo-badge-row">${benchmarkOutcomeRail.map((entry) => `<span class="demo-state-chip" title="${escapeHtml(entry.summary)}">${escapeHtml(entry.label)}</span>`).join("")}</div>`,
       renderEvaluationResults(cases, summary),
       '</div>',
     ].join(''),

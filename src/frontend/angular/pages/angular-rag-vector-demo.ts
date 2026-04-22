@@ -1,13 +1,16 @@
 import { FormsModule } from "@angular/forms";
 import { ChangeDetectorRef, Component, inject } from "@angular/core";
-import { RAGClientService, RAGWorkflowService } from "@absolutejs/absolute/angular/ai";
-import { buildRAGEvaluationLeaderboard, runRAGEvaluationSuite } from "@absolutejs/absolute/ai/client";
-import type { RAGEvaluationLeaderboardEntry, RAGEvaluationResponse, RAGEvaluationSuiteRun } from "@absolutejs/absolute";
-import { createRAGClient } from "@absolutejs/absolute/ai/client";
+import { RAGClientService, RAGWorkflowService } from "@absolutejs/rag/angular";
+import { buildRAGEvaluationLeaderboard, runRAGEvaluationSuite } from "@absolutejs/rag/client";
+import type { RAGEvaluationLeaderboardEntry, RAGEvaluationResponse, RAGEvaluationSuiteRun } from "@absolutejs/rag";
+import { createRAGClient } from "@absolutejs/rag/client";
+import { buildRAGChunkPreviewNavigation } from "@absolutejs/rag/client/ui";
 import {
   type AddFormState,
   type DemoActiveRetrievalState,
   type DemoAIModelCatalogResponse,
+  type DemoReleaseOpsResponse,
+  type DemoReleaseWorkspace,
   type DemoRetrievalQualityResponse,
   type DemoBackendDescriptor,
   type DemoBackendMode,
@@ -19,63 +22,102 @@ import {
   buildDemoAIStreamPrompt,
   buildDemoEvaluationSuite,
   buildDemoEvaluationInput,
+  buildDemoReleasePanelState,
   buildDemoUploadIngestInput,
+  buildCitationGroups,
+  buildGroundingReferenceGroups,
+  buildSourceSummarySectionGroups,
+  buildTracePresentation,
   formatEvaluationCaseSummary,
   formatEvaluationExpected,
   formatEvaluationMissing,
   formatEvaluationRetrieved,
   formatEvaluationSummary,
   formatEvaluationHistoryDiff,
+  formatEvaluationHistoryRows,
   formatEvaluationHistorySummary,
+  formatEvaluationHistoryTracePresentations,
   formatEvaluationLeaderboardEntry,
+  formatEvaluationHistoryDetails,
   formatGroundingEvaluationCase,
   formatGroundingEvaluationDetails,
   formatGroundingEvaluationSummary,
   formatGroundingCaseDifficultyEntry,
-  formatGroundingDifficultyHistoryDiff,
   formatGroundingDifficultyHistorySummary,
-  formatGroundingHistoryDiff,
-  formatGroundingHistorySnapshots,
-  formatGroundingHistoryArtifactTrail,
+  formatGroundingDifficultyHistoryDetails,
+  formatGroundingHistoryDetails,
+  formatGroundingHistorySnapshotPresentations,
   formatGroundingHistorySummary,
-  formatGroundingProviderCaseDetails,
-  formatGroundingProviderCaseEntry,
-  formatGroundingProviderCaseSummary,
-  formatGroundingProviderEntry,
-  formatGroundingProviderSummary,
+  formatGroundingProviderCasePresentations,
+  formatGroundingProviderPresentations,
+  formatGroundingProviderOverviewPresentation,
+  formatQualityOverviewPresentation,
+  formatQualityOverviewNotes,
+  formatRetrievalComparisonOverviewPresentation,
   buildSearchPayload,
+  attributionBenchmarkNotes,
+  benchmarkOutcomeRail,
+  formatBenchmarkOutcomeRailLabel,
+  resolveBenchmarkRetrievalPresetId,
   buildSearchResponse,
+  buildActiveChunkPreviewSectionDiagnostic,
+  buildSearchSectionGroups,
   buildStatusView,
   getAvailableDemoBackends,
   demoEvaluationPresets,
   demoFrameworks,
   demoChunkingStrategies,
+  demoReleaseWorkspaces,
   demoUploadPresets,
   demoContentFormats,
   formatAdminActionList,
   formatAdminJobList,
   formatDemoAIModelLabel,
   formatCitationDetails,
+  formatChunkNavigationNodeLabel,
+  formatChunkNavigationSectionLabel,
+  formatChunkSectionGroupLabel,
+  formatSectionDiagnosticAttributionFocus,
+  formatSectionDiagnosticChannels,
+  formatSectionDiagnosticCompetition,
+  formatSectionDiagnosticDistributionRows,
+  formatSectionDiagnosticPipeline,
+  formatSectionDiagnosticStageBounds,
+  formatSectionDiagnosticStageFlow,
+  formatSectionDiagnosticStageWeightReasons,
+  formatSectionDiagnosticStageWeightRows,
+  formatSectionDiagnosticReasons,
+  formatSectionDiagnosticTopEntry,
   formatChunkStrategy,
   formatCitationExcerpt,
   formatCitationLabel,
   formatCitationSummary,
   formatContentFormat,
+  formatOptionalContentFormat,
+  formatOptionalChunkStrategy,
   formatDemoMetadataSummary,
   formatDate,
   formatFailureSummary,
+  buildInspectionEntries,
+  buildInspectionEntryHref,
+  formatInspectionSamples,
+  formatInspectionSummary,
   formatGroundingCoverage,
   formatGroundedAnswerPartDetails,
+  formatGroundedAnswerPartExcerpt,
   formatGroundingPartReferences,
   formatGroundingReferenceDetails,
   formatGroundingReferenceExcerpt,
   formatGroundingReferenceLabel,
   formatGroundingReferenceSummary,
+  formatGroundedAnswerSectionSummaryDetails,
+  formatGroundedAnswerSectionSummaryExcerpt,
   formatGroundingSummary,
   formatSourceSummaryDetails,
-  formatRetrievalComparisonEntry,
+  formatRetrievalComparisonPresentations,
   formatRetrievalComparisonSummary,
-  formatRerankerComparisonEntry,
+  formatRerankerComparisonOverviewPresentation,
+  formatRerankerComparisonPresentations,
   formatRerankerComparisonSummary,
   formatHealthSummary,
   formatReadinessSummary,
@@ -194,6 +236,7 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
 
 @Component({
   imports: [FormsModule],
+  providers: [RAGClientService, RAGWorkflowService],
   selector: "angular-rag-vector-demo",
   standalone: true,
   template: `
@@ -218,6 +261,7 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
           <span class="demo-hero-kicker">Angular workflow surface</span>
           <h1>AbsoluteJS RAG Workflow Demo - Angular</h1>
           <p>Use one route to ingest, sync, retrieve, stream grounded answers, and inspect ops health against the same stuffed multi-format knowledge base.</p>
+          <p class="demo-metadata">Pinned to <code>@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.3 + @absolutejs/rag@0.0.2</code> and surfacing the shared <code>@absolutejs/ai + @absolutejs/rag</code> plus <code>@absolutejs/rag/ui</code> diagnostics on this page.</p>
           <div class="demo-hero-grid">
             <article class="demo-stat-card">
               <span class="demo-stat-label">Corpus</span>
@@ -320,9 +364,10 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                 @for (line of formatHealthSummary(ops.health); track line) {<li>{{ line }}</li>}
               </ul>
               <ul class="demo-detail-list">
-                @for (line of formatFailureSummary(ops.health); track line) {<li>{{ line }}</li>}
+                @for (line of [...formatFailureSummary(ops.health), ...formatInspectionSummary(ops.health), ...formatInspectionSamples(ops.health)]; track line) {<li>{{ line }}</li>}
+                @for (entry of buildInspectionEntries(ops.health); track entry.id) {<li><div class="demo-inspection-action-row"><button type="button" (click)="focusInspectionEntry(entry)">{{ entry.documentId ? "Inspect " + entry.kind : "Search source" }} · {{ entry.label }}</button><a class="demo-inspection-link" [href]="buildInspectionEntryHref(selectedMode, entry)">Open standalone view</a></div></li>}
               </ul>
-              <div class="demo-result-grid">
+              <p [class]="'demo-release-card-state demo-release-card-state-' + releasePanel.releaseStateBadge.tone">State · {{ releasePanel.releaseStateBadge.label }}</p><div class="demo-result-grid">
                 <article class="demo-result-item">
                   <h4>Sync Sources</h4>
                   <div class="demo-actions">
@@ -400,6 +445,12 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
               <button type="button" (click)="runPresetSearch('Why should metadata be stable?', { source: 'guides/metadata.md' }, 'preset: metadata discipline', 'metadata-discipline')">
                 Metadata discipline
               </button>
+              <button type="button" (click)="runPresetSearch('Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?', {}, 'preset: late interaction', 'hybrid')">
+                Late interaction / multivector
+              </button>
+              <button type="button" (click)="runPresetSearch('Which synced site discovery guide says discovery diagnostics stay visible on the same sync surface as every other source?', { source: 'sync/site/demo/sync-fixtures/site/docs/guide' }, 'preset: site discovery', 'site-discovery')">
+                Site discovery (sync first)
+              </button>
             </div>
             <form class="demo-search-form" (submit)="submitSearch($event)">
               <label for="query">Query</label>
@@ -475,24 +526,47 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
 
               <button type="submit">Search index</button>
             </form>
-            <div class="demo-results">
-              <h3>Active Retrieval Scope</h3>
-              <div class="demo-badge-row">
-                <span class="demo-state-chip">{{ retrievalScopeSummary }}</span>
-                <span class="demo-state-chip">Changed by: {{ scopeDriver.replace(/^row action: /, 'row action · ') }}</span>
-                <span class="demo-state-chip">Results: {{ searchResults?.count ?? 0 }}</span>
+            <div class="demo-results demo-release-card">
+              <h3>Release Control</h3>
+              <p class="demo-metadata">This panel exercises the same AbsoluteJS release-control surface that backs retrieval baselines, lane readiness, incidents, and remediation execution tracking.</p>
+              <div class="demo-release-hero">
+                <div class="demo-release-hero-copy">
+                  <p class="demo-release-kicker">AbsoluteJS release workflow</p>
+                  <p class="demo-release-banner">{{ releasePanel.releaseHero }}</p>
+                  <p class="demo-release-summary">{{ releasePanel.releaseHeroSummary }}</p><p class="demo-metadata">{{ releasePanel.releaseHeroMeta }}</p><p class="demo-metadata">{{ releasePanel.releaseScopeNote }}</p>
+                  <div class="demo-release-pills">@for (pill of releasePanel.releaseHeroPills; track pill.label) {@if (pill.targetCardId || pill.targetActivityId) {<a [class]="'demo-release-pill demo-release-pill-' + pill.tone" [href]="'#' + (pill.targetActivityId ?? pill.targetCardId)" (click)="openReleaseDiagnosticsTarget(pill.targetCardId)"><span class="demo-release-pill-label">{{ pill.label }}</span><span class="demo-release-pill-value">{{ pill.value }}</span></a>} @else {<span [class]="'demo-release-pill demo-release-pill-' + pill.tone"><span class="demo-release-pill-label">{{ pill.label }}</span><span class="demo-release-pill-value">{{ pill.value }}</span></span>}}</div>
+                  <div class="demo-release-scenario-switcher">@for (entry of demoReleaseWorkspaces; track entry.id) {<span [class]="'demo-release-scenario-chip demo-release-workspace-chip' + (releaseWorkspace === entry.id ? ' demo-release-scenario-chip-active' : '')"><button type="button" [disabled]="releaseWorkspace === entry.id" [title]="entry.description" (click)="setReleaseWorkspace(entry.id)">Workspace · {{ entry.label }}</button></span>}</div>
+<div class="demo-release-path">@for (step of releasePanel.releasePathSteps; track step.id) {<article [class]="'demo-release-path-step demo-release-path-step-' + step.status"><div class="demo-release-path-step-header"><h4>{{ step.label }}</h4><span [class]="'demo-release-path-status demo-release-path-status-' + step.status">{{ step.status }}</span></div><p>{{ step.summary }}</p><p class="demo-release-path-detail">{{ step.detail }}</p>@if (step.action) {<button class="demo-release-path-action" type="button" [disabled]="releaseActionBusyId === step.action.id" (click)="runReleaseAction(step.action)">{{ releaseActionBusyId === step.action.id ? 'Running ' + step.action.label + '...' : step.action.label }}</button>}</article>}</div>                </div>
+                <div class="demo-release-action-rail">
+                  <span class="demo-release-action-label">Live actions</span><div class="demo-release-action-state"><span class="demo-release-action-state-badge">Scenario · {{ releasePanel.scenario?.label ?? "Blocked stable lane" }}</span><span [class]="'demo-release-action-delta-badge demo-release-action-delta-badge-' + releasePanel.releaseRailDeltaChip.tone">{{ releasePanel.releaseRailDeltaChip.label }}</span><span [class]="'demo-release-action-delta-badge demo-release-action-delta-badge-' + releasePanel.railIncidentPostureChip.tone">Incident posture · {{ releasePanel.railIncidentPostureChip.label }}</span><span [class]="'demo-release-action-delta-badge demo-release-action-delta-badge-' + releasePanel.railGateChip.tone">Gate posture · {{ releasePanel.railGateChip.label }}</span><span [class]="'demo-release-action-delta-badge demo-release-action-delta-badge-' + releasePanel.railApprovalChip.tone">Approval posture · {{ releasePanel.railApprovalChip.label }}</span><span [class]="'demo-release-action-delta-badge demo-release-action-delta-badge-' + releasePanel.railRemediationChip.tone">Remediation posture · {{ releasePanel.railRemediationChip.label }}</span></div><div class="demo-release-rail-meta">@if (releasePanel.releaseRailUpdateSource.targetCardId || releasePanel.releaseRailUpdateSource.targetActivityId) {<a [class]="'demo-release-activity-lane demo-release-activity-lane-' + releasePanel.releaseRailUpdateSource.tone" [href]="'#' + (releasePanel.releaseRailUpdateSource.targetActivityId ?? releasePanel.releaseRailUpdateSource.targetCardId)" (click)="openReleaseDiagnosticsTarget(releasePanel.releaseRailUpdateSource.targetCardId)">{{ releasePanel.releaseRailUpdateSource.label }}</a>} @else {<span [class]="'demo-release-activity-lane demo-release-activity-lane-' + releasePanel.releaseRailUpdateSource.tone">{{ releasePanel.releaseRailUpdateSource.label }}</span>}<p class="demo-release-updated">{{ releasePanel.releaseRailUpdatedLabel }}</p></div>@if (releaseActionBusyId) {<p class="demo-release-pending">Pending action · {{ releasePanel.actions.find((entry) => entry.id === releaseActionBusyId)?.label ?? releaseActionBusyId }}</p>}@if (releasePanel.latestReleaseAction) {<details [class]="'demo-collapsible demo-release-action-latest demo-release-action-latest-' + releasePanel.latestReleaseAction.tone"><summary>Latest action · {{ releasePanel.latestReleaseAction.title }}</summary>@if (releasePanel.latestReleaseAction.detail) {<p>{{ releasePanel.latestReleaseAction.detail }}</p>}<p class="demo-release-next-step">{{ releasePanel.latestReleaseAction.nextStep }}</p></details>}<details [class]="'demo-collapsible demo-release-rail-callout demo-release-rail-callout-' + releasePanel.releaseRailCallout.tone"><summary>{{ releasePanel.releaseRailCallout.title }}</summary><p>{{ releasePanel.releaseRailCallout.message }}</p>@if (releasePanel.releaseRailCallout.detail) {<p>{{ releasePanel.releaseRailCallout.detail }}</p>}<p class="demo-release-next-step">{{ releasePanel.releaseRailCallout.nextStep }}</p></details>@if (releasePanel.recentReleaseActivity.length) {<div class="demo-release-activity-stack"><span class="demo-release-action-subtitle">Recent activity</span>@for (entry of releasePanel.recentReleaseActivity; track entry.id) {<a [id]="entry.id" [class]="'demo-release-activity demo-release-activity-' + entry.tone" [href]="'#' + entry.targetCardId" (click)="openReleaseDiagnosticsTarget(entry.targetCardId)"><span [class]="'demo-release-activity-lane demo-release-activity-lane-' + entry.tone">{{ entry.laneLabel }}</span><strong>{{ entry.title }}</strong>@if (entry.detail) { · {{ entry.detail }}}</a>}</div>}
+                  <div class="demo-release-action-group"><span class="demo-release-action-subtitle">Release</span><div class="demo-release-actions">@for (action of releasePanel.primaryReleaseActions; track action.id) {<button [class]="'demo-release-action demo-release-action-' + (action.tone ?? 'neutral')" type="button" [disabled]="releaseActionBusyId === action.id" [title]="action.description" (click)="runReleaseAction(action)">{{ releaseActionBusyId === action.id ? "Running " + action.label + "..." : action.label }}</button>}</div>@if (releasePanel.secondaryReleaseActions.length > 0) {<details class="demo-collapsible demo-release-more-actions"><summary>More actions</summary><div class="demo-release-actions">@for (action of releasePanel.secondaryReleaseActions; track action.id) {<button [class]="'demo-release-action demo-release-action-' + (action.tone ?? 'neutral')" type="button" [disabled]="releaseActionBusyId === action.id" [title]="action.description" (click)="runReleaseAction(action)">{{ releaseActionBusyId === action.id ? "Running " + action.label + "..." : action.label }}</button>}</div></details>}</div>@if (releasePanel.handoffActions.length > 0) {<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Handoff</span><div class="demo-release-actions">@for (action of releasePanel.handoffActions; track action.id) {<button [class]="'demo-release-action demo-release-action-' + (action.tone ?? 'neutral')" type="button" [disabled]="releaseActionBusyId === action.id" [title]="action.description" (click)="runReleaseAction(action)">{{ releaseActionBusyId === action.id ? "Running " + action.label + "..." : action.label }}</button>}</div></div>}<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Evidence drills</span><div class="demo-release-actions">@for (drill of releasePanel.releaseEvidenceDrills; track drill.id) {<button [class]="'demo-release-action demo-release-action-' + (drill.active ? 'primary' : 'neutral')" type="button" (click)="runReleaseEvidenceDrill(drill)">{{ drill.label }}</button>}</div>@for (drill of releasePanel.releaseEvidenceDrills; track drill.id) {<p class="demo-metadata"><strong>{{ drill.classificationLabel }}:</strong> {{ drill.summary }} Expected source · {{ drill.expectedSource }}</p><p class="demo-metadata">{{ drill.traceExpectation }}</p>}</div>
+                </div>
               </div>
-              <p class="demo-metadata">{{ retrievalScopeHint }}</p>
-              <div class="demo-actions">
-                <button [disabled]="searchForm.query.trim().length === 0 && searchForm.source.trim().length === 0 && searchForm.documentId.trim().length === 0 && searchForm.kind.length === 0" (click)="clearRetrievalScope()" type="button">Clear scope</button>
-                <button [disabled]="searchForm.query.trim().length === 0" (click)="rerunLastQuery()" type="button">Rerun query</button>
-                <button (click)="clearAllRetrievalState()" type="button">Clear search</button>
+              <div class="demo-stat-grid">
+                <article class="demo-stat-card"><span class="demo-stat-label">Stable baseline</span><strong>{{ releasePanel.stableBaseline?.label ?? "Not promoted" }}</strong><p>{{ releasePanel.stableBaseline ? releasePanel.stableBaseline.retrievalId + " · v" + releasePanel.stableBaseline.version + (releasePanel.stableBaseline.approvedBy ? " · approved by " + releasePanel.stableBaseline.approvedBy : "") : "No stable baseline has been promoted yet." }}</p></article>
+                <article class="demo-stat-card"><span class="demo-stat-label">Canary baseline</span><strong>{{ releasePanel.canaryBaseline?.label ?? "Not promoted" }}</strong><p>{{ releasePanel.canaryBaseline ? releasePanel.canaryBaseline.retrievalId + " · v" + releasePanel.canaryBaseline.version + (releasePanel.canaryBaseline.approvedAt ? " · " + formatDate(releasePanel.canaryBaseline.approvedAt) : "") : "No canary baseline has been promoted yet." }}</p></article>
+                <article class="demo-stat-card"><span class="demo-stat-label">Stable readiness</span><strong>{{ releasePanel.stableReadiness?.ready ? "Ready" : "Blocked" }}</strong><p>{{ releasePanel.stableReadinessStatSummary }}</p></article>
+                <article class="demo-stat-card"><span class="demo-stat-label">Remediation guardrails</span><strong>{{ releasePanel.remediationSummary ? releasePanel.remediationSummary.replayCount + " replays · " + releasePanel.remediationSummary.guardrailBlockedCount + " blocked" : "No remediation executions" }}</strong><p>{{ releasePanel.remediationGuardrailSummary }}</p></article>
               </div>
-              @if (recentQueries.length > 0) {<p class="demo-section-caption">Recent Searches</p><div class="demo-badge-row">
-                @for (entry of recentQueries; track entry.label + entry.state.source + entry.state.documentId + entry.state.kind) {<button class="demo-state-chip" (click)="rerunRecentQuery(entry.state)" type="button">{{ entry.label }}</button>}
-              </div>}
+              <div class="demo-result-grid">
+                <article class="demo-result-item"><h4>Blocker comparison</h4><p class="demo-score-headline">{{ releasePanel.scenarioClassificationLabel ? "Active blocker · " + releasePanel.scenarioClassificationLabel : "Compare both blocker classes" }}</p><div class="demo-result-grid">@for (card of releasePanel.releaseBlockerComparisonCards; track card.id) {<article class="demo-result-item"><h4>{{ card.label }}{{ card.active ? " · active" : "" }}</h4>@for (line of card.detailLines; track line) {<p class="demo-metadata">{{ line }}</p>}</article>}</div></article>
+                <article id="release-runtime-history-card" class="demo-result-item"><h4>Runtime planner history</h4><p class="demo-score-headline">{{ releasePanel.runtimePlannerHistorySummary }}</p>@for (line of releasePanel.runtimePlannerHistoryLines; track line) {<p class="demo-metadata">{{ line }}</p>}</article>
+                <article id="release-benchmark-snapshots-card" class="demo-result-item"><h4>Adaptive planner benchmark</h4><p class="demo-score-headline">{{ releasePanel.benchmarkSnapshotSummary }}</p>@for (line of releasePanel.benchmarkSnapshotLines; track line) {<p class="demo-metadata">{{ line }}</p>}</article>
+                <article id="release-active-deltas-card" class="demo-result-item"><h4>Active blocker deltas</h4><p class="demo-score-headline">{{ releasePanel.activeBlockerDeltaSummary }}</p>@for (line of releasePanel.activeBlockerDeltaLines; track line) {<p class="demo-metadata">{{ line }}</p>}</article>
+                <article id="release-lane-readiness-card" class="demo-result-item"><h4>Lane readiness</h4><div class="demo-key-value-grid">@for (entry of releasePanel.laneReadinessEntries; track entry.targetRolloutLabel) {<div class="demo-key-value-row"><span>{{ entry.targetRolloutLabel ?? "lane" }}</span><strong>{{ entry.ready ? "ready" : "blocked" }}</strong></div>@for (reason of entry.reasons.slice(0, 2); track reason) {<p class="demo-metadata">{{ reason }}</p>}}</div></article>
+                <article class="demo-result-item"><h4>Lane recommendations</h4><div class="demo-insight-stack">@if (releasePanel.releaseRecommendations.length > 0) {@for (entry of releasePanel.releaseRecommendations; track entry.groupKey + ":" + entry.targetRolloutLabel + ":" + entry.recommendedAction) {<p class="demo-insight-card"><strong>{{ entry.targetRolloutLabel ?? "lane" }} · {{ entry.classificationLabel ?? "release recommendation" }}:</strong> {{ entry.recommendedAction.replaceAll("_", " ") }}{{ entry.reasons[0] ? " · " + entry.reasons[0] : "" }}</p>}} @else {<p class="demo-insight-card">No lane recommendations are available yet.</p>}</div></article>
+                <article id="release-open-incidents-card" class="demo-result-item"><h4>Open incidents</h4><p class="demo-score-headline">{{ releasePanel.incidentSummaryLabel }}</p>@for (line of releasePanel.incidentClassificationDetailLines; track line) {<p class="demo-metadata">{{ line }}</p>}<div class="demo-insight-stack">@for (incident of releasePanel.recentIncidents.slice(0, 3); track incident.kind + ":" + incident.triggeredAt) {<p class="demo-insight-card"><strong>{{ incident.targetRolloutLabel ?? "lane" }} · {{ incident.kind }} · {{ incident.classificationLabel ?? "general regression" }}</strong><br />{{ incident.message }}</p>}</div></article>
+                <article id="release-remediation-history-card" class="demo-result-item"><h4>Remediation execution history</h4>@for (line of releasePanel.remediationDetailLines; track line) {<p class="demo-metadata">{{ line }}</p>}<div class="demo-key-value-grid">@for (entry of releasePanel.recentIncidentRemediationExecutions.slice(0, 4); track entry.executedAt ?? $index) {<div class="demo-key-value-row"><span>{{ entry.action?.kind ?? "execution" }}</span><strong>{{ entry.code }}{{ entry.idempotentReplay ? " · replay" : "" }}{{ entry.blockedByGuardrail ? " · blocked" : "" }}</strong></div>}</div></article>
+              </div>
+              <details class="demo-collapsible demo-release-diagnostics"><summary>Advanced release diagnostics · {{ releasePanel.releaseDiagnosticsSummary }}</summary><p class="demo-release-updated">{{ releasePanel.releaseDiagnosticsUpdatedLabel }}</p><p [class]="'demo-release-card-state demo-release-card-state-' + releasePanel.releaseStateBadge.tone">State · {{ releasePanel.releaseStateBadge.label }}</p><div class="demo-result-grid">
+                <article id="release-promotion-candidates-card" class="demo-result-item"><h4>Promotion candidates</h4><div class="demo-key-value-grid">@if (releasePanel.releaseCandidates.length > 0) {@for (candidate of releasePanel.releaseCandidates.slice(0, 3); track candidate.targetRolloutLabel + ":" + candidate.candidateRetrievalId + ":" + $index) {<div class="demo-key-value-row"><span>{{ candidate.targetRolloutLabel ?? "lane" }} · {{ candidate.candidateRetrievalId ?? "candidate" }}</span><strong>{{ candidate.reviewStatus }}</strong></div><p class="demo-metadata">{{ candidate.reasons[0] ?? "No release reasons recorded." }}</p>}} @else {<p class="demo-metadata">No promotion candidates recorded yet.</p>}</div></article>
+                <article class="demo-result-item"><h4>Release alerts</h4><div class="demo-insight-stack">@if (releasePanel.releaseAlerts.length > 0) {@for (alert of releasePanel.releaseAlerts.slice(0, 4); track alert.kind + ":" + $index) {<p class="demo-insight-card"><strong>{{ alert.targetRolloutLabel ?? "lane" }} · {{ alert.kind }} · {{ alert.classificationLabel ?? "general regression" }}</strong><br />{{ alert.message ?? "No alert detail" }}</p>}} @else {<p class="demo-insight-card">No release alerts are active.</p>}</div></article>
+                <article id="release-policy-history-card" class="demo-result-item"><h4>Policy history</h4>@for (line of releasePanel.policyHistoryDetailLines; track line) {<p class="demo-metadata">{{ line }}</p>}<div class="demo-insight-stack">@if (releasePanel.policyHistoryEntries.length > 0) {@for (entry of releasePanel.policyHistoryEntries; track entry.id) {<p class="demo-insight-card"><strong>{{ entry.title }}</strong><br />{{ entry.detail }}</p>}} @else {<p class="demo-insight-card">{{ releasePanel.policyHistorySummary }}</p>}</div></article>
+                <article id="release-audit-surfaces-card" class="demo-result-item"><h4>Audit surfaces</h4><div class="demo-insight-stack">@if (releasePanel.auditSurfaceEntries.length > 0) {@for (entry of releasePanel.auditSurfaceEntries; track entry.id) {<p class="demo-insight-card"><strong>{{ entry.title }}</strong><br />{{ entry.detail }}</p>}} @else {<p class="demo-insight-card">{{ releasePanel.auditSurfaceSummary }}</p>}</div></article>
+                <article id="release-polling-surfaces-card" class="demo-result-item"><h4>Polling surfaces</h4><div class="demo-insight-stack">@for (entry of releasePanel.pollingSurfaceEntries; track entry.id) {<p class="demo-insight-card"><strong>{{ entry.title }}</strong><br />{{ entry.detail }}</p>}</div></article>
+                <article id="release-handoff-incidents-card" class="demo-result-item"><h4>Handoff incidents</h4><p class="demo-score-headline">{{ releasePanel.stableHandoffIncidentSummaryLabel }}</p><div class="demo-insight-stack">@if (releasePanel.handoffIncidents.length > 0) {@for (incident of releasePanel.handoffIncidents.slice(0, 2); track incident.id ?? $index) {<p class="demo-insight-card"><strong>{{ incident.status ?? "incident" }} · {{ incident.kind ?? "handoff_stale" }}</strong><br />{{ incident.message ?? "No handoff incident detail" }}</p>}} @else {<p class="demo-insight-card">No handoff incidents recorded.</p>}@for (entry of releasePanel.handoffIncidentHistory.slice(0, 3); track (entry.incidentId ?? $index) + ":" + (entry.recordedAt ?? 0)) {<p class="demo-insight-card"><strong>{{ entry.action ?? "history" }}</strong><br />{{ entry.notes }}{{ entry.recordedAt ? " · event recorded" : "" }}</p>}</div></article><article id="release-stable-handoff-card" class="demo-result-item"><h4>Stable handoff</h4><div class="demo-key-value-grid">@if (releasePanel.stableHandoff) {<div class="demo-key-value-row"><span>{{ releasePanel.stableHandoff.sourceRolloutLabel }} -> {{ releasePanel.stableHandoff.targetRolloutLabel }}</span><strong>{{ releasePanel.stableHandoff.readyForHandoff ? "ready" : "blocked" }}</strong></div><p class="demo-metadata">{{ releasePanel.stableHandoff.candidateRetrievalId ? "candidate " + releasePanel.stableHandoff.candidateRetrievalId : "No candidate retrieval is attached to the handoff yet." }}{{ releasePanel.stableHandoffDecision?.kind ? " · latest " + releasePanel.stableHandoffDecision.kind : "" }}</p>@for (reason of releasePanel.stableHandoffDisplayReasons; track reason) {<p class="demo-metadata">{{ reason }}</p>}@if (releasePanel.stableHandoffAutoCompleteLabel) {<p class="demo-metadata">{{ releasePanel.stableHandoffAutoCompleteLabel }}</p>}<div class="demo-key-value-row"><span>Drift events</span><strong>{{ releasePanel.stableHandoffDrift?.totalCount ?? 0 }}</strong></div>} @else {<p class="demo-metadata">No stable handoff posture is available yet.</p>}</div></article>
+              </div></details>
             </div>
-
             @if (searchError) {<div class="demo-error">{{ searchError }}</div>}
             @if (searchResults) {<div class="demo-results">
               <p>
@@ -508,13 +582,24 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                 Verification rule: a good result shows chunk text that answers the
                 query and a source label you can trace back to the indexed source list.
               </p>
+              @if (searchResults.storyHighlights.length > 0) {<div class="demo-results"><h3>Retrieval Story</h3>@for (line of searchResults.storyHighlights; track line) {<p class="demo-metadata">{{ line }}</p>}</div>}@if (searchResults.attributionOverview.length > 0) {<div class="demo-results"><h3>Attribution Overview</h3>@for (line of searchResults.attributionOverview; track line) {<p class="demo-metadata">{{ line }}</p>}</div>}@if (searchResults.sectionDiagnostics.length > 0) {<div class="demo-results"><h3>Section Diagnostics</h3><div class="demo-result-grid">@for (diagnostic of searchResults.sectionDiagnostics; track diagnostic.key) {<article class="demo-result-item"><h4>{{ diagnostic.label }}</h4><p class="demo-result-source">{{ diagnostic.summary }}</p><p class="demo-metadata">{{ formatSectionDiagnosticChannels(diagnostic) }}</p><p class="demo-metadata">{{ formatSectionDiagnosticAttributionFocus(diagnostic) }}</p><p class="demo-metadata">{{ formatSectionDiagnosticPipeline(diagnostic) }}</p>@if (formatSectionDiagnosticStageFlow(diagnostic)) {<p class="demo-metadata">{{ formatSectionDiagnosticStageFlow(diagnostic) }}</p>}@if (formatSectionDiagnosticStageBounds(diagnostic)) {<p class="demo-metadata">{{ formatSectionDiagnosticStageBounds(diagnostic) }}</p>}@for (line of formatSectionDiagnosticStageWeightRows(diagnostic); track line) {<p class="demo-metadata">{{ line }}</p>}<p class="demo-metadata">{{ formatSectionDiagnosticTopEntry(diagnostic) }}</p>@if (formatSectionDiagnosticCompetition(diagnostic)) {<p class="demo-metadata">{{ formatSectionDiagnosticCompetition(diagnostic) }}</p>}@if (formatSectionDiagnosticReasons(diagnostic).length > 0 || formatSectionDiagnosticStageWeightReasons(diagnostic).length > 0) {<div class="demo-badge-row">@for (reason of formatSectionDiagnosticReasons(diagnostic); track reason) {<span class="demo-state-chip">{{ reason }}</span>}@for (reason of formatSectionDiagnosticStageWeightReasons(diagnostic); track reason) {<span class="demo-state-chip">{{ reason }}</span>}</div>}@for (line of formatSectionDiagnosticDistributionRows(diagnostic); track line) {<p class="demo-metadata">{{ line }}</p>}</article>}</div></div>}
               <div class="demo-result-grid">
-                @for (chunk of searchResults.chunks; track chunk.chunkId) {<article class="demo-result-item">
-                  <h3>{{ chunk.title }}</h3>
-                  <p class="demo-result-score">score: {{ formatScore(chunk.score) }}</p>
-                  <p class="demo-result-source">source: {{ chunk.source }}</p>
-                  @for (line of formatDemoMetadataSummary(chunk.metadata); track line) {<p class="demo-metadata">{{ line }}</p>}
-                  <p class="demo-result-text">{{ chunk.text }}</p>
+                @for (group of searchSectionGroups; track group.id) {<article class="demo-result-item" [id]="group.targetId">
+                  <h3>{{ group.label }}</h3>
+                  <p class="demo-result-source">{{ group.summary }}</p>
+                  @if (group.jumps.length > 0) {<div class="demo-badge-row">@for (jump of group.jumps; track jump.id) {<a class="demo-state-chip" [href]="'#' + jump.targetId">{{ jump.label }}</a>}</div>}
+                  <div class="demo-result-grid">
+                    @for (chunk of group.chunks; track chunk.chunkId) {<article class="demo-result-item" [id]="chunk.targetId">
+                      <h4>{{ chunk.title }}</h4>
+                      <p class="demo-result-score">score: {{ formatScore(chunk.score) }}</p>
+                      <p class="demo-result-source">source: {{ chunk.source }}</p>
+                      @if (chunk.labels?.contextLabel) {<p class="demo-metadata">{{ chunk.labels?.contextLabel }}</p>}
+                      @if (chunk.labels?.locatorLabel) {<p class="demo-metadata">{{ chunk.labels?.locatorLabel }}</p>}
+                      @if (chunk.labels?.provenanceLabel) {<p class="demo-metadata">{{ chunk.labels?.provenanceLabel }}</p>}
+                      @for (line of formatDemoMetadataSummary(chunk.metadata); track line) {<p class="demo-metadata">{{ line }}</p>}
+                      <p class="demo-result-text">{{ chunk.text }}</p>
+                    </article>}
+                  </div>
                 </article>}
               </div>
             </div>}
@@ -558,107 +643,91 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
 
             <div class="demo-results">
               <h3>Retrieval Quality Tooling</h3>
-              <p class="demo-metadata">This section uses the saved evaluation suite plus first-class retrieval-strategy, reranker comparison, and persisted benchmark history primitives. The suite stays registered in the page state, the leaderboard ranks prior suite runs, and the history cards call out the latest benchmark drift for each strategy.</p>
-              <ul class="demo-detail-list">
-                <li>{{ savedEvaluationSuite.label ?? savedEvaluationSuite.id }} · {{ savedEvaluationSuite.input.cases.length }} case(s) · {{ savedEvaluationSuite.description }}</li>
-              </ul>
+              <p class="demo-metadata">This section now behaves like an evaluation dashboard instead of a log dump. The summary cards answer who is winning, the strategy tab shows why, the grounding tab keeps case drill-downs collapsed until needed, and the history tab only expands when you want regression detail.</p>
+              <div class="demo-pill-row">
+                <span class="demo-pill">{{ savedEvaluationSuite.label ?? savedEvaluationSuite.id }} · {{ savedEvaluationSuite.input.cases.length }} cases</span>
+              </div>
               <div class="demo-actions">
                 <button [disabled]="evaluationRunning" (click)="runSavedSuite()" type="button">{{ evaluationRunning ? "Running saved suite..." : "Run saved suite" }}</button>
               </div>
-              <div class="demo-result-grid">
+              <div class="demo-tab-row">
+                @for (view of ["overview", "strategies", "grounding", "history"]; track view) {<button [class]="qualityView === view ? 'demo-tab demo-tab-active' : 'demo-tab'" (click)="qualityView = $any(view)" type="button">{{ view[0].toUpperCase() + view.slice(1) }}</button>}
+              </div>
+              <div class="demo-stat-grid">
+                <article class="demo-stat-card">
+                  <span class="demo-stat-label">Saved suite leader</span>
+                  <strong>{{ evaluationLeaderboard[0]?.label ?? "Run the saved suite" }}</strong>
+                  <p>{{ evaluationLeaderboard[0] ? formatEvaluationLeaderboardEntry(evaluationLeaderboard[0]) : "The leaderboard will rank repeated workflow benchmark runs." }}</p>
+                </article>
+                <article class="demo-stat-card">
+                  <span class="demo-stat-label">Retrieval winner</span>
+                  <strong>{{ getRetrievalWinner() }}</strong>
+                  <p>{{ getRetrievalWinnerSummary() }}</p>
+                </article>
+                <article class="demo-stat-card">
+                  <span class="demo-stat-label">Reranker winner</span>
+                  <strong>{{ getRerankerWinner() }}</strong>
+                  <p>{{ getRerankerWinnerSummary() }}</p>
+                </article>
+                <article class="demo-stat-card">
+                  <span class="demo-stat-label">Grounding winner</span>
+                  <strong>{{ getGroundingWinner() }}</strong>
+                  <p>{{ getGroundingWinnerSummary() }}</p>
+                </article>
+              </div>
+              @if (qualityData && qualityView === "overview") {<div class="demo-result-grid">
                 <article class="demo-result-item">
-                  <h4>Suite leaderboard</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of evaluationLeaderboardLines; track line) {<li>{{ line }}</li>}
-                  </ul>
+                  <h4>Winners at a glance</h4>
+                  <div class="demo-key-value-grid">
+                    @for (row of getQualityOverviewRows(); track row.label + ':' + row.value) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}
+                  </div>
                 </article>
                 <article class="demo-result-item">
-                  <h4>Quality winners</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of qualitySummaryLines; track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>
-              </div>
-              @if (qualityData) {<div class="demo-result-grid">
-                @for (entry of qualityData.retrievalComparison.entries; track entry.retrievalId) {<article class="demo-result-item">
-                  <h4>{{ entry.label }}</h4>
-                  <p class="demo-metadata">{{ formatRetrievalComparisonEntry(entry) }}</p>
-                </article>}
-              </div>
-              <div class="demo-result-grid">
-                @for (entry of qualityData.rerankerComparison.entries; track entry.rerankerId) {<article class="demo-result-item">
-                  <h4>{{ entry.label }}</h4>
-                  <p class="demo-metadata">{{ formatRerankerComparisonEntry(entry) }}</p>
-                </article>}
-              </div>
-              <div class="demo-result-grid">
-                @for (entry of qualityData.groundingEvaluation.cases; track entry.caseId) {<article class="demo-result-item">
-                  <h4>{{ entry.label ?? entry.caseId }}</h4>
-                  <p class="demo-metadata">{{ formatGroundingEvaluationCase(entry) }}</p>
-                  <ul class="demo-detail-list">
-                    @for (line of formatGroundingEvaluationDetails(entry); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>}
-              </div>
-              @if (qualityData.providerGroundingComparison) {<div class="demo-result-grid">
-                @for (entry of qualityData.providerGroundingComparison.entries; track entry.providerKey) {<article class="demo-result-item">
-                  <h4>{{ entry.label }}</h4>
-                  <p class="demo-metadata">{{ formatGroundingProviderEntry(entry) }}</p>
-                </article>}
-              </div>}
-              @if (qualityData.providerGroundingComparison) {<div class="demo-result-grid">
-                @for (entry of qualityData.providerGroundingComparison.entries; track entry.providerKey) {<article class="demo-result-item">
-                  <h4>{{ entry.label }} history</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getGroundingHistoryLines(qualityData.providerGroundingHistories[entry.providerKey]); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>}
-              </div>}
-              @if (qualityData.providerGroundingComparison) {<div class="demo-result-grid">
-                @for (entry of qualityData.providerGroundingComparison.entries; track entry.providerKey) {<article class="demo-result-item">
-                  <h4>{{ entry.label }} artifact trail</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getGroundingArtifactTrailLines(qualityData.providerGroundingHistories[entry.providerKey]); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>}
-              </div>}
-              @if (qualityData.providerGroundingComparison) {<div class="demo-result-grid">
-                <article class="demo-result-item">
-                  <h4>Hardest grounding cases</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getGroundingDifficultyLines(qualityData.providerGroundingComparison.difficultyLeaderboard); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>
-                <article class="demo-result-item">
-                  <h4>Grounding difficulty history</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getGroundingDifficultyHistoryLines(qualityData.providerGroundingDifficultyHistory); track line) {<li>{{ line }}</li>}
-                  </ul>
+                  <h4>Why this matters</h4>
+                  <div class="demo-insight-stack">
+                    @for (insight of getQualityOverviewInsights(); track insight) {<p class="demo-insight-card">{{ insight }}</p>}
+                  </div>
                 </article>
               </div>}
-              @if (qualityData.providerGroundingComparison) {<div class="demo-result-grid">
-                @for (entry of qualityData.providerGroundingComparison.caseComparisons; track entry.caseId) {<article class="demo-result-item">
-                  <h4>{{ entry.label }}</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getGroundingProviderCaseLines(entry); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>}
-              </div>}
-              <div class="demo-result-grid">
-                @for (entry of qualityData.retrievalComparison.entries; track entry.retrievalId) {<article class="demo-result-item">
-                  <h4>{{ entry.label }} history</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getBenchmarkHistoryLines(qualityData.retrievalHistories[entry.retrievalId]); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>}
+              @if (qualityData && qualityView === "strategies") {<div class="demo-result-grid">
+                @for (card of formatRetrievalComparisonPresentations(qualityData.retrievalComparison); track card.id) {<article class="demo-result-item demo-score-card"><h4>{{ card.label }}</h4><p class="demo-score-headline">{{ card.summary }}</p><div class="demo-key-value-grid demo-trace-summary-grid">@for (row of card.traceSummaryRows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div><details class="demo-collapsible demo-trace-diff"><summary><span>Trace diff vs leader</span><strong>{{ card.diffLabel }}</strong></summary><div class="demo-collapsible-content demo-trace-diff-grid">@for (row of card.diffRows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div></details></article>}
               </div>
               <div class="demo-result-grid">
-                @for (entry of qualityData.rerankerComparison.entries; track entry.rerankerId) {<article class="demo-result-item">
-                  <h4>{{ entry.label }} history</h4>
-                  <ul class="demo-detail-list">
-                    @for (line of getBenchmarkHistoryLines(qualityData.rerankerHistories[entry.rerankerId]); track line) {<li>{{ line }}</li>}
-                  </ul>
-                </article>}
+                @for (card of formatRerankerComparisonPresentations(qualityData.rerankerComparison); track card.id) {<article class="demo-result-item demo-score-card"><h4>{{ card.label }}</h4><p class="demo-score-headline">{{ card.summary }}</p><div class="demo-key-value-grid demo-trace-summary-grid">@for (row of card.traceSummaryRows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div><details class="demo-collapsible demo-trace-diff"><summary><span>Trace diff vs leader</span><strong>{{ card.diffLabel }}</strong></summary><div class="demo-collapsible-content demo-trace-diff-grid">@for (row of card.diffRows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div></details></article>}
+              </div>}
+              @if (qualityData && qualityView === "grounding") {<div class="demo-result-grid">
+                @for (entry of qualityData.groundingEvaluation.cases; track entry.caseId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ entry.label ?? entry.caseId }}</span><strong>{{ formatGroundingEvaluationCase(entry) }}</strong></summary><div class="demo-collapsible-content">@for (line of formatGroundingEvaluationDetails(entry); track line) {<p class="demo-metadata">{{ line }}</p>}</div></details>}
+              </div>
+              @if (qualityData.providerGroundingComparison) {<div class="demo-result-grid">
+                @for (card of formatGroundingProviderPresentations(qualityData.providerGroundingComparison.entries); track card.id) {<article class="demo-result-item demo-score-card"><h4>{{ card.label }}</h4><p class="demo-score-headline">{{ card.summary }}</p></article>}
+                <article class="demo-result-item"><h4>Hardest cases</h4><div class="demo-pill-row">@for (line of getGroundingDifficultyLines(qualityData.providerGroundingComparison.difficultyLeaderboard); track line) {<span class="demo-pill">{{ line }}</span>}</div></article>
+              </div>
+              <div class="demo-result-grid">
+                @for (card of formatGroundingProviderCasePresentations(qualityData.providerGroundingComparison.caseComparisons); track card.caseId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ card.label }}</span><strong>{{ card.summary }}</strong></summary><div class="demo-collapsible-content">@for (row of card.rows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div></details>}
+              </div>}}
+              @if (qualityData && qualityView === "history") {<div class="demo-result-grid">
+                @for (entry of qualityData.retrievalComparison.entries; track entry.retrievalId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ entry.label }} history</span><strong>{{ getBenchmarkHistoryLines(qualityData.retrievalHistories[entry.retrievalId])[0] ?? "No runs yet" }}</strong></summary><div class="demo-collapsible-content">@for (row of getBenchmarkHistoryRows(qualityData.retrievalHistories[entry.retrievalId]); track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}<div class="demo-result-grid">@for (traceCase of getBenchmarkHistoryTracePresentations(qualityData.retrievalHistories[entry.retrievalId]); track traceCase.caseId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ traceCase.label }}</span><strong>{{ traceCase.summary }}</strong></summary><div class="demo-collapsible-content">@for (row of traceCase.rows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div></details>}</div></div></details>}
+                @for (entry of qualityData.rerankerComparison.entries; track entry.rerankerId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ entry.label }} history</span><strong>{{ getBenchmarkHistoryLines(qualityData.rerankerHistories[entry.rerankerId])[0] ?? "No runs yet" }}</strong></summary><div class="demo-collapsible-content">@for (row of getBenchmarkHistoryRows(qualityData.rerankerHistories[entry.rerankerId]); track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}<div class="demo-result-grid">@for (traceCase of getBenchmarkHistoryTracePresentations(qualityData.rerankerHistories[entry.rerankerId]); track traceCase.caseId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ traceCase.label }}</span><strong>{{ traceCase.summary }}</strong></summary><div class="demo-collapsible-content">@for (row of traceCase.rows; track row.label) {<div class="demo-key-value-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>}</div></details>}</div></div></details>}
+                @if (qualityData.providerGroundingComparison) {@for (entry of qualityData.providerGroundingComparison.entries; track entry.providerKey) {<details class="demo-result-item demo-collapsible"><summary><span>{{ entry.label }} history</span><strong>{{ getGroundingHistoryLines(qualityData.providerGroundingHistories[entry.providerKey])[0] ?? "No runs yet" }}</strong></summary><div class="demo-collapsible-content">@for (line of getGroundingHistoryLines(qualityData.providerGroundingHistories[entry.providerKey]).slice(1); track line) {<p class="demo-metadata">{{ line }}</p>}@if (getGroundingHistorySnapshotPresentations(qualityData.providerGroundingHistories[entry.providerKey]).length) {<div class="demo-result-grid">@for (snapshot of getGroundingHistorySnapshotPresentations(qualityData.providerGroundingHistories[entry.providerKey]); track snapshot.caseId) {<details class="demo-result-item demo-collapsible"><summary><span>{{ snapshot.label }}</span><strong>{{ snapshot.summary }}</strong></summary><div class="demo-collapsible-content">@for (row of snapshot.rows; track row.label + row.value) {<p class="demo-key-value-row"><strong>{{ row.label }}</strong><span>{{ row.value }}</span></p>}</div></details>}</div>}</div></details>}
+                <details class="demo-result-item demo-collapsible"><summary><span>Grounding difficulty history</span><strong>{{ getGroundingDifficultyHistoryLines(qualityData.providerGroundingDifficultyHistory)[0] ?? "No history yet" }}</strong></summary><div class="demo-collapsible-content">@for (line of getGroundingDifficultyHistoryLines(qualityData.providerGroundingDifficultyHistory).slice(1); track line) {<p class="demo-metadata">{{ line }}</p>}</div></details>}
+              </div>}
+            </div>
+
+            <div class="demo-results demo-quality-card">
+              <h3>Active Retrieval Scope</h3>
+              <div class="demo-badge-row">
+                <span class="demo-state-chip">{{ retrievalScopeSummary }}</span>
+                <span class="demo-state-chip">Changed by: {{ scopeDriver.replace(/^row action: /, 'row action · ') }}</span>
+                <span class="demo-state-chip">Results: {{ searchResults?.count ?? 0 }}</span>
+              </div>
+              <p class="demo-metadata">{{ retrievalScopeHint }}</p>
+              <div class="demo-actions">
+                <button [disabled]="searchForm.query.trim().length === 0 && searchForm.source.trim().length === 0 && searchForm.documentId.trim().length === 0 && searchForm.kind.length === 0" (click)="clearRetrievalScope()" type="button">Clear scope</button>
+                <button [disabled]="searchForm.query.trim().length === 0" (click)="rerunLastQuery()" type="button">Rerun query</button>
+                <button (click)="clearAllRetrievalState()" type="button">Clear search</button>
+              </div>
+              @if (recentQueries.length > 0) {<p class="demo-section-caption">Recent Searches</p><div class="demo-badge-row">
+                @for (entry of recentQueries; track entry.label + entry.state.source + entry.state.documentId + entry.state.kind) {<button class="demo-state-chip" (click)="rerunRecentQuery(entry.state)" type="button">{{ entry.label }}</button>}
               </div>}
             </div>
 
@@ -712,6 +781,34 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                 <div><dt>Retrieved sources</dt><dd>{{ transport.workflow().retrieval?.sources?.length ?? 0 }}</dd></div>
                 <div><dt>Current stage</dt><dd>{{ transport.workflow().stage }}</dd></div>
               </dl>}
+              @if (transport.workflow().retrieval?.trace) {<div class="demo-results">
+                <h4>Workflow Retrieval Trace</h4>
+                <p class="demo-metadata">
+                  This is the retrieval trace attached to the workflow answer path. It explains how the answer workflow found evidence before grounding and citations were built.
+                </p>
+                <div class="demo-stat-grid">
+                  @for (row of getWorkflowTracePresentation().stats; track row.label) {<article class="demo-stat-card">
+                    <p class="demo-section-caption">{{ row.label }}</p>
+                    <strong>{{ row.value }}</strong>
+                  </article>}
+                </div>
+                <div class="demo-key-value-list">
+                  @for (row of getWorkflowTracePresentation().details; track row.label) {<p class="demo-key-value-row"><strong>{{ row.label }}</strong><span>{{ row.value }}</span></p>}
+                </div>
+                <div class="demo-result-grid">
+                  @for (step of getWorkflowTracePresentation().steps; track $index) {<details class="demo-collapsible demo-result-item" [attr.open]="$index === 0 ? '' : null">
+                    <summary>
+                      <strong>{{ $index + 1 }}. {{ step.label }}</strong>
+                    </summary>
+                    <div class="demo-key-value-list">
+                      @for (row of step.rows; track row.label) {<p class="demo-key-value-row">
+                        <strong>{{ row.label }}</strong>
+                        <span>{{ row.value }}</span>
+                      </p>}
+                    </div>
+                  </details>}
+                </div>
+              </div>}
               @if (transport.workflow().error) {<div class="demo-error">{{ transport.workflow().error }}</div>}
               @if (transport.workflow().latestAssistantMessage?.thinking) {<div class="demo-stream-block">
                 <h4>Thinking</h4>
@@ -732,10 +829,21 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                     @if (part.type === 'citation') {<article class="demo-result-item demo-grounding-card">
                       <p class="demo-citation-badge">{{ formatGroundingPartReferences(part.referenceNumbers) }}</p>
                       @for (line of formatGroundedAnswerPartDetails(part); track line) {<p class="demo-metadata">{{ line }}</p>}
-                      <p class="demo-result-text">{{ part.text }}</p>
+                      <p class="demo-result-text">{{ formatGroundedAnswerPartExcerpt(part) }}</p>
                     </article>}
                   }
                 </div>}
+              </div>}
+              @if (transport.workflow().groundedAnswer.sectionSummaries.length > 0) {<div class="demo-results">
+                <h4>Grounding by Section</h4>
+                <div class="demo-result-grid">
+                  @for (summary of transport.workflow().groundedAnswer.sectionSummaries; track summary.key) {<article class="demo-result-item demo-grounding-card">
+                    <h3>{{ summary.label }}</h3>
+                    <p class="demo-result-source">{{ summary.summary }}</p>
+                    @for (line of formatGroundedAnswerSectionSummaryDetails(summary); track line) {<p class="demo-metadata">{{ line }}</p>}
+                    <p class="demo-result-text">{{ summary.references[0]?.excerpt ?? summary.references[0]?.text ?? '' }}</p>
+                  </article>}
+                </div>
               </div>}
               @if (transport.workflow().groundingReferences.length > 0) {<div class="demo-results">
                 <h4>Grounding Reference Map</h4>
@@ -743,21 +851,33 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                   Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.
                 </p>
                 <div class="demo-result-grid">
-                  @for (reference of transport.workflow().groundingReferences; track reference.chunkId) {<article class="demo-result-item demo-grounding-card">
-                    <p class="demo-citation-badge">[{{ reference.number }}] {{ formatGroundingReferenceLabel(reference) }}</p>
-                    <p class="demo-result-score">{{ formatGroundingReferenceSummary(reference) }}</p>
-                    @for (line of formatGroundingReferenceDetails(reference); track line) {<p class="demo-metadata">{{ line }}</p>}
-                    <p class="demo-result-text">{{ formatGroundingReferenceExcerpt(reference) }}</p>
+                  @for (group of groundingReferenceGroups; track group.id) {<article class="demo-result-item" [id]="group.targetId">
+                    <h3>{{ group.label }}</h3>
+                    <p class="demo-result-source">{{ group.summary }}</p>
+                    <div class="demo-result-grid">
+                      @for (reference of group.references; track reference.chunkId) {<article class="demo-result-item demo-grounding-card">
+                        <p class="demo-citation-badge">[{{ reference.number }}] {{ formatGroundingReferenceLabel(reference) }}</p>
+                        <p class="demo-result-score">{{ formatGroundingReferenceSummary(reference) }}</p>
+                        @for (line of formatGroundingReferenceDetails(reference); track line) {<p class="demo-metadata">{{ line }}</p>}
+                        <p class="demo-result-text">{{ formatGroundingReferenceExcerpt(reference) }}</p>
+                      </article>}
+                    </div>
                   </article>}
                 </div>
               </div>}
               @if (transport.workflow().sourceSummaries.length > 0) {<div class="demo-results">
                 <h4>Evidence Sources</h4>
                 <div class="demo-result-grid">
-                  @for (summary of transport.workflow().sourceSummaries; track summary.key) {<article class="demo-result-item">
-                    <h3>{{ summary.label }}</h3>
-                    @for (line of formatSourceSummaryDetails(summary); track line) {<p class="demo-metadata">{{ line }}</p>}
-                    <p class="demo-result-text">{{ summary.excerpt }}</p>
+                  @for (group of sourceSummaryGroups; track group.id) {<article class="demo-result-item" [id]="group.targetId">
+                    <h3>{{ group.label }}</h3>
+                    <p class="demo-result-source">{{ group.summary }}</p>
+                    <div class="demo-result-grid">
+                      @for (summary of group.summaries; track summary.key) {<article class="demo-result-item">
+                        <h4>{{ summary.label }}</h4>
+                        @for (line of formatSourceSummaryDetails(summary); track line) {<p class="demo-metadata">{{ line }}</p>}
+                        <p class="demo-result-text">{{ summary.excerpt }}</p>
+                      </article>}
+                    </div>
                   </article>}
                 </div>
               </div>}
@@ -767,11 +887,17 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                   Each citation maps a concrete retrieved chunk to a stable reference number you can carry into the answer UI.
                 </p>
                 <div class="demo-result-grid">
-                  @for (citation of transport.workflow().citations; track citation.chunkId; let index = $index) {<article class="demo-result-item demo-citation-card">
-                    <p class="demo-citation-badge">[{{ index + 1 }}] {{ formatCitationLabel(citation) }}</p>
-                    <p class="demo-result-score">{{ formatCitationSummary(citation) }}</p>
-                    @for (line of formatCitationDetails(citation); track line) {<p class="demo-metadata">{{ line }}</p>}
-                    <p class="demo-result-text">{{ formatCitationExcerpt(citation) }}</p>
+                  @for (group of citationGroups; track group.id) {<article class="demo-result-item" [id]="group.targetId">
+                    <h3>{{ group.label }}</h3>
+                    <p class="demo-result-source">{{ group.summary }}</p>
+                    <div class="demo-result-grid">
+                      @for (citation of group.citations; track citation.chunkId; let index = $index) {<article class="demo-result-item demo-citation-card">
+                        <p class="demo-citation-badge">[{{ index + 1 }}] {{ formatCitationLabel(citation) }}</p>
+                        <p class="demo-result-score">{{ formatCitationSummary(citation) }}</p>
+                        @for (line of formatCitationDetails(citation); track line) {<p class="demo-metadata">{{ line }}</p>}
+                        <p class="demo-result-text">{{ formatCitationExcerpt(citation) }}</p>
+                      </article>}
+                    </div>
                   </article>}
                 </div>
               </div>}
@@ -854,7 +980,7 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                 <button [disabled]="documentPage >= totalDocumentPages" (click)="setDocumentPage(documentPage + 1)" type="button">Next</button>
               </div>
             </div>
-            <div class="demo-document-list">
+            <div class="demo-document-list" id="document-list">
               @if (paginatedDocuments.length === 0) {<p class="demo-metadata">No indexed sources match the current filters.</p>}
               @if (paginatedDocuments.length > 0) {
                 @for (doc of paginatedDocuments; track doc.id) {<details class="demo-document-item demo-document-collapsible">
@@ -892,14 +1018,34 @@ const savedEvaluationSuite = buildDemoEvaluationSuite();
                         @if (chunkPreview; as preview) {
                         <p class="demo-section-caption">Chunk Preview</p>
                         <p class="demo-metadata">
-                          {{ preview.document.title }} · {{ formatContentFormat(preview.document.format) }} · {{ formatChunkStrategy(preview.document.chunkStrategy) }} · {{ preview.chunks.length }} chunk(s)
+                          {{ preview.document.title }} · {{ formatOptionalContentFormat(preview.document.format) }} · {{ formatOptionalChunkStrategy(preview.document.chunkStrategy) }} · {{ preview.chunks.length }} chunk(s)
                         </p>
                         <article class="demo-result-item">
                           <h3>Normalized text</h3>
                           <p class="demo-result-text">{{ preview.normalizedText }}</p>
                         </article>
+                        @if (chunkPreviewNavigation(); as navigation) {
+                          @if (navigation.activeNode) {
+                            <div class="demo-chunk-nav">
+                              <div class="demo-chunk-nav-row">
+                                <button type="button" [disabled]="!navigation.previousNode" (click)="navigation.previousNode && selectChunkPreviewChunk(navigation.previousNode.chunkId)">Previous chunk</button>
+                                <p class="demo-metadata">{{ formatChunkNavigationSectionLabel(navigation) }} · {{ formatChunkNavigationNodeLabel(navigation.activeNode) }}</p>
+                                <button type="button" [disabled]="!navigation.nextNode" (click)="navigation.nextNode && selectChunkPreviewChunk(navigation.nextNode.chunkId)">Next chunk</button>
+                              </div>
+                              @if (navigation.sectionNodes.length > 1) {<div class="demo-chunk-nav-strip">
+                                @for (node of navigation.sectionNodes; track node.chunkId) {<button type="button" [class]="node.chunkId === chunkPreviewActiveChunkId ? 'demo-chunk-nav-chip demo-chunk-nav-chip-active' : 'demo-chunk-nav-chip'" (click)="selectChunkPreviewChunk(node.chunkId)">{{ formatChunkNavigationNodeLabel(node) }}</button>}
+                              </div>}
+                              @if (navigation.parentSection || navigation.siblingSections.length > 0 || navigation.childSections.length > 0) {<div class="demo-chunk-nav-strip">
+                                @if (navigation.parentSection) {<button type="button" class="demo-chunk-nav-chip" (click)="selectParentChunkPreviewSection()">Parent · {{ formatChunkSectionGroupLabel(navigation.parentSection) }}</button>}
+                                @for (section of navigation.siblingSections; track section.id) {<button type="button" class="demo-chunk-nav-chip" (click)="selectSiblingChunkPreviewSection(section.id)">Sibling · {{ formatChunkSectionGroupLabel(section) }}</button>}
+                                @for (section of navigation.childSections; track section.id) {<button type="button" class="demo-chunk-nav-chip" (click)="selectChildChunkPreviewSection(section.id)">Child · {{ formatChunkSectionGroupLabel(section) }}</button>}
+                              </div>}
+                            </div>
+                          }
+                        }
+                        @if (activeChunkPreviewSectionDiagnostic(); as diagnostic) {<article class="demo-result-item"><h3>Active Section Diagnostic</h3><p class="demo-result-source">{{ diagnostic.label }}</p><p class="demo-metadata">{{ diagnostic.summary }}</p><p class="demo-metadata">{{ formatSectionDiagnosticChannels(diagnostic) }}</p><p class="demo-metadata">{{ formatSectionDiagnosticPipeline(diagnostic) }}</p>@if (formatSectionDiagnosticStageFlow(diagnostic)) {<p class="demo-metadata">{{ formatSectionDiagnosticStageFlow(diagnostic) }}</p>}@if (formatSectionDiagnosticStageBounds(diagnostic)) {<p class="demo-metadata">{{ formatSectionDiagnosticStageBounds(diagnostic) }}</p>}@for (line of formatSectionDiagnosticStageWeightRows(diagnostic); track line) {<p class="demo-metadata">{{ line }}</p>}<p class="demo-metadata">{{ formatSectionDiagnosticTopEntry(diagnostic) }}</p>@if (formatSectionDiagnosticCompetition(diagnostic)) {<p class="demo-metadata">{{ formatSectionDiagnosticCompetition(diagnostic) }}</p>}@if (formatSectionDiagnosticReasons(diagnostic).length > 0 || formatSectionDiagnosticStageWeightReasons(diagnostic).length > 0) {<div class="demo-badge-row">@for (reason of formatSectionDiagnosticReasons(diagnostic); track reason) {<span class="demo-state-chip">{{ reason }}</span>}@for (reason of formatSectionDiagnosticStageWeightReasons(diagnostic); track reason) {<span class="demo-state-chip">{{ reason }}</span>}</div>}@for (line of formatSectionDiagnosticDistributionRows(diagnostic); track line) {<p class="demo-metadata">{{ line }}</p>}</article>}
                         <div class="demo-result-grid">
-                          @for (chunk of preview.chunks; track chunk.chunkId) {<article class="demo-result-item">
+                          @for (chunk of preview.chunks; track chunk.chunkId) {<article [class]="chunk.chunkId === chunkPreviewActiveChunkId ? 'demo-result-item demo-result-item-active' : 'demo-result-item'">
                             <h3>{{ chunk.chunkId }}</h3>
                             <p class="demo-result-source">source: {{ chunk.source ?? preview.document.source }}</p>
                             <p class="demo-metadata">{{ chunkIndexText(chunk, preview.chunks.length) }}</p>
@@ -926,7 +1072,9 @@ export class AngularRAGVectorDemoComponent {
 
   workflowChecks = workflowChecks;
   formatDemoMetadataSummary = formatDemoMetadataSummary;
+  attributionBenchmarkNotes = attributionBenchmarkNotes;
   demoEvaluationPresets = demoEvaluationPresets;
+  benchmarkOutcomeRail = benchmarkOutcomeRail;
   demoUploadPresets = demoUploadPresets;
   streamStages = streamStages;
   demoFrameworks = demoFrameworks;
@@ -945,8 +1093,12 @@ export class AngularRAGVectorDemoComponent {
   suiteRuns: RAGEvaluationSuiteRun[] = [];
   evaluationLeaderboard: RAGEvaluationLeaderboardEntry[] = [];
   qualityData: DemoRetrievalQualityResponse | null = null;
+  releaseData: DemoReleaseOpsResponse | null = null;
+  releaseWorkspace: DemoReleaseWorkspace = "alpha";
+  qualityView: "overview" | "strategies" | "grounding" | "history" = "overview";
   ops: Awaited<ReturnType<ReturnType<typeof createRAGClient>["ops"]>> | null = null;
   chunkPreview: DemoChunkPreview | null = null;
+  chunkPreviewActiveChunkId: string | null = null;
   chunkPreviewLoading = false;
   loading = false;
   searchError = "";
@@ -957,6 +1109,7 @@ export class AngularRAGVectorDemoComponent {
   evaluationRunning = false;
   uploadRunning = false;
   message = "";
+  releaseActionBusyId: string | null = null;
   aiModelCatalog: DemoAIModelCatalogResponse = { defaultModelKey: null, models: [] };
   selectedAIModelKey = "";
   streamPrompt = "How do metadata filters change retrieval quality?";
@@ -981,6 +1134,93 @@ export class AngularRAGVectorDemoComponent {
       : streamStages.indexOf(stage) < streamStages.indexOf(currentStage as typeof streamStages[number]);
   }
 
+  getGroundingWinner() {
+    return this.qualityData?.providerGroundingComparison
+      ? formatGroundingProviderOverviewPresentation(this.qualityData.providerGroundingComparison).winnerLabel
+      : "Stored workflow evaluation";
+  }
+
+  getRetrievalWinner() {
+    return this.qualityData
+      ? formatRetrievalComparisonOverviewPresentation(this.qualityData.retrievalComparison).winnerLabel
+      : "Loading comparison";
+  }
+
+  getRetrievalWinnerSummary() {
+    return this.qualityData
+      ? formatRetrievalComparisonOverviewPresentation(this.qualityData.retrievalComparison).summary
+      : "Running retrieval comparison...";
+  }
+
+  getRerankerWinner() {
+    return this.qualityData
+      ? formatRerankerComparisonOverviewPresentation(this.qualityData.rerankerComparison).winnerLabel
+      : "Loading comparison";
+  }
+
+  getRerankerWinnerSummary() {
+    return this.qualityData
+      ? formatRerankerComparisonOverviewPresentation(this.qualityData.rerankerComparison).summary
+      : "Running reranker comparison...";
+  }
+
+  getQualityOverviewRows() {
+    if (!this.qualityData) {
+      return [];
+    }
+
+    return formatQualityOverviewPresentation({
+      retrievalComparison: this.qualityData.retrievalComparison,
+      rerankerComparison: this.qualityData.rerankerComparison,
+      groundingEvaluation: this.qualityData.groundingEvaluation,
+      groundingProviderOverview: this.qualityData.providerGroundingComparison
+        ? formatGroundingProviderOverviewPresentation(this.qualityData.providerGroundingComparison)
+        : undefined,
+    }).rows;
+  }
+
+  getQualityOverviewInsights() {
+    if (!this.qualityData) {
+      return [];
+    }
+
+    return formatQualityOverviewNotes();
+  }
+
+  getGroundingWinnerSummary() {
+    return this.qualityData?.providerGroundingComparison
+      ? formatGroundingProviderOverviewPresentation(this.qualityData.providerGroundingComparison).summary
+      : this.qualityData
+        ? formatGroundingEvaluationSummary(this.qualityData.groundingEvaluation)
+        : "Loading grounding comparison...";
+  }
+
+  get releasePanel() {
+    return buildDemoReleasePanelState(this.releaseData);
+  }
+
+  get releaseStableReadinessSummary() {
+    const stableReadiness = this.releasePanel.stableReadiness;
+    if (!stableReadiness) {
+      return "No stable lane readiness snapshot available.";
+    }
+
+    return [
+      stableReadiness.gateStatus ? `gate ${stableReadiness.gateStatus}` : undefined,
+      stableReadiness.requiresApproval ? "approval required" : undefined,
+      stableReadiness.requiresOverride ? "override required" : undefined,
+    ].filter(Boolean).join(" · ") || (stableReadiness.reasons[0] ?? "No blockers");
+  }
+
+  get releaseRemediationSummary() {
+    const summary = this.releasePanel.remediationSummary;
+    if (!summary) {
+      return "Replay and guardrail metrics will appear after release remediation workflows run.";
+    }
+
+    return `Mutation skips ${summary.mutationSkippedReplayCount}`;
+  }
+
   formatEvaluationSummary = formatEvaluationSummary;
   formatEvaluationHistorySummary = formatEvaluationHistorySummary;
   formatEvaluationHistoryDiff = formatEvaluationHistoryDiff;
@@ -988,8 +1228,8 @@ export class AngularRAGVectorDemoComponent {
   formatGroundingEvaluationCase = formatGroundingEvaluationCase;
   formatGroundingEvaluationDetails = formatGroundingEvaluationDetails;
   formatGroundingEvaluationSummary = formatGroundingEvaluationSummary;
-  formatGroundingProviderEntry = formatGroundingProviderEntry;
-  formatGroundingProviderSummary = formatGroundingProviderSummary;
+  formatGroundingProviderPresentations = formatGroundingProviderPresentations;
+  formatGroundingProviderOverviewPresentation = formatGroundingProviderOverviewPresentation;
   formatEvaluationCaseSummary = formatEvaluationCaseSummary;
   formatEvaluationExpected = formatEvaluationExpected;
   formatEvaluationRetrieved = formatEvaluationRetrieved;
@@ -1001,22 +1241,33 @@ export class AngularRAGVectorDemoComponent {
   formatCitationSummary = formatCitationSummary;
   formatGroundingCoverage = formatGroundingCoverage;
   formatGroundedAnswerPartDetails = formatGroundedAnswerPartDetails;
+  formatGroundedAnswerPartExcerpt = formatGroundedAnswerPartExcerpt;
   formatGroundingPartReferences = formatGroundingPartReferences;
   formatGroundingReferenceDetails = formatGroundingReferenceDetails;
   formatGroundingReferenceLabel = formatGroundingReferenceLabel;
   formatGroundingReferenceSummary = formatGroundingReferenceSummary;
   formatGroundingReferenceExcerpt = formatGroundingReferenceExcerpt;
+  formatGroundedAnswerSectionSummaryDetails = formatGroundedAnswerSectionSummaryDetails;
+  formatGroundedAnswerSectionSummaryExcerpt = formatGroundedAnswerSectionSummaryExcerpt;
   formatGroundingSummary = formatGroundingSummary;
   formatSourceSummaryDetails = formatSourceSummaryDetails;
-  formatRetrievalComparisonEntry = formatRetrievalComparisonEntry;
+  formatRetrievalComparisonPresentations = formatRetrievalComparisonPresentations;
   formatRetrievalComparisonSummary = formatRetrievalComparisonSummary;
-  formatRerankerComparisonEntry = formatRerankerComparisonEntry;
+  formatRerankerComparisonPresentations = formatRerankerComparisonPresentations;
   formatRerankerComparisonSummary = formatRerankerComparisonSummary;
   formatReadinessSummary = formatReadinessSummary;
   formatHealthSummary = formatHealthSummary;
   formatFailureSummary = formatFailureSummary;
+  formatInspectionSummary = formatInspectionSummary;
+  formatInspectionSamples = formatInspectionSamples;
+  buildInspectionEntries = buildInspectionEntries;
+  buildInspectionEntryHref = buildInspectionEntryHref;
+  resolveBenchmarkRetrievalPresetId = resolveBenchmarkRetrievalPresetId;
   formatSyncSourceSummary = formatSyncSourceSummary;
   formatSyncSourceDetails = formatSyncSourceDetails;
+  getWorkflowTracePresentation() {
+    return buildTracePresentation(this.transport.workflow().retrieval?.trace);
+  }
   formatDemoAIModelLabel = formatDemoAIModelLabel;
   isCitationPart = isCitationPart;
   adminJobLines: string[] = ["No admin jobs recorded yet."];
@@ -1034,6 +1285,7 @@ export class AngularRAGVectorDemoComponent {
   retrievalPresetId = "";
   benchmarkPresetId = "";
   uploadPresetId = "";
+  demoReleaseWorkspaces = demoReleaseWorkspaces;
 
   get retrievalScopeSummary() {
     return formatRetrievalScopeSummary(this.searchForm);
@@ -1041,6 +1293,21 @@ export class AngularRAGVectorDemoComponent {
 
   get retrievalScopeHint() {
     return formatRetrievalScopeHint(this.searchForm);
+  }
+  get searchSectionGroups() {
+    return buildSearchSectionGroups(this.searchResults);
+  }
+
+  get sourceSummaryGroups() {
+    return buildSourceSummarySectionGroups(this.transport.workflow().sourceSummaries);
+  }
+
+  get groundingReferenceGroups() {
+    return buildGroundingReferenceGroups(this.transport.workflow().groundingReferences);
+  }
+
+  get citationGroups() {
+    return buildCitationGroups(this.transport.workflow().citations);
   }
 
   get filteredDocuments() {
@@ -1071,27 +1338,52 @@ export class AngularRAGVectorDemoComponent {
   }
 
   getBenchmarkHistoryLines(history?: DemoRetrievalQualityResponse["retrievalHistories"][string]) {
-    return [...this.formatEvaluationHistorySummary(history), ...this.formatEvaluationHistoryDiff(history)];
+    return formatEvaluationHistoryDetails(history);
+  }
+
+  getBenchmarkHistoryRows(history?: DemoRetrievalQualityResponse["retrievalHistories"][string]) {
+    return formatEvaluationHistoryRows(history);
+  }
+
+  getBenchmarkHistoryTracePresentations(history?: DemoRetrievalQualityResponse["retrievalHistories"][string]) {
+    return formatEvaluationHistoryTracePresentations(history);
   }
 
   getGroundingHistoryLines(history?: DemoRetrievalQualityResponse["providerGroundingHistories"][string]) {
-    return [...formatGroundingHistorySummary(history), ...formatGroundingHistoryDiff(history), ...formatGroundingHistorySnapshots(history)];
+    return formatGroundingHistoryDetails(history);
   }
 
-  getGroundingArtifactTrailLines(history?: DemoRetrievalQualityResponse["providerGroundingHistories"][string]) {
-    return formatGroundingHistoryArtifactTrail(history);
+  getGroundingHistorySnapshotPresentations(
+    history?: DemoRetrievalQualityResponse["providerGroundingHistories"][string],
+  ) {
+    return formatGroundingHistorySnapshotPresentations(history);
   }
 
-  getGroundingProviderCaseLines(entry: NonNullable<DemoRetrievalQualityResponse["providerGroundingComparison"]>["caseComparisons"][number]) {
-    return [...formatGroundingProviderCaseSummary(entry), ...entry.entries.flatMap((candidate) => [formatGroundingProviderCaseEntry(candidate), ...formatGroundingProviderCaseDetails(candidate)])];
-  }
+  formatChunkNavigationNodeLabel = formatChunkNavigationNodeLabel;
+  formatChunkNavigationSectionLabel = formatChunkNavigationSectionLabel;
+  formatBenchmarkOutcomeRailLabel = formatBenchmarkOutcomeRailLabel;
+  formatOptionalContentFormat = formatOptionalContentFormat;
+  formatOptionalChunkStrategy = formatOptionalChunkStrategy;
+  formatSectionDiagnosticAttributionFocus = formatSectionDiagnosticAttributionFocus;
+  formatSectionDiagnosticChannels = formatSectionDiagnosticChannels;
+  formatSectionDiagnosticCompetition = formatSectionDiagnosticCompetition;
+  formatSectionDiagnosticDistributionRows = formatSectionDiagnosticDistributionRows;
+  formatSectionDiagnosticPipeline = formatSectionDiagnosticPipeline;
+  formatSectionDiagnosticStageBounds = formatSectionDiagnosticStageBounds;
+  formatSectionDiagnosticStageFlow = formatSectionDiagnosticStageFlow;
+  formatSectionDiagnosticStageWeightReasons = formatSectionDiagnosticStageWeightReasons;
+  formatSectionDiagnosticStageWeightRows = formatSectionDiagnosticStageWeightRows;
+  formatSectionDiagnosticReasons = formatSectionDiagnosticReasons;
+  formatSectionDiagnosticTopEntry = formatSectionDiagnosticTopEntry;
+  formatChunkSectionGroupLabel = formatChunkSectionGroupLabel;
+  formatGroundingProviderCasePresentations = formatGroundingProviderCasePresentations;
 
   getGroundingDifficultyLines(entries: NonNullable<DemoRetrievalQualityResponse["providerGroundingComparison"]>["difficultyLeaderboard"]) {
     return entries.map((entry) => formatGroundingCaseDifficultyEntry(entry));
   }
 
   getGroundingDifficultyHistoryLines(history?: DemoRetrievalQualityResponse["providerGroundingDifficultyHistory"]) {
-    return [...formatGroundingDifficultyHistorySummary(history), ...formatGroundingDifficultyHistoryDiff(history)];
+    return formatGroundingDifficultyHistoryDetails(history);
   }
 
   async runSavedSuite() {
@@ -1174,13 +1466,30 @@ export class AngularRAGVectorDemoComponent {
       const payload = buildSearchPayload({
         ...this.searchForm,
         query,
+        retrievalPresetId: this.retrievalPresetId || undefined,
       });
       const start = performance.now();
-      const results = await this.ragClient.search(getRAGPathForMode(this.selectedMode), payload as never);
+      const response = await fetch(`/demo/message/${this.selectedMode}/search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const searchResponse = await response.json() as {
+        ok: boolean;
+        results?: Parameters<typeof buildSearchResponse>[2];
+        trace?: Parameters<typeof buildSearchResponse>[4];
+        error?: string;
+      };
+      if (!response.ok || !searchResponse.ok) {
+        throw new Error(searchResponse.error ?? `Search failed with status ${response.status}`);
+      }
       const nextState = { ...this.searchForm, query };
       void saveActiveRetrievalState("angular", this.selectedMode, {
         searchForm: nextState,
         scopeDriver: this.scopeDriver,
+        retrievalPresetId: this.retrievalPresetId || undefined,
         streamModelKey: this.selectedAIModelKey || undefined,
         streamPrompt: this.streamPrompt,
       });
@@ -1192,8 +1501,9 @@ export class AngularRAGVectorDemoComponent {
       this.searchResults = buildSearchResponse(
         query,
         payload,
-        results,
+        searchResponse.results ?? [],
         Math.round(performance.now() - start),
+        searchResponse.trace,
       );
       this.flushView();
     } catch (error) {
@@ -1203,21 +1513,72 @@ export class AngularRAGVectorDemoComponent {
     }
   }
 
+  openReleaseDiagnosticsTarget(targetCardId: string) {
+    if (targetCardId === "release-promotion-candidates-card" || targetCardId === "release-stable-handoff-card" || targetCardId === "release-remediation-history-card") {
+      document.getElementById("release-diagnostics")?.setAttribute("open", "open");
+    }
+  }
+
+  async runReleaseAction(action: { id: string; label: string; path: string; payload: { actionId: string; workspace?: DemoReleaseWorkspace } }) {
+    this.releaseActionBusyId = action.id;
+    this.addError = "";
+    try {
+      const response = await fetch(action.path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...action.payload, workspace: this.releaseWorkspace }),
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      const payload = await response.json() as { message?: string; ok?: boolean; release?: DemoReleaseOpsResponse };
+      if (!payload.ok || !payload.release) {
+        throw new Error(`Release action ${action.label} failed`);
+      }
+      this.releaseData = payload.release;
+      this.message = payload.message ?? `${action.label} completed through the published AbsoluteJS release-control workflow.`;
+    } catch (error) {
+      this.addError = error instanceof Error ? error.message : `Release action ${action.label} failed`;
+    } finally {
+      this.releaseActionBusyId = null;
+    }
+  }
+
+  async setReleaseWorkspace(workspace: DemoReleaseWorkspace) {
+    if (this.releaseWorkspace === workspace) {
+      return;
+    }
+    this.releaseWorkspace = workspace;
+    await this.refreshData();
+    this.flushView();
+  }
+
   async refreshData() {
     this.loading = true;
     this.searchError = "";
     try {
 
-      const [statusData, docsData, opsData, aiModelsResponse, qualityResponse] = await Promise.all([
+      const [statusData, docsData, opsData, aiModelsResponse, qualityResponse, releaseResponse] = await Promise.all([
         this.ragClient.status(getRAGPathForMode(this.selectedMode)),
         this.ragClient.documents(getRAGPathForMode(this.selectedMode)),
         this.ragClient.ops(getRAGPathForMode(this.selectedMode)),
         fetch("/demo/ai-models").then((response) => response.json()) as Promise<DemoAIModelCatalogResponse>,
         fetch(`/demo/quality/${this.selectedMode}`).then((response) => response.json()) as Promise<DemoRetrievalQualityResponse>,
+        fetch(`/demo/release/${this.selectedMode}?workspace=${this.releaseWorkspace}`).then((response) => response.json()) as Promise<DemoReleaseOpsResponse>,
       ]);
       this.aiModelCatalog = aiModelsResponse;
       this.qualityData = qualityResponse;
-      this.qualitySummaryLines = [...formatRetrievalComparisonSummary(qualityResponse.retrievalComparison), ...formatRerankerComparisonSummary(qualityResponse.rerankerComparison), formatGroundingEvaluationSummary(qualityResponse.groundingEvaluation), ...(qualityResponse.providerGroundingComparison ? formatGroundingProviderSummary(qualityResponse.providerGroundingComparison) : ["Configure an AI provider to compare real model-grounded answers."])];
+      this.releaseData = releaseResponse;
+      this.qualitySummaryLines = formatQualityOverviewPresentation({
+        retrievalComparison: qualityResponse.retrievalComparison,
+        rerankerComparison: qualityResponse.rerankerComparison,
+        groundingEvaluation: qualityResponse.groundingEvaluation,
+        groundingProviderOverview: qualityResponse.providerGroundingComparison
+          ? formatGroundingProviderOverviewPresentation(qualityResponse.providerGroundingComparison)
+          : undefined,
+      }).rows.map((row) => `${row.label}: ${row.value}`);
       this.selectedAIModelKey = this.selectedAIModelKey || aiModelsResponse.defaultModelKey || aiModelsResponse.models[0]?.key || "";
 
       this.documents = docsData.documents as DemoDocument[];
@@ -1240,6 +1601,9 @@ export class AngularRAGVectorDemoComponent {
         docsData.documents.some((document) => document.id === this.chunkPreview?.document.id)
           ? this.chunkPreview
           : null;
+      if (this.chunkPreview === null) {
+        this.chunkPreviewActiveChunkId = null;
+      }
       this.status = buildStatusView(
         statusData.status,
         statusData.capabilities,
@@ -1308,7 +1672,7 @@ export class AngularRAGVectorDemoComponent {
     this.scopeDriver = driver;
     if (driver.startsWith("benchmark preset:")) {
       this.benchmarkPresetId = presetId;
-      this.retrievalPresetId = "";
+      this.retrievalPresetId = resolveBenchmarkRetrievalPresetId(presetId);
       this.uploadPresetId = "";
     } else if (driver === "upload verification") {
       this.retrievalPresetId = "";
@@ -1390,6 +1754,16 @@ export class AngularRAGVectorDemoComponent {
       uploadPresetId: this.uploadPresetId || undefined,
     });
     void this.executeSearch();
+  }
+
+  runReleaseEvidenceDrill(drill: { query: string; topK: number; driver: string; benchmarkPresetId?: string; retrievalPresetId?: string }) {
+    this.runPresetSearch(
+      drill.query,
+      { topK: drill.topK },
+      drill.driver,
+      drill.benchmarkPresetId || drill.retrievalPresetId || "",
+    );
+    document.getElementById("search-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async ingestDemoUpload(preset: (typeof demoUploadPresets)[number]) {
@@ -1503,6 +1877,22 @@ export class AngularRAGVectorDemoComponent {
     }
   }
 
+  async focusInspectionEntry(entry: ReturnType<typeof buildInspectionEntries>[number]) {
+    this.documentTypeFilter = "all";
+    this.documentSearchTerm = entry.sourceQuery ?? "";
+    this.documentPage = 1;
+    document.getElementById("document-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (entry.documentId) {
+      this.message = `Inspecting ${entry.documentId} from ops inspection.`;
+      await this.inspectChunks(entry.documentId);
+      return;
+    }
+    if (entry.source) {
+      await this.runPresetSearch(`Source search for ${entry.source}`, { source: entry.source }, `ops inspection: ${entry.source}`);
+      this.message = `Scoped retrieval to ${entry.source} from ops inspection.`;
+    }
+  }
+
   async inspectChunks(documentId: string) {
     this.chunkPreviewLoading = true;
     this.flushView();
@@ -1512,6 +1902,7 @@ export class AngularRAGVectorDemoComponent {
         throw new Error(response.error);
       }
       this.chunkPreview = response as DemoChunkPreview;
+      this.chunkPreviewActiveChunkId = this.chunkPreview.chunks[0]?.chunkId ?? null;
     } catch (error) {
       this.message =
         error instanceof Error
@@ -1533,6 +1924,45 @@ export class AngularRAGVectorDemoComponent {
     return this.chunkPreview?.document.id === documentId;
   }
 
+  chunkPreviewNavigation() {
+    return this.chunkPreview
+      ? buildRAGChunkPreviewNavigation(this.chunkPreview, this.chunkPreviewActiveChunkId ?? undefined)
+      : null;
+  }
+
+  activeChunkPreviewSectionDiagnostic() {
+    return buildActiveChunkPreviewSectionDiagnostic(this.chunkPreview, this.chunkPreviewActiveChunkId ?? undefined);
+  }
+
+  selectChunkPreviewChunk(chunkId: string) {
+    this.chunkPreviewActiveChunkId = chunkId;
+    this.flushView();
+  }
+
+  selectParentChunkPreviewSection() {
+    const nextChunkId = this.chunkPreviewNavigation()?.parentSection?.leadChunkId;
+    if (nextChunkId) {
+      this.chunkPreviewActiveChunkId = nextChunkId;
+      this.flushView();
+    }
+  }
+
+  selectSiblingChunkPreviewSection(sectionId: string) {
+    const nextChunkId = this.chunkPreviewNavigation()?.siblingSections.find((section) => section.id === sectionId)?.leadChunkId;
+    if (nextChunkId) {
+      this.chunkPreviewActiveChunkId = nextChunkId;
+      this.flushView();
+    }
+  }
+
+  selectChildChunkPreviewSection(sectionId: string) {
+    const nextChunkId = this.chunkPreviewNavigation()?.childSections.find((section) => section.id === sectionId)?.leadChunkId;
+    if (nextChunkId) {
+      this.chunkPreviewActiveChunkId = nextChunkId;
+      this.flushView();
+    }
+  }
+
   async deleteDocument(documentId: string) {
     try {
       const response = await this.ragClient.deleteDocument(getRAGPathForMode(this.selectedMode), documentId);
@@ -1541,6 +1971,9 @@ export class AngularRAGVectorDemoComponent {
       }
       this.message = `Deleted ${documentId}`;
       this.chunkPreview = this.chunkPreview?.document.id === documentId ? null : this.chunkPreview;
+      if (this.chunkPreview === null) {
+        this.chunkPreviewActiveChunkId = null;
+      }
       this.flushView();
       await this.refreshData();
     } catch (error) {

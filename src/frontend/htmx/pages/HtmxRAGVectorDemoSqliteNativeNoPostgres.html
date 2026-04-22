@@ -26,6 +26,7 @@
         <p>
           This page is fully server-rendered for HTMX. Retrieval, document management, chunk preview, and diagnostics are all driven by server-side fragments backed by the AbsoluteJS RAG workflow routes.
         </p>
+        <p class="demo-metadata">Pinned to <code>@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.3 + @absolutejs/rag@0.0.2</code> and surfacing the shared <code>@absolutejs/rag</code> plus <code>@absolutejs/rag/ui</code> diagnostics on this page.</p>
         <ul class="demo-checklist">
           <li>Inspect the stuffed file-backed seed corpus and verify extractor metadata across PDFs, office docs, archives, images, audio, video, EPUB, email, and legacy files.</li>
           <li>Upload first-party fixture files through the server-owned extractor route and verify retrieval against the uploaded source path.</li>
@@ -49,6 +50,9 @@
           <div id="htmx-ops" hx-get="/demo/ops/sqlite-native" hx-trigger="load, rag:mutated from:body" hx-swap="innerHTML">
             <p class="demo-metadata">Loading knowledge-base operations...</p>
           </div>
+          <div id="htmx-release" hx-get="/demo/release/sqlite-native/htmx" hx-trigger="load, rag:mutated from:body" hx-swap="innerHTML">
+            <p class="demo-metadata">Loading release control...</p>
+          </div>
           <div class="demo-actions">
             <button type="button" hx-post="/demo/message/sqlite-native/reseed" hx-target="#mutation-status" hx-swap="innerHTML">Re-seed defaults</button>
             <button type="button" hx-post="/demo/message/sqlite-native/reset" hx-target="#mutation-status" hx-swap="innerHTML">Reset custom docs</button>
@@ -61,6 +65,13 @@
           <p class="demo-metadata">
             Submit a search and confirm the returned chunk text and source label match the indexed sources below.
           </p>
+          <p class="demo-metadata">
+            Site discovery checks require running the <code>sync-site-discovery</code> source first, then searching <code>sync/site/demo/sync-fixtures/site/docs/guide</code>.
+          </p>
+          <div class="demo-actions">
+            <button type="button" hx-post="/demo/message/sqlite-native/search" hx-vals='{"query":"Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?","topK":"6","retrieval":"hybrid"}' hx-target="#search-results" hx-swap="innerHTML">Late interaction / multivector</button>
+            <button type="button" hx-post="/demo/sync/sqlite-native/sync-site-discovery" hx-target="#ops-panel" hx-swap="outerHTML">Sync site discovery now</button>
+          </div>
           <form class="demo-search-form" hx-post="/demo/message/sqlite-native/search" hx-target="#search-results" hx-swap="innerHTML">
             <label for="query">Query</label>
             <input id="query" name="query" placeholder="e.g. Which source mentions metadata filters?" required type="text" />
@@ -106,7 +117,7 @@
               </button>
             </div>
             <div id="quality-results" class="demo-results">
-              <p class="demo-metadata">Run the comparison to inspect the saved suite and reranker leaderboard.</p>
+              <p class="demo-metadata">Run the comparison to inspect the saved suite, reranker leaderboard, and SQLite planner outcome summary.</p>
             </div>
           </div>
 
@@ -181,6 +192,10 @@
               <button type="button" hx-post="/demo/upload/sqlite-native/upload-video" hx-target="#upload-status" hx-swap="innerHTML">Upload video</button>
               <button type="button" hx-post="/demo/upload/sqlite-native/upload-archive" hx-target="#upload-status" hx-swap="innerHTML">Upload archive</button>
             </div>
+            <form class="demo-upload-row" hx-post="/demo/upload-file/sqlite-native" hx-encoding="multipart/form-data" hx-target="#upload-status" hx-swap="innerHTML">
+              <input name="file" type="file" />
+              <button type="submit">Upload file</button>
+            </form>
             <div id="upload-status" class="demo-results"></div>
           </div>
           <form class="demo-add-form" hx-post="/demo/message/sqlite-native/documents" hx-target="#mutation-status" hx-swap="innerHTML">
@@ -211,11 +226,8 @@
 
         <article class="demo-card">
           <h2>Indexed Sources</h2>
-          <div id="document-list" hx-get="/rag/sqlite-native/documents" hx-trigger="load, rag:mutated from:body" hx-swap="innerHTML">
+          <div id="document-list" hx-get="/demo/documents/sqlite-native" hx-trigger="load, rag:mutated from:body" hx-swap="innerHTML">
             <p class="demo-metadata">Loading indexed documents...</p>
-          </div>
-          <div id="chunk-preview-body" class="demo-results">
-            <p class="demo-metadata">Pick a document and click Inspect chunks to compare the normalized text with the final chunk boundaries.</p>
           </div>
         </article>
       </section>

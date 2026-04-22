@@ -1,0 +1,16 @@
+[
+	{
+		"id": "demo-release-approve-sqlite-native-ready-alpha",
+		"kind": "approve",
+		"groupKey": "docs-release-ready",
+		"corpusGroupKey": "alpha",
+		"targetRolloutLabel": "stable",
+		"retrievalId": "hybrid",
+		"sourceRunId": "demo-release-run-stable-ready-alpha",
+		"decidedAt": 1776831451511,
+		"decidedBy": "demo-operator",
+		"notes": "Approved for the promotable stable-lane scenario.",
+		"gateStatus": "pass",
+		"freshnessStatus": "fresh"
+	}
+]

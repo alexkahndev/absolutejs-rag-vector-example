@@ -1,0 +1,75 @@
+[
+	{
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"enabled": true,
+		"groupKey": "docs-release-ready",
+		"id": "b64ec044-24bf-4f57-a1dc-4f13b01138d4",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452602,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-multivector",
+		"id": "75583a31-3f0c-4dba-8e08-960f8dc43e21",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452596,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-general",
+		"id": "59404e3e-07df-4328-8b53-a1ce8bf0ea3c",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452575,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-completed",
+		"id": "d13f4068-d2b8-4a15-b7f0-20c7d4c0e4c6",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452573,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-ready",
+		"id": "cd87db47-14c0-4ea1-b3bc-3a702e8e829c",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452562,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-multivector",
+		"id": "b909bd06-dda2-4f88-a477-9cc85019c71c",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452560,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-general",
+		"id": "4fed8d96-5575-417e-875a-8db3a1de5a98",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452558,
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"changeKind": "snapshot",
+		"enabled": true,
+		"groupKey": "docs-release-completed",
+		"id": "b3e9d545-2d43-4a20-bb1e-44bb46298132",
+		"maxApprovedDecisionAgeMs": 86400000,
+		"recordedAt": 1776831452557,
+		"targetRolloutLabel": "stable"
+	}
+]

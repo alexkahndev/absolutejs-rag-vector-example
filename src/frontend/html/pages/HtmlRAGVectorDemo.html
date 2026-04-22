@@ -36,6 +36,7 @@
         <span class="demo-hero-kicker">HTML workflow surface</span>
         <h1>AbsoluteJS RAG Workflow Demo - HTML</h1>
         <p>Use one route to ingest, sync, retrieve, stream grounded answers, and inspect ops health against the same stuffed multi-format knowledge base.</p>
+        <p class="demo-metadata">Pinned to <code>@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.3 + @absolutejs/rag@0.0.2</code> and surfacing the shared <code>@absolutejs/rag</code> plus <code>@absolutejs/rag/ui</code> diagnostics on this page.</p>
         <div class="demo-hero-grid">
           <article class="demo-stat-card">
             <span class="demo-stat-label">Corpus</span>
@@ -130,33 +131,27 @@
             Seed documents: <strong id="status-seed-count"></strong> · Custom
             documents: <strong id="status-custom-count"></strong>
           </p>
-          <div class="demo-results">
-            <h3>Knowledge Base Operations</h3>
-            <p id="ops-error" class="demo-error" hidden></p>
-            <ul id="ops-readiness-list" class="demo-detail-list"></ul>
-            <ul id="ops-health-list" class="demo-detail-list"></ul>
-            <ul id="ops-failure-list" class="demo-detail-list"></ul>
-            <div class="demo-result-grid">
-              <article class="demo-result-item">
-                <h4>Sync Sources</h4>
-                <div class="demo-actions">
-                  <button id="sync-all-btn" type="button">Sync all sources</button>
-                  <button id="sync-all-background-btn" type="button">Queue background sync</button>
-                </div>
-                <div id="state-sync-row" class="demo-badge-row"></div>
-                <ul id="ops-sync-summary-list" class="demo-detail-list"></ul>
-                <ul id="ops-sync-sources-list" class="demo-detail-list"></ul>
-                <div id="ops-sync-actions" class="demo-actions"></div>
-              </article>
-              <article class="demo-result-item">
-                <h4>Admin Jobs</h4>
-                <ul id="ops-admin-jobs-list" class="demo-detail-list"></ul>
-              </article>
-              <article class="demo-result-item">
-                <h4>Recent Admin Actions</h4>
-                <ul id="ops-admin-actions-list" class="demo-detail-list"></ul>
-              </article>
+          <div class="demo-results demo-release-card">
+            <h3>Release Control</h3>
+            <p class="demo-metadata">This panel exercises the same AbsoluteJS release-control surface that backs retrieval baselines, lane readiness, incidents, and remediation execution tracking.</p>
+            <div class="demo-release-hero">
+              <div class="demo-release-hero-copy">
+                <p class="demo-release-kicker">AbsoluteJS release workflow</p>
+                <p id="release-banner" class="demo-release-banner"></p>
+                <p id="release-summary" class="demo-release-summary"></p>
+                <p id="release-decision-meta" class="demo-metadata"></p>
+                <div id="release-pill-row" class="demo-release-pills"></div>
+                <div id="release-scenario-switcher" class="demo-release-scenario-switcher"></div>
+                <div id="release-path-row" class="demo-release-path"></div>
+              </div>
+              <div class="demo-release-action-rail">
+                <span class="demo-release-action-label">Live actions</span>
+                <div id="release-action-row" class="demo-release-action-stack"></div>
+              </div>
             </div>
+            <div id="release-stat-grid" class="demo-stat-grid"></div>
+            <div id="release-primary-grid" class="demo-result-grid"></div>
+            <div id="release-secondary-grid" class="demo-result-grid"></div>
           </div>
           <div class="demo-actions">
             <button id="reseed-btn" type="button">Re-seed defaults</button>
@@ -186,6 +181,21 @@
             </button>
             <button type="button" data-query="Why should metadata be stable?" data-source="guides/metadata.md">
               Metadata discipline
+            </button>
+            <button type="button" data-query="Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?" data-retrieval-preset-id="hybrid">
+              Late interaction / multivector
+            </button>
+            <button type="button" data-query="Which synced site discovery guide says discovery diagnostics stay visible on the same sync surface as every other source?" data-source="sync/site/demo/sync-fixtures/site/docs/guide">
+              Site discovery (sync first)
+            </button>
+            <button type="button" data-query="release" data-native-query-profile="latency" data-topk="4">
+              Planner profile · latency
+            </button>
+            <button type="button" data-query="release" data-native-query-profile="balanced" data-topk="4">
+              Planner profile · balanced
+            </button>
+            <button type="button" data-query="release" data-native-query-profile="recall" data-topk="4">
+              Planner profile · recall
             </button>
           </div>
           <form class="demo-search-form" id="search-form">
@@ -276,22 +286,43 @@
 
           <div class="demo-results">
             <h3>Retrieval Quality Tooling</h3>
-            <p class="demo-metadata">This section keeps the saved suite, retrieval-strategy comparison, reranker comparison, and leaderboard on the same page so you can inspect retrieval quality without leaving the current framework route.</p>
-            <ul id="quality-suite-list" class="demo-detail-list"></ul>
+            <p class="demo-metadata">This section now behaves like an evaluation dashboard instead of a log dump. The summary cards answer who is winning, the strategy tab shows why, the grounding tab keeps case drill-downs collapsed until needed, and the history tab only expands when you want regression detail.</p>
+            <div id="quality-suite-list" class="demo-pill-row"></div>
             <div class="demo-actions">
               <button id="quality-suite-btn" type="button">Run saved suite</button>
             </div>
+            <div id="quality-tab-row" class="demo-tab-row"></div>
+            <div id="quality-stat-grid" class="demo-stat-grid"></div>
+            <div id="quality-comparison-grid" class="demo-result-grid"></div>
+          </div>
+
+          <div class="demo-results demo-quality-card">
+            <h3>Knowledge Base Operations</h3>
+            <p id="ops-error" class="demo-error" hidden></p>
+            <ul id="ops-readiness-list" class="demo-detail-list"></ul>
+            <ul id="ops-health-list" class="demo-detail-list"></ul>
+            <ul id="ops-failure-list" class="demo-detail-list"></ul>
             <div class="demo-result-grid">
               <article class="demo-result-item">
-                <h4>Suite leaderboard</h4>
-                <ul id="quality-leaderboard-list" class="demo-detail-list"></ul>
+                <h4>Sync Sources</h4>
+                <div class="demo-actions">
+                  <button id="sync-all-btn" type="button">Sync all sources</button>
+                  <button id="sync-all-background-btn" type="button">Queue background sync</button>
+                </div>
+                <div id="state-sync-row" class="demo-badge-row"></div>
+                <ul id="ops-sync-summary-list" class="demo-detail-list"></ul>
+                <ul id="ops-sync-sources-list" class="demo-detail-list"></ul>
+                <div id="ops-sync-actions" class="demo-actions"></div>
               </article>
               <article class="demo-result-item">
-                <h4>Quality winners</h4>
-                <ul id="quality-summary-list" class="demo-detail-list"></ul>
+                <h4>Admin Jobs</h4>
+                <ul id="ops-admin-jobs-list" class="demo-detail-list"></ul>
+              </article>
+              <article class="demo-result-item">
+                <h4>Recent Admin Actions</h4>
+                <ul id="ops-admin-actions-list" class="demo-detail-list"></ul>
               </article>
             </div>
-            <div id="quality-comparison-grid" class="demo-result-grid"></div>
           </div>
 
           <div class="demo-stream-panel">
@@ -321,10 +352,12 @@
             </div>
             <div id="stream-stage-row" class="demo-stage-row"></div>
             <dl id="stream-stats" class="demo-stream-stats" hidden></dl>
+            <div id="stream-trace" class="demo-results" hidden><h4>Workflow Retrieval Trace</h4><p class="demo-metadata">This is the retrieval trace attached to the workflow answer path. It explains how the answer workflow found evidence before grounding and citations were built.</p><div id="stream-trace-grid" class="demo-result-grid"></div></div>
             <p id="stream-error" class="demo-error" hidden></p>
             <div id="stream-thinking" class="demo-stream-block" hidden><h4>Thinking</h4><p id="stream-thinking-text" class="demo-result-text"></p></div>
             <div id="stream-answer" class="demo-stream-block" hidden><h4>Answer</h4><p id="stream-answer-text" class="demo-result-text"></p></div>
             <div id="stream-grounding" class="demo-results" hidden><h4>Answer Grounding</h4><p id="stream-grounding-badge" class="demo-grounding-badge"></p><ul id="stream-grounding-list" class="demo-detail-list"></ul><div id="stream-grounding-parts" class="demo-result-grid"></div></div>
+            <div id="stream-grounding-sections" class="demo-results" hidden><h4>Grounding by Section</h4><div id="stream-grounding-sections-grid" class="demo-result-grid"></div></div>
             <div id="stream-grounding-references" class="demo-results" hidden><h4>Grounding Reference Map</h4><p class="demo-metadata">Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.</p><div id="stream-grounding-references-grid" class="demo-result-grid"></div></div>
             <div id="stream-sources" class="demo-results" hidden><h4>Evidence Sources</h4><div id="stream-sources-grid" class="demo-result-grid"></div></div>
             <div id="stream-citations" class="demo-results" hidden><h4>Citation Trail</h4><p class="demo-metadata">Each citation maps a concrete retrieved chunk to a stable reference number you can carry into the answer UI.</p><div id="stream-citations-grid" class="demo-result-grid"></div></div>

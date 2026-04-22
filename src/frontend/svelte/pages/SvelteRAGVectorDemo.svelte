@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { createRAG } from "@absolutejs/absolute/svelte/ai";
-  import type { RAGEvaluationResponse } from "@absolutejs/absolute";
+  import { createRAG } from "@absolutejs/rag/svelte";
+  import type { RAGEvaluationResponse } from "@absolutejs/rag";
   import { derived, get } from "svelte/store";
   import {
     type AddFormState,
     type DemoActiveRetrievalState,
     type DemoAIModelCatalogResponse,
+    type DemoReleaseOpsResponse,
+    type DemoReleaseWorkspace,
     type DemoRetrievalQualityResponse,
     type DemoBackendDescriptor,
     type DemoBackendMode,
@@ -19,13 +21,21 @@
     buildDemoAIStreamPrompt,
     buildDemoEvaluationSuite,
     buildDemoEvaluationInput,
+    buildDemoReleasePanelState,
     buildDemoUploadIngestInput,
+    buildCitationGroups,
+    buildGroundingReferenceGroups,
+    buildSourceSummarySectionGroups,
+    buildTracePresentation,
     formatEvaluationCaseSummary,
     formatEvaluationExpected,
     formatEvaluationMissing,
     formatEvaluationRetrieved,
     formatEvaluationSummary,
   formatEvaluationHistoryDiff,
+  formatEvaluationHistoryDetails,
+  formatEvaluationHistoryRows,
+  formatEvaluationHistoryTracePresentations,
   formatEvaluationHistorySummary,
   formatEvaluationLeaderboardEntry,
   formatGroundingEvaluationCase,
@@ -34,28 +44,53 @@
   formatGroundingCaseDifficultyEntry,
   formatGroundingDifficultyHistoryDiff,
   formatGroundingDifficultyHistorySummary,
+  formatGroundingDifficultyHistoryDetails,
   formatGroundingHistoryDiff,
+  formatGroundingHistoryDetails,
+  formatGroundingHistorySnapshotPresentations,
   formatGroundingHistorySnapshots,
   formatGroundingHistoryArtifactTrail,
   formatGroundingHistorySummary,
-  formatGroundingProviderCaseDetails,
-  formatGroundingProviderCaseEntry,
-  formatGroundingProviderCaseSummary,
-  formatGroundingProviderEntry,
-  formatGroundingProviderSummary,
+  formatGroundingProviderCasePresentations,
+  formatGroundingProviderPresentations,
+  formatGroundingProviderOverviewPresentation,
+  formatQualityOverviewPresentation,
+  formatQualityOverviewNotes,
+  formatRetrievalComparisonOverviewPresentation,
     buildSearchPayload,
+    attributionBenchmarkNotes,
+  benchmarkOutcomeRail,
+  formatBenchmarkOutcomeRailLabel,
+  resolveBenchmarkRetrievalPresetId,
     buildSearchResponse,
+    buildActiveChunkPreviewSectionDiagnostic,
+    buildSearchSectionGroups,
     buildStatusView,
     getAvailableDemoBackends,
     demoEvaluationPresets,
     demoFrameworks,
     demoChunkingStrategies,
+    demoReleaseWorkspaces,
     demoUploadPresets,
     demoContentFormats,
     formatAdminActionList,
     formatAdminJobList,
     formatDemoAIModelLabel,
     formatCitationDetails,
+    formatChunkNavigationNodeLabel,
+    formatChunkNavigationSectionLabel,
+  formatChunkSectionGroupLabel,
+  formatSectionDiagnosticAttributionFocus,
+  formatSectionDiagnosticChannels,
+  formatSectionDiagnosticCompetition,
+  formatSectionDiagnosticDistributionRows,
+  formatSectionDiagnosticPipeline,
+  formatSectionDiagnosticStageBounds,
+  formatSectionDiagnosticStageFlow,
+  formatSectionDiagnosticStageWeightReasons,
+  formatSectionDiagnosticStageWeightRows,
+  formatSectionDiagnosticReasons,
+  formatSectionDiagnosticTopEntry,
     formatChunkStrategy,
     formatCitationExcerpt,
     formatCitationLabel,
@@ -64,18 +99,26 @@
     formatDemoMetadataSummary,
     formatDate,
     formatFailureSummary,
+    buildInspectionEntries,
+    buildInspectionEntryHref,
+    formatInspectionSamples,
+    formatInspectionSummary,
     formatGroundingCoverage,
     formatGroundedAnswerPartDetails,
+  formatGroundedAnswerPartExcerpt,
     formatGroundingPartReferences,
     formatGroundingReferenceDetails,
-    formatGroundingReferenceExcerpt,
-    formatGroundingReferenceLabel,
-    formatGroundingReferenceSummary,
-    formatGroundingSummary,
+  formatGroundingReferenceExcerpt,
+  formatGroundingReferenceLabel,
+  formatGroundingReferenceSummary,
+  formatGroundedAnswerSectionSummaryDetails,
+  formatGroundedAnswerSectionSummaryExcerpt,
+  formatGroundingSummary,
     formatSourceSummaryDetails,
-    formatRetrievalComparisonEntry,
+    formatRetrievalComparisonPresentations,
     formatRetrievalComparisonSummary,
-    formatRerankerComparisonEntry,
+    formatRerankerComparisonOverviewPresentation,
+    formatRerankerComparisonPresentations,
     formatRerankerComparisonSummary,
     formatHealthSummary,
     formatReadinessSummary,
@@ -116,6 +159,8 @@
   const documentsStore = rag.documents.documents;
   const chunkPreviewStore = rag.chunkPreview.preview;
   const chunkPreviewLoadingStore = rag.chunkPreview.isLoading;
+  const chunkPreviewNavigationStore = rag.chunkPreview.navigation;
+  const activeChunkPreviewIdStore = rag.chunkPreview.activeChunkId;
   const evaluationErrorStore = rag.evaluate.error;
   const evaluationIsEvaluatingStore = rag.evaluate.isEvaluating;
   const evaluationStore = rag.evaluate.lastResponse;
@@ -187,6 +232,10 @@
   const evaluationSuite = buildDemoEvaluationSuite();
   let aiModelCatalog: DemoAIModelCatalogResponse = { defaultModelKey: null, models: [] };
   let qualityData: DemoRetrievalQualityResponse | null = null;
+  let releaseData: DemoReleaseOpsResponse | null = null;
+  let releaseActionBusyId: string | null = null;
+  let releaseWorkspace: DemoReleaseWorkspace = "alpha";
+  let qualityView: "overview" | "strategies" | "grounding" | "history" = "overview";
   let selectedAIModelKey = "";
   let streamPrompt = "How do metadata filters change retrieval quality?";
   const workflow = rag.workflow;
@@ -196,16 +245,35 @@
   const streamGroundingReferencesStore = workflow.groundingReferences;
   const streamCitationsStore = workflow.citations;
   const streamSourceSummariesStore = workflow.sourceSummaries;
+  $: streamSourceSummaryGroups = buildSourceSummarySectionGroups($streamSourceSummariesStore);
+  $: streamGroundingReferenceGroups = buildGroundingReferenceGroups($streamGroundingReferencesStore);
+  $: streamCitationGroups = buildCitationGroups($streamCitationsStore);
   const streamStageStore = workflow.stage;
   const streamWorkflowStateStore = workflow.state;
   const streamErrorStore = workflow.error;
   const streamBusyStore = derived([workflow.isRetrieving, workflow.isAnswerStreaming], ([$isRetrieving, $isAnswerStreaming]) => $isRetrieving || $isAnswerStreaming);
+  $: workflowTracePresentation = buildTracePresentation($streamRetrievalStore?.trace);
   const opsErrorStore = rag.ops.error;
   const opsReadinessStore = rag.ops.readiness;
   const opsHealthStore = rag.ops.health;
   const opsAdminJobsStore = rag.ops.adminJobs;
   const opsAdminActionsStore = rag.ops.adminActions;
   const opsSyncSourcesStore = rag.ops.syncSources;
+  $: releasePanel = buildDemoReleasePanelState(releaseData);
+$: releasePendingLabel = releaseActionBusyId
+  ? (() => {
+      const action = releasePanel.actions.find((entry) => entry.id === releaseActionBusyId);
+      const lane = action?.id.includes("stable") ? "stable" : action?.id.includes("canary") ? "canary" : "release";
+      return `Pending ${lane} action · ${action?.label ?? releaseActionBusyId}`;
+    })()
+  : null;
+
+function openReleaseDiagnosticsTarget(targetCardId: string) {
+  if (targetCardId === "release-promotion-candidates-card" || targetCardId === "release-stable-handoff-card" || targetCardId === "release-remediation-history-card") {
+    document.getElementById("release-diagnostics")?.setAttribute("open", "open");
+  }
+}
+
   let status: DemoStatusView | null = null;
   let searchForm: SearchFormState = {
     query: "",
@@ -216,6 +284,8 @@
     documentId: "",
   };
   let searchResults: SearchResponse | null = null;
+  $: searchSectionGroups = buildSearchSectionGroups(searchResults);
+  $: activeChunkPreviewSectionDiagnostic = buildActiveChunkPreviewSectionDiagnostic($chunkPreviewStore, $activeChunkPreviewIdStore);
   let addForm: AddFormState = {
     id: "",
     title: "",
@@ -320,20 +390,49 @@
     void saveActiveRetrievalState("svelte", selectedMode, state);
   }
 
+  const runReleaseAction = async (action: { id: string; label: string; path: string; payload: { actionId: string; workspace?: DemoReleaseWorkspace } }) => {
+    releaseActionBusyId = action.id;
+    addError = "";
+    try {
+      const response = await fetch(action.path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...action.payload, workspace: releaseWorkspace }),
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      const payload = await response.json() as { message?: string; ok?: boolean; release?: DemoReleaseOpsResponse };
+      if (!payload.ok || !payload.release) {
+        throw new Error(`Release action ${action.label} failed`);
+      }
+      releaseData = payload.release;
+      message = payload.message ?? `${action.label} completed through the published AbsoluteJS release-control workflow.`;
+    } catch (error) {
+      addError = error instanceof Error ? error.message : `Release action ${action.label} failed`;
+    } finally {
+      releaseActionBusyId = null;
+    }
+  };
+
   const refreshData = async () => {
     loading = true;
     searchError = "";
     try {
   
-      const [documentsData, statusData, _opsData, aiModelsResponse, qualityResponse] = await Promise.all([
+      const [documentsData, statusData, _opsData, aiModelsResponse, qualityResponse, releaseResponse] = await Promise.all([
         rag.documents.load(),
         rag.status.refresh(),
         rag.ops.refresh(),
         fetch("/demo/ai-models").then((response) => response.json()) as Promise<DemoAIModelCatalogResponse>,
         fetch(`/demo/quality/${selectedMode}`).then((response) => response.json()) as Promise<DemoRetrievalQualityResponse>,
+        fetch(`/demo/release/${selectedMode}?workspace=${releaseWorkspace}`).then((response) => response.json()) as Promise<DemoReleaseOpsResponse>,
       ]);
       aiModelCatalog = aiModelsResponse;
       qualityData = qualityResponse;
+      releaseData = releaseResponse;
       rag.evaluate.saveSuite(evaluationSuite);
       selectedAIModelKey = selectedAIModelKey || aiModelsResponse.defaultModelKey || aiModelsResponse.models[0]?.key || "";
       documents = documentsData.documents as DemoDocument[];
@@ -423,9 +522,24 @@
       const payload = buildSearchPayload({
         ...searchForm,
         query,
+        retrievalPresetId: retrievalPresetId || undefined,
       });
       const start = performance.now();
-      const results = await rag.search.search(payload as never);
+      const response = await fetch(`/demo/message/${selectedMode}/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const parsed = await response.json() as {
+        ok: boolean;
+        results?: Parameters<typeof buildSearchResponse>[2];
+        trace?: Parameters<typeof buildSearchResponse>[4];
+        error?: string;
+      };
+      if (!response.ok || !parsed.ok) {
+        throw new Error(parsed.error ?? `Search failed with status ${response.status}`);
+      }
+      const results = parsed.results ?? [];
       const nextState = { ...searchForm, query };
       recentQueries = [
         { label: query, state: nextState },
@@ -436,9 +550,28 @@
         payload,
         results,
         Math.round(performance.now() - start),
+        parsed.trace,
       );
     } catch (error) {
       searchError = error instanceof Error ? error.message : "Search failed";
+    }
+  };
+
+  const focusInspectionEntry = async (entry: ReturnType<typeof buildInspectionEntries>[number]) => {
+    documentTypeFilter = "all";
+    documentSearchTerm = entry.sourceQuery ?? "";
+    documentPage = 1;
+    document.getElementById("document-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (entry.documentId) {
+      message = `Inspecting ${entry.documentId} from ops inspection.`;
+      await inspectChunks(entry.documentId);
+      return;
+    }
+    if (entry.source) {
+      searchForm = { ...searchForm, source: entry.source, documentId: "", query: `Source search for ${entry.source}` };
+      scopeDriver = `ops inspection: ${entry.source}`;
+      message = `Scoped retrieval to ${entry.source} from ops inspection.`;
+      await executeSearch();
     }
   };
 
@@ -533,7 +666,7 @@
     scopeDriver = driver;
     if (driver.startsWith("benchmark preset:")) {
       benchmarkPresetId = presetId;
-      retrievalPresetId = "";
+      retrievalPresetId = resolveBenchmarkRetrievalPresetId(presetId);
       uploadPresetId = "";
     } else if (driver === "upload verification") {
       retrievalPresetId = "";
@@ -545,6 +678,16 @@
     }
 
     void executeSearch();
+  };
+
+  const runReleaseEvidenceDrill = (drill: (typeof releasePanel.releaseEvidenceDrills)[number]) => {
+    runPresetSearch(
+      drill.query,
+      { topK: drill.topK },
+      drill.driver,
+      drill.benchmarkPresetId || drill.retrievalPresetId || "",
+    );
+    document.getElementById("search-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const ingestDemoUpload = async (preset: (typeof demoUploadPresets)[number]) => {
@@ -782,6 +925,7 @@
       <span class="demo-hero-kicker">Svelte workflow surface</span>
       <h1>AbsoluteJS RAG Workflow Demo - Svelte</h1>
       <p>Use one route to ingest, sync, retrieve, stream grounded answers, and inspect ops health against the same stuffed multi-format knowledge base.</p>
+      <p class="demo-metadata">Pinned to <code>@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.3 + @absolutejs/rag@0.0.2</code> and surfacing the shared <code>@absolutejs/ai + @absolutejs/rag</code> plus <code>@absolutejs/rag/ui</code> diagnostics on this page.</p>
       <div class="demo-hero-grid">
         <article class="demo-stat-card">
           <span class="demo-stat-label">Corpus</span>
@@ -884,95 +1028,427 @@
           <p class="demo-metadata">
             Backend capabilities: <strong>{status.capabilities.join(" · ")}</strong>
           </p>
-          <div class="demo-results">
-            <h3>Knowledge Base Operations</h3>
-            {#if $opsErrorStore}
-              <p class="demo-error">{$opsErrorStore}</p>
-            {/if}
-            <ul class="demo-detail-list">
-              {#each formatReadinessSummary($opsReadinessStore) as line}
-                <li>{line}</li>
-              {/each}
-            </ul>
-            <ul class="demo-detail-list">
-              {#each formatHealthSummary($opsHealthStore) as line}
-                <li>{line}</li>
-              {/each}
-            </ul>
-            <ul class="demo-detail-list">
-              {#each formatFailureSummary($opsHealthStore) as line}
-                <li>{line}</li>
-              {/each}
-            </ul>
-            <div class="demo-result-grid">
-              <article class="demo-result-item">
-                <h4>Sync Sources</h4>
-                <div class="demo-actions">
-                  <button on:click={syncAllSources} type="button">Sync all sources</button>
-                  <button on:click={queueBackgroundSync} type="button">Queue background sync</button>
-                </div>
-                <div class="demo-badge-row">
-                  {#each formatSyncDeltaChips(sortedSyncSources) as chip, index (`sync-delta-${index}`)}
-                    <span class="demo-state-chip">{chip.replace(/^sync /, "")}</span>
+          <div class="demo-results demo-release-card">
+            <h3>Release Control</h3>
+            <p class="demo-metadata">
+              This panel exercises the same AbsoluteJS release-control surface that backs retrieval baselines, lane readiness, incidents, and remediation execution tracking.
+            </p>
+            <div class="demo-release-hero">
+              <div class="demo-release-hero-copy">
+                <p class="demo-release-kicker">AbsoluteJS release workflow</p>
+                <p class="demo-release-banner">{releasePanel.releaseHero}</p>
+                <p class="demo-release-summary">{releasePanel.releaseHeroSummary}</p>
+                <p class="demo-metadata">{releasePanel.releaseHeroMeta}</p>
+                <p class="demo-metadata">{releasePanel.releaseScopeNote}</p>
+                <div class="demo-release-pills">
+                  {#each releasePanel.releaseHeroPills as pill (`release-pill-${pill.label}`)}
+                    {#if pill.targetCardId || pill.targetActivityId}
+                      <a class={`demo-release-pill demo-release-pill-${pill.tone}`} href={`#${pill.targetActivityId ?? pill.targetCardId}`} on:click={() => openReleaseDiagnosticsTarget(pill.targetCardId)}>
+                        <span class="demo-release-pill-label">{pill.label}</span>
+                        <span class="demo-release-pill-value">{pill.value}</span>
+                      </a>
+                    {:else}
+                      <span class={`demo-release-pill demo-release-pill-${pill.tone}`}>
+                        <span class="demo-release-pill-label">{pill.label}</span>
+                        <span class="demo-release-pill-value">{pill.value}</span>
+                      </span>
+                    {/if}
                   {/each}
                 </div>
-                <div class="demo-stat-grid">
-                  {#each syncOverviewLines as line, index (`sync-overview-${index}`)}
-                    <article class="demo-stat-card">
-                      <span class="demo-stat-label">Sync overview</span>
-                      <strong>{line.includes(':') ? line.slice(0, line.indexOf(':')) : 'Sync overview'}</strong>
-                      <p>{line.includes(':') ? line.slice(line.indexOf(':') + 1).trim() : line}</p>
+                <div class="demo-release-scenario-switcher">
+                  {#each demoReleaseWorkspaces as entry (`release-workspace-${entry.id}`)}
+                    <span class={`demo-release-scenario-chip demo-release-workspace-chip${releaseWorkspace === entry.id ? " demo-release-scenario-chip-active" : ""}`}>
+                      <button type="button" on:click={() => { releaseWorkspace = entry.id; void refreshData(); }} disabled={releaseWorkspace === entry.id} title={entry.description}>
+                        Workspace · {entry.label}
+                      </button>
+                    </span>
+                  {/each}
+                  {#each releasePanel.releaseScenarioActions as entry (`release-scenario-${entry.id}`)}
+                    <span class={`demo-release-scenario-chip${entry.active ? " demo-release-scenario-chip-active" : ""}`}>
+                      {#if entry.action}
+                        <button type="button" on:click={() => runReleaseAction(entry.action!)} disabled={entry.active || releaseActionBusyId === entry.action.id} title={entry.action.description}>
+                          {releaseActionBusyId === entry.action.id ? `Running ${entry.action.label}...` : entry.label}
+                        </button>
+                      {:else}
+                        <span>{entry.label}</span>
+                      {/if}
+                    </span>
+                  {/each}
+                </div>
+                <div class="demo-release-path">
+                  {#each releasePanel.releasePathSteps as step (`release-path-${step.id}`)}
+                    <article class={`demo-release-path-step demo-release-path-step-${step.status}`}>
+                      <div class="demo-release-path-step-header">
+                        <h4>{step.label}</h4>
+                        <span class={`demo-release-path-status demo-release-path-status-${step.status}`}>{step.status}</span>
+                      </div>
+                      <p>{step.summary}</p>
+                      <p class="demo-release-path-detail">{step.detail}</p>
+                      {#if step.action}
+                        <button class="demo-release-path-action" type="button" on:click={() => runReleaseAction(step.action!)} disabled={releaseActionBusyId === step.action.id}>
+                          {releaseActionBusyId === step.action.id ? `Running ${step.action.label}...` : step.action.label}
+                        </button>
+                      {/if}
                     </article>
                   {/each}
                 </div>
-                <ul class="demo-detail-list">
-                  {#each (sortedSyncSources.length > 0 ? sortedSyncSources.flatMap((source) => [formatSyncSourceSummary(source), ...formatSyncSourceDetails(source)]) : ["No sync sources configured yet."]) as line}
-                    <li>{line}</li>
-                  {/each}
-                </ul>
-                <div class="demo-actions">
-                  {#each sortedSyncSources as source}
-                    <details class:demo-sync-action-failed={source.status === "failed"} class="demo-sync-action-details" open={source.status === "failed"}>
-                      <summary>{formatSyncSourceCollapsedSummary(source)}</summary>
-                      <div class="demo-sync-action-group">
-                        <div class="demo-actions">
-                          <button on:click={() => syncSource(source.id)} type="button">Sync {source.label}</button>
-                          <button on:click={() => queueBackgroundSourceSync(source.id)} type="button">Queue {source.label}</button>
-                          {#if source.status === "failed"}
-                            <button on:click={() => syncSource(source.id)} type="button">Retry now</button>
-                            <button on:click={() => queueBackgroundSourceSync(source.id)} type="button">Retry in background</button>
-                          {/if}
-                        </div>
-                        <p class="demo-metadata demo-sync-action-meta">{formatSyncSourceActionSummary(source)}</p>
-                        {#if formatSyncSourceActionBadges(source).length > 0}
-                          <div class="demo-badge-row">
-                            {#each formatSyncSourceActionBadges(source) as badge, index (`${source.id}-${index}`)}
-                              <span class="demo-badge">{badge}</span>
-                            {/each}
-                          </div>
-                        {/if}
+              </div>
+              <div class="demo-release-action-rail">
+                <span class="demo-release-action-label">Live actions</span>
+                <div class="demo-release-action-state">
+                  <span class="demo-release-action-state-badge">Scenario · {releasePanel.scenario?.label ?? "Blocked stable lane"}</span>
+                  <span class={`demo-release-action-delta-badge demo-release-action-delta-badge-${releasePanel.releaseRailDeltaChip.tone}`}>{releasePanel.releaseRailDeltaChip.label}</span>
+                                  <span class={`demo-release-action-delta-badge demo-release-action-delta-badge-${releasePanel.railIncidentPostureChip.tone}`}>Incident posture · {releasePanel.railIncidentPostureChip.label}</span>
+                  <span class={`demo-release-action-delta-badge demo-release-action-delta-badge-${releasePanel.railGateChip.tone}`}>Gate posture · {releasePanel.railGateChip.label}</span>
+                  <span class={`demo-release-action-delta-badge demo-release-action-delta-badge-${releasePanel.railApprovalChip.tone}`}>Approval posture · {releasePanel.railApprovalChip.label}</span>
+                  <span class={`demo-release-action-delta-badge demo-release-action-delta-badge-${releasePanel.railRemediationChip.tone}`}>Remediation posture · {releasePanel.railRemediationChip.label}</span>
+                </div>
+                <div class="demo-release-rail-meta">{#if releasePanel.releaseRailUpdateSource.targetCardId || releasePanel.releaseRailUpdateSource.targetActivityId}<a class={`demo-release-activity-lane demo-release-activity-lane-${releasePanel.releaseRailUpdateSource.tone}`} href={`#${releasePanel.releaseRailUpdateSource.targetActivityId ?? releasePanel.releaseRailUpdateSource.targetCardId}`} on:click={() => openReleaseDiagnosticsTarget(releasePanel.releaseRailUpdateSource.targetCardId)}>{releasePanel.releaseRailUpdateSource.label}</a>{:else}<span class={`demo-release-activity-lane demo-release-activity-lane-${releasePanel.releaseRailUpdateSource.tone}`}>{releasePanel.releaseRailUpdateSource.label}</span>{/if}<p class="demo-release-updated">{releasePanel.releaseRailUpdatedLabel}</p></div>
+                {#if releasePendingLabel}
+                  <p class="demo-release-pending">{releasePendingLabel}</p>
+                {/if}
+                {#if releasePanel.latestReleaseAction}
+                  <details class={`demo-collapsible demo-release-action-latest demo-release-action-latest-${releasePanel.latestReleaseAction.tone}`}>
+                    <summary>Latest action · {releasePanel.latestReleaseAction.title}</summary>
+                    {#if releasePanel.latestReleaseAction.detail}
+                      <p>{releasePanel.latestReleaseAction.detail}</p>
+                    {/if}
+                    <p class="demo-release-next-step">{releasePanel.latestReleaseAction.nextStep}</p>
+                  </details>
+                {/if}
+                <details class={`demo-collapsible demo-release-rail-callout demo-release-rail-callout-${releasePanel.releaseRailCallout.tone}`}>
+                  <summary>{releasePanel.releaseRailCallout.title}</summary>
+                  <p>{releasePanel.releaseRailCallout.message}</p>
+                  {#if releasePanel.releaseRailCallout.detail}
+                    <p>{releasePanel.releaseRailCallout.detail}</p>
+                  {/if}
+                  <p class="demo-release-next-step">{releasePanel.releaseRailCallout.nextStep}</p>
+                </details>
+                {#if releasePanel.recentReleaseActivity.length}
+                  <div class="demo-release-activity-stack">
+                    <span class="demo-release-action-subtitle">Recent activity</span>
+                    {#each releasePanel.recentReleaseActivity as entry (`release-activity-${entry.laneLabel}-${entry.title}-${entry.detail}`)}
+                      <a id={entry.id} class={`demo-release-activity demo-release-activity-${entry.tone}`} href={`#${entry.targetCardId}`} on:click={() => openReleaseDiagnosticsTarget(entry.targetCardId)}><span class={`demo-release-activity-lane demo-release-activity-lane-${entry.tone}`}>{entry.laneLabel}</span><strong>{entry.title}</strong>{entry.detail ? ` · ${entry.detail}` : ""}</a>
+                    {/each}
+                  </div>
+                {/if}
+                <div class="demo-release-action-group">
+                  <span class="demo-release-action-subtitle">Release</span>
+                  <div class="demo-release-actions">
+                    {#each releasePanel.primaryReleaseActions as action (`release-action-${action.id}`)}
+                      <button
+                        class={`demo-release-action demo-release-action-${action.tone ?? "neutral"}`}
+                        type="button"
+                        on:click={() => runReleaseAction(action)}
+                        disabled={releaseActionBusyId === action.id}
+                        title={action.description}
+                      >
+                        {releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label}
+                      </button>
+                    {/each}
+                  </div>
+                  {#if releasePanel.secondaryReleaseActions.length > 0}
+                    <details class="demo-collapsible demo-release-more-actions">
+                      <summary>More actions</summary>
+                      <div class="demo-release-actions">
+                        {#each releasePanel.secondaryReleaseActions as action (`secondary-release-action-${action.id}`)}
+                          <button
+                            class={`demo-release-action demo-release-action-${action.tone ?? "neutral"}`}
+                            type="button"
+                            on:click={() => runReleaseAction(action)}
+                            disabled={releaseActionBusyId === action.id}
+                            title={action.description}
+                          >
+                            {releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label}
+                          </button>
+                        {/each}
                       </div>
                     </details>
+                  {/if}
+                </div>
+                {#if releasePanel.handoffActions.length > 0}
+                  <div class="demo-release-action-group">
+                    <span class="demo-release-action-subtitle">Handoff</span>
+                    <div class="demo-release-actions">
+                      {#each releasePanel.handoffActions as action (`handoff-action-${action.id}`)}
+                        <button
+                          class={`demo-release-action demo-release-action-${action.tone ?? "neutral"}`}
+                          type="button"
+                          on:click={() => runReleaseAction(action)}
+                          disabled={releaseActionBusyId === action.id}
+                          title={action.description}
+                        >
+                          {releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label}
+                        </button>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+                <div class="demo-release-action-group">
+                  <span class="demo-release-action-subtitle">Evidence drills</span>
+                  <div class="demo-release-actions">
+                    {#each releasePanel.releaseEvidenceDrills as drill (`release-drill-${drill.id}`)}
+                      <button
+                        class={`demo-release-action demo-release-action-${drill.active ? "primary" : "neutral"}`}
+                        type="button"
+                        on:click={() => runReleaseEvidenceDrill(drill)}
+                      >
+                        {drill.label}
+                      </button>
+                    {/each}
+                  </div>
+                  {#each releasePanel.releaseEvidenceDrills as drill (`release-drill-detail-${drill.id}`)}
+                    <p class="demo-metadata"><strong>{drill.classificationLabel}:</strong> {drill.summary} Expected source · {drill.expectedSource}</p>
+                    <p class="demo-metadata">{drill.traceExpectation}</p>
+                  {/each}
+                </div>
+              </div>
+            </div>
+            <div class="demo-stat-grid">
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Stable baseline</span>
+                <strong>{releasePanel.stableBaseline?.label ?? "Not promoted"}</strong>
+                <p>
+                  {#if releasePanel.stableBaseline}
+                    {releasePanel.stableBaseline.retrievalId} · v{releasePanel.stableBaseline.version}{releasePanel.stableBaseline.approvedBy ? ` · approved by ${releasePanel.stableBaseline.approvedBy}` : ""}
+                  {:else}
+                    No stable baseline has been promoted yet.
+                  {/if}
+                </p>
+              </article>
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Canary baseline</span>
+                <strong>{releasePanel.canaryBaseline?.label ?? "Not promoted"}</strong>
+                <p>
+                  {#if releasePanel.canaryBaseline}
+                    {releasePanel.canaryBaseline.retrievalId} · v{releasePanel.canaryBaseline.version}{releasePanel.canaryBaseline.approvedAt ? ` · ${formatDate(releasePanel.canaryBaseline.approvedAt)}` : ""}
+                  {:else}
+                    No canary baseline has been promoted yet.
+                  {/if}
+                </p>
+              </article>
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Stable readiness</span>
+                <strong>{releasePanel.stableReadiness?.ready ? "Ready" : "Blocked"}</strong>
+                <p>
+                  {#if releasePanel.stableReadiness}
+                    {releasePanel.stableReadinessStatSummary}
+                  {:else}
+                    No stable lane readiness snapshot available.
+                  {/if}
+                </p>
+              </article>
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Remediation guardrails</span>
+                <strong>{releasePanel.remediationSummary ? `${releasePanel.remediationSummary.guardrailBlockedCount} blocked · ${releasePanel.remediationSummary.replayCount} replays` : "No remediation executions"}</strong>
+                <p>{releasePanel.remediationGuardrailSummary}</p>
+              </article>
+            </div>
+            <p class={`demo-release-card-state demo-release-card-state-${releasePanel.releaseStateBadge.tone}`}>State · {releasePanel.releaseStateBadge.label}</p>
+            <div class="demo-result-grid">
+              <article class="demo-result-item">
+                <h4>Blocker comparison</h4>
+                <p class="demo-score-headline">{releasePanel.scenarioClassificationLabel ? `Active blocker · ${releasePanel.scenarioClassificationLabel}` : "Compare both blocker classes"}</p>
+                <div class="demo-result-grid">
+                  {#each releasePanel.releaseBlockerComparisonCards as card (`blocker-card-${card.id}`)}
+                    <article class="demo-result-item">
+                      <h4>{card.label}{card.active ? " · active" : ""}</h4>
+                      {#each card.detailLines as line (`${card.id}-${line}`)}
+                        <p class="demo-metadata">{line}</p>
+                      {/each}
+                    </article>
+                  {/each}
+                </div>
+              </article>
+              <article class="demo-result-item" id="release-runtime-history-card">
+                <h4>Runtime planner history</h4>
+                <p class="demo-score-headline">{releasePanel.runtimePlannerHistorySummary}</p>
+                {#each releasePanel.runtimePlannerHistoryLines as line (`runtime-planner-${line}`)}
+                  <p class="demo-metadata">{line}</p>
+                {/each}
+              </article>
+              <article class="demo-result-item" id="release-benchmark-snapshots-card">
+                <h4>Adaptive planner benchmark</h4>
+                <p class="demo-score-headline">{releasePanel.benchmarkSnapshotSummary}</p>
+                {#each releasePanel.benchmarkSnapshotLines as line (`benchmark-snapshot-${line}`)}
+                  <p class="demo-metadata">{line}</p>
+                {/each}
+              </article>
+              <article class="demo-result-item" id="release-active-deltas-card">
+                <h4>Active blocker deltas</h4>
+                <p class="demo-score-headline">{releasePanel.activeBlockerDeltaSummary}</p>
+                {#each releasePanel.activeBlockerDeltaLines as line (`active-blocker-delta-${line}`)}
+                  <p class="demo-metadata">{line}</p>
+                {/each}
+              </article>
+              <article class="demo-result-item" id="release-lane-readiness-card">
+                <h4>Lane readiness</h4>
+                <div class="demo-key-value-grid">
+                  {#each releasePanel.laneReadinessEntries as entry (`lane-readiness-${entry.targetRolloutLabel}`)}
+                    <div class="demo-key-value-row">
+                      <span>{entry.targetRolloutLabel ?? "lane"}</span>
+                      <strong>{entry.ready ? "ready" : "blocked"}</strong>
+                    </div>
+                    {#each entry.reasons.slice(0, 2) as reason (`${entry.targetRolloutLabel}-${reason}`)}
+                      <p class="demo-metadata">{reason}</p>
+                    {/each}
                   {/each}
                 </div>
               </article>
               <article class="demo-result-item">
-                <h4>Admin Jobs</h4>
-                <ul class="demo-detail-list">
-                  {#each (formatAdminJobList($opsAdminJobsStore).length > 0 ? formatAdminJobList($opsAdminJobsStore) : ["No admin jobs recorded yet."]) as line}
-                    <li>{line}</li>
-                  {/each}
-                </ul>
+                <h4>Lane recommendations</h4>
+                <div class="demo-insight-stack">
+                  {#if releasePanel.releaseRecommendations.length > 0}
+                    {#each releasePanel.releaseRecommendations as entry (`${entry.groupKey}:${entry.targetRolloutLabel}:${entry.recommendedAction}`)}
+                      <p class="demo-insight-card"><strong>{entry.targetRolloutLabel ?? "lane"} · {entry.classificationLabel ?? "release recommendation"}:</strong> {entry.recommendedAction.replaceAll("_", " ")}{entry.reasons[0] ? ` · ${entry.reasons[0]}` : ""}</p>
+                    {/each}
+                  {:else}
+                    <p class="demo-insight-card">No lane recommendations are available yet.</p>
+                  {/if}
+                </div>
               </article>
-              <article class="demo-result-item">
-                <h4>Recent Admin Actions</h4>
-                <ul class="demo-detail-list">
-                  {#each (formatAdminActionList($opsAdminActionsStore).length > 0 ? formatAdminActionList($opsAdminActionsStore) : ["No admin actions recorded yet."]) as line}
-                    <li>{line}</li>
+              <article class="demo-result-item" id="release-open-incidents-card">
+                <h4>Open incidents</h4>
+                <p class="demo-score-headline">{releasePanel.incidentSummaryLabel}</p>
+                {#each releasePanel.incidentClassificationDetailLines as line (`incident-detail-${line}`)}
+                  <p class="demo-metadata">{line}</p>
+                {/each}
+                <div class="demo-insight-stack">
+                  {#each releasePanel.recentIncidents.slice(0, 3) as incident (`${incident.kind}:${incident.triggeredAt}`)}
+                    <p class="demo-insight-card"><strong>{incident.targetRolloutLabel ?? "lane"} · {incident.kind} · {incident.classificationLabel ?? "general regression"}</strong><br />{incident.message}</p>
                   {/each}
-                </ul>
+                </div>
+              </article>
+              <article class="demo-result-item" id="release-remediation-history-card">
+                <h4>Remediation execution history</h4>
+                {#each releasePanel.remediationDetailLines as line (`remediation-detail-${line}`)}
+                  <p class="demo-metadata">{line}</p>
+                {/each}
+                <div class="demo-key-value-grid">
+                  {#each releasePanel.recentIncidentRemediationExecutions.slice(0, 4) as entry, index (`remediation-execution-${index}`)}
+                    <div class="demo-key-value-row">
+                      <span>{entry.action?.kind ?? "execution"}</span>
+                      <strong>{entry.code}{entry.idempotentReplay ? " · replay" : ""}{entry.blockedByGuardrail ? " · blocked" : ""}</strong>
+                    </div>
+                  {/each}
+                </div>
               </article>
             </div>
+            <details class="demo-collapsible demo-release-diagnostics" id="release-diagnostics">
+              <summary>Advanced release diagnostics · {releasePanel.releaseDiagnosticsSummary}</summary>
+              <p class="demo-release-updated">{releasePanel.releaseDiagnosticsUpdatedLabel}</p>
+              <p class={`demo-release-card-state demo-release-card-state-${releasePanel.releaseStateBadge.tone}`}>State · {releasePanel.releaseStateBadge.label}</p>
+              <div class="demo-result-grid">
+              <article class="demo-result-item" id="release-promotion-candidates-card">
+                <h4>Promotion candidates</h4>
+                <div class="demo-key-value-grid">
+                  {#if releasePanel.releaseCandidates.length > 0}
+                    {#each releasePanel.releaseCandidates.slice(0, 3) as candidate, index (`promotion-candidate-${candidate.targetRolloutLabel}-${index}`)}
+                      <div class="demo-key-value-row">
+                        <span>{candidate.targetRolloutLabel ?? "lane"} · {candidate.candidateRetrievalId ?? "candidate"}</span>
+                        <strong>{candidate.reviewStatus}</strong>
+                      </div>
+                      <p class="demo-metadata">{candidate.reasons[0] ?? "No release reasons recorded."}</p>
+                    {/each}
+                  {:else}
+                    <p class="demo-metadata">No promotion candidates recorded yet.</p>
+                  {/if}
+                </div>
+              </article>
+              <article class="demo-result-item">
+                <h4>Release alerts</h4>
+                <div class="demo-insight-stack">
+                  {#if releasePanel.releaseAlerts.length > 0}
+                    {#each releasePanel.releaseAlerts.slice(0, 4) as alert, index (`${alert.kind}-${index}`)}
+                      <p class="demo-insight-card"><strong>{alert.targetRolloutLabel ?? "lane"} · {alert.kind} · {alert.classificationLabel ?? "general regression"}</strong><br />{alert.message ?? "No alert detail"}</p>
+                    {/each}
+                  {:else}
+                    <p class="demo-insight-card">No release alerts are active.</p>
+                  {/if}
+                </div>
+              </article>
+              <article class="demo-result-item" id="release-policy-history-card">
+                <h4>Policy history</h4>
+                {#each releasePanel.policyHistoryDetailLines as line (`policy-detail-${line}`)}
+                  <p class="demo-metadata">{line}</p>
+                {/each}
+                <div class="demo-insight-stack">
+                  {#if releasePanel.policyHistoryEntries.length > 0}
+                    {#each releasePanel.policyHistoryEntries as entry (entry.id)}
+                      <p class="demo-insight-card"><strong>{entry.title}</strong><br />{entry.detail}</p>
+                    {/each}
+                  {:else}
+                    <p class="demo-insight-card">{releasePanel.policyHistorySummary}</p>
+                  {/if}
+                </div>
+              </article>
+                            <article class="demo-result-item" id="release-audit-surfaces-card">
+                <h4>Audit surfaces</h4>
+                <div class="demo-insight-stack">
+                  {#if releasePanel.auditSurfaceEntries.length > 0}
+                    {#each releasePanel.auditSurfaceEntries as entry (entry.id)}
+                      <p class="demo-insight-card"><strong>{entry.title}</strong><br />{entry.detail}</p>
+                    {/each}
+                  {:else}
+                    <p class="demo-insight-card">{releasePanel.auditSurfaceSummary}</p>
+                  {/if}
+                </div>
+              </article>
+              <article class="demo-result-item" id="release-polling-surfaces-card">
+                <h4>Polling surfaces</h4>
+                <div class="demo-insight-stack">
+                  {#each releasePanel.pollingSurfaceEntries as entry (entry.id)}
+                    <p class="demo-insight-card"><strong>{entry.title}</strong><br />{entry.detail}</p>
+                  {/each}
+                </div>
+              </article>
+<article class="demo-result-item" id="release-handoff-incidents-card">
+                <h4>Handoff incidents</h4>
+                <p class="demo-score-headline">{releasePanel.stableHandoffIncidentSummaryLabel}</p>
+                <div class="demo-insight-stack">
+                  {#if releasePanel.handoffIncidents.length > 0}
+                    {#each releasePanel.handoffIncidents.slice(0, 2) as incident, index (`${incident.id ?? index}`)}
+                      <p class="demo-insight-card"><strong>{incident.status ?? "incident"} · {incident.kind ?? "handoff_stale"}</strong><br />{incident.message ?? "No handoff incident detail"}</p>
+                    {/each}
+                  {:else}
+                    <p class="demo-insight-card">No handoff incidents recorded.</p>
+                  {/if}
+                  {#each releasePanel.handoffIncidentHistory.slice(0, 3) as entry, index (`${entry.incidentId ?? index}-${entry.recordedAt ?? 0}`)}
+                    <p class="demo-insight-card"><strong>{entry.action ?? "history"}</strong><br />{[entry.notes, entry.recordedAt ? new Date(entry.recordedAt).toLocaleString() : undefined].filter(Boolean).join(" · ")}</p>
+                  {/each}
+                </div>
+              </article>
+              <article class="demo-result-item" id="release-stable-handoff-card">
+                <h4>Stable handoff</h4>
+                <div class="demo-key-value-grid">
+                  {#if releasePanel.stableHandoff}
+                    <div class="demo-key-value-row">
+                      <span>{releasePanel.stableHandoff.sourceRolloutLabel} -&gt; {releasePanel.stableHandoff.targetRolloutLabel}</span>
+                      <strong>{releasePanel.stableHandoff.readyForHandoff ? "ready" : "blocked"}</strong>
+                    </div>
+                    <p class="demo-metadata">
+                      {releasePanel.stableHandoff.candidateRetrievalId ? `candidate ${releasePanel.stableHandoff.candidateRetrievalId}` : "No candidate retrieval is attached to the handoff yet."}
+                      {releasePanel.stableHandoffDecision?.kind ? ` · latest ${releasePanel.stableHandoffDecision.kind}` : ""}
+                    </p>
+                    {#each releasePanel.stableHandoffDisplayReasons as reason (`stable-handoff-${reason}`)}
+                      <p class="demo-metadata">{reason}</p>
+                    {/each}
+                    {#if releasePanel.stableHandoffAutoComplete}
+                      <p class="demo-metadata">
+                        {releasePanel.stableHandoffAutoCompleteLabel}
+                      </p>
+                    {/if}
+                    <div class="demo-key-value-row">
+                      <span>Drift events</span>
+                      <strong>{releasePanel.stableHandoffDrift?.totalCount ?? 0}</strong>
+                    </div>
+                  {:else}
+                    <p class="demo-metadata">No stable handoff posture is available yet.</p>
+                  {/if}
+                </div>
+              </article>
+              </div>
+            </details>
           </div>
           <div class="demo-actions">
             <button on:click={reseed} type="button">Re-seed defaults</button>
@@ -1008,6 +1484,18 @@
               on:click={() => runPresetSearch("Why should metadata be stable?", { source: "guides/metadata.md" }, "preset: metadata discipline", "metadata-discipline")}
             >
               Metadata discipline
+            </button>
+            <button
+              type="button"
+              on:click={() => runPresetSearch("Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?", {}, "preset: late interaction", "hybrid")}
+            >
+              Late interaction / multivector
+            </button>
+            <button
+              type="button"
+              on:click={() => runPresetSearch("Which synced site discovery guide says discovery diagnostics stay visible on the same sync surface as every other source?", { source: "sync/site/demo/sync-fixtures/site/docs/guide" }, "preset: site discovery", "site-discovery")}
+            >
+              Site discovery (sync first)
             </button>
           </div>
           <form class="demo-search-form" on:submit={submitSearch}>
@@ -1117,16 +1605,82 @@
                 Verification rule: a good result shows chunk text that answers the query
                 and a source label you can trace back to the indexed source list.
               </p>
+              {#if searchResults.storyHighlights.length > 0}
+                <div class="demo-results">
+                  <h3>Retrieval Story</h3>
+                  {#each searchResults.storyHighlights as line}<p class="demo-metadata">{line}</p>{/each}
+                </div>
+              {/if}
+              {#if searchResults.attributionOverview.length > 0}
+                <div class="demo-results">
+                  <h3>Attribution Overview</h3>
+                  {#each searchResults.attributionOverview as line}<p class="demo-metadata">{line}</p>{/each}
+                </div>
+              {/if}
+              {#if searchResults.sectionDiagnostics.length > 0}
+                <div class="demo-results">
+                  <h3>Section Diagnostics</h3>
+                  <div class="demo-result-grid">
+                    {#each searchResults.sectionDiagnostics as diagnostic}
+                      <article class="demo-result-item">
+                        <h4>{diagnostic.label}</h4>
+                        <p class="demo-result-source">{diagnostic.summary}</p>
+                        <p class="demo-metadata">{formatSectionDiagnosticChannels(diagnostic)}</p>
+                        <p class="demo-metadata">{formatSectionDiagnosticAttributionFocus(diagnostic)}</p>
+                        <p class="demo-metadata">{formatSectionDiagnosticPipeline(diagnostic)}</p>
+                        {#if formatSectionDiagnosticStageFlow(diagnostic)}<p class="demo-metadata">{formatSectionDiagnosticStageFlow(diagnostic)}</p>{/if}
+                        {#if formatSectionDiagnosticStageBounds(diagnostic)}<p class="demo-metadata">{formatSectionDiagnosticStageBounds(diagnostic)}</p>{/if}
+                        {#each formatSectionDiagnosticStageWeightRows(diagnostic) as line}
+                          <p class="demo-metadata">{line}</p>
+                        {/each}
+                        <p class="demo-metadata">{formatSectionDiagnosticTopEntry(diagnostic)}</p>
+                        {#if formatSectionDiagnosticCompetition(diagnostic)}<p class="demo-metadata">{formatSectionDiagnosticCompetition(diagnostic)}</p>{/if}
+                        {#if formatSectionDiagnosticReasons(diagnostic).length > 0}
+                          <div class="demo-badge-row">
+                            {#each formatSectionDiagnosticReasons(diagnostic) as reason}
+                              <span class="demo-state-chip">{reason}</span>
+                            {/each}
+                            {#each formatSectionDiagnosticStageWeightReasons(diagnostic) as reason}
+                              <span class="demo-state-chip">{reason}</span>
+                            {/each}
+                          </div>
+                        {/if}
+                        {#each formatSectionDiagnosticDistributionRows(diagnostic) as line}
+                          <p class="demo-metadata">{line}</p>
+                        {/each}
+                      </article>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
               <div class="demo-result-grid">
-                {#each searchResults.chunks as chunk}
-                  <article class="demo-result-item">
-                    <h3>{chunk.title}</h3>
-                    <p class="demo-result-score">score: {formatScore(chunk.score)}</p>
-                    <p class="demo-result-source">source: {chunk.source}</p>
-                    {#each formatDemoMetadataSummary(chunk.metadata) as line}
-                    <p class="demo-metadata">{line}</p>
-                  {/each}
-                  <p class="demo-result-text">{chunk.text}</p>
+                {#each searchSectionGroups as group}
+                  <article class="demo-result-item" id={group.targetId}>
+                    <h3>{group.label}</h3>
+                    <p class="demo-result-source">{group.summary}</p>
+                    {#if group.jumps.length > 0}
+                      <div class="demo-badge-row">
+                        {#each group.jumps as jump}
+                          <a class="demo-state-chip" href={`#${jump.targetId}`}>{jump.label}</a>
+                        {/each}
+                      </div>
+                    {/if}
+                    <div class="demo-result-grid">
+                      {#each group.chunks as chunk}
+                        <article class="demo-result-item" id={chunk.targetId}>
+                          <h4>{chunk.title}</h4>
+                          <p class="demo-result-score">score: {formatScore(chunk.score)}</p>
+                          <p class="demo-result-source">source: {chunk.source}</p>
+                          {#if chunk.labels?.contextLabel}<p class="demo-metadata">{chunk.labels.contextLabel}</p>{/if}
+                          {#if chunk.labels?.locatorLabel}<p class="demo-metadata">{chunk.labels.locatorLabel}</p>{/if}
+                          {#if chunk.labels?.provenanceLabel}<p class="demo-metadata">{chunk.labels.provenanceLabel}</p>{/if}
+                          {#each formatDemoMetadataSummary(chunk.metadata) as line}
+                            <p class="demo-metadata">{line}</p>
+                          {/each}
+                          <p class="demo-result-text">{chunk.text}</p>
+                        </article>
+                      {/each}
+                    </div>
                   </article>
                 {/each}
               </div>
@@ -1138,6 +1692,11 @@
             <p class="demo-metadata">
               This section uses <code>createRAG().evaluate</code> to run a built-in benchmark suite. Each case names the source we expect retrieval to surface so you can compare expected, retrieved, and missing evidence directly.
             </p>
+            <div class="demo-badge-row">
+              {#each benchmarkOutcomeRail as entry}
+                <span class="demo-state-chip" title={entry.summary}>{formatBenchmarkOutcomeRailLabel(entry, benchmarkPresetId)}</span>
+              {/each}
+            </div>
             <div class="demo-preset-grid">
               {#each demoEvaluationPresets as preset}
                 <button
@@ -1180,160 +1739,375 @@
 
           <div class="demo-results">
             <h3>Retrieval Quality Tooling</h3>
-            <p class="demo-metadata">This section uses the saved evaluation suite plus first-class retrieval-strategy, reranker comparison, and persisted benchmark history primitives. The suite stays registered in the page state, the leaderboard ranks prior suite runs, and the history cards call out the latest benchmark drift for each strategy.</p>
-            <ul class="demo-detail-list">
+            <p class="demo-metadata">This section now behaves like an evaluation dashboard instead of a log dump. The summary cards answer who is winning, the strategy tab shows why, the grounding tab keeps case drill-downs collapsed until needed, and the history tab only expands when you want regression detail.</p>
+            <div class="demo-pill-row">
               {#each ($evaluationSuitesStore.length > 0 ? $evaluationSuitesStore : [evaluationSuite]) as suite (suite.id)}
-                <li>{suite.label ?? suite.id} · {suite.input.cases.length} case(s){suite.description ? ` · ${suite.description}` : ""}</li>
+                <span class="demo-pill">{suite.label ?? suite.id} · {suite.input.cases.length} cases</span>
               {/each}
-            </ul>
+            </div>
             <div class="demo-actions">
               <button disabled={$evaluationIsEvaluatingStore} on:click={runSavedSuite} type="button">{$evaluationIsEvaluatingStore ? "Running saved suite..." : "Run saved suite"}</button>
             </div>
-            <div class="demo-result-grid">
-              <article class="demo-result-item">
-                <h4>Suite leaderboard</h4>
-                <ul class="demo-detail-list">
-                  {#if $evaluationLeaderboardStore.length > 0}
-                    {#each $evaluationLeaderboardStore as entry (entry.runId)}
-                      <li>{formatEvaluationLeaderboardEntry(entry)}</li>
-                    {/each}
-                  {:else}
-                    <li>Run the saved suite to rank workflow benchmark runs.</li>
-                  {/if}
-                </ul>
+            <div class="demo-tab-row">
+              {#each ["overview", "strategies", "grounding", "history"] as view}
+                <button class={qualityView === view ? "demo-tab demo-tab-active" : "demo-tab"} on:click={() => qualityView = view as typeof qualityView} type="button">{view[0].toUpperCase() + view.slice(1)}</button>
+              {/each}
+            </div>
+            <div class="demo-stat-grid">
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Saved suite leader</span>
+                <strong>{$evaluationLeaderboardStore[0]?.label ?? "Run the saved suite"}</strong>
+                <p>{$evaluationLeaderboardStore[0] ? formatEvaluationLeaderboardEntry($evaluationLeaderboardStore[0]) : "The leaderboard will rank repeated workflow benchmark runs."}</p>
               </article>
-              <article class="demo-result-item">
-                <h4>Quality winners</h4>
-                <ul class="demo-detail-list">
-                  {#if qualityData}
-                    {#each [...formatRetrievalComparisonSummary(qualityData.retrievalComparison), ...formatRerankerComparisonSummary(qualityData.rerankerComparison), formatGroundingEvaluationSummary(qualityData.groundingEvaluation), ...(qualityData.providerGroundingComparison ? formatGroundingProviderSummary(qualityData.providerGroundingComparison) : ["Configure an AI provider to compare real model-grounded answers."])] as line, index (`quality-summary-${index}`)}
-                      <li>{line}</li>
-                    {/each}
-                  {:else}
-                    <li>Loading quality comparison...</li>
-                  {/if}
-                </ul>
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Retrieval winner</span>
+                <strong>{qualityData ? formatRetrievalComparisonOverviewPresentation(qualityData.retrievalComparison).winnerLabel : "Loading comparison"}</strong>
+                <p>{qualityData ? formatRetrievalComparisonOverviewPresentation(qualityData.retrievalComparison).summary : "Running retrieval comparison..."}</p>
+              </article>
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Reranker winner</span>
+                <strong>{qualityData ? formatRerankerComparisonOverviewPresentation(qualityData.rerankerComparison).winnerLabel : "Loading comparison"}</strong>
+                <p>{qualityData ? formatRerankerComparisonOverviewPresentation(qualityData.rerankerComparison).summary : "Running reranker comparison..."}</p>
+              </article>
+              <article class="demo-stat-card">
+                <span class="demo-stat-label">Grounding winner</span>
+                <strong>{qualityData?.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison).winnerLabel : "Stored workflow evaluation"}</strong>
+                <p>{qualityData?.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison).summary : qualityData ? formatGroundingEvaluationSummary(qualityData.groundingEvaluation) : "Loading grounding comparison..."}</p>
               </article>
             </div>
             {#if qualityData}
-              <div class="demo-result-grid">
-                {#each qualityData.retrievalComparison.entries as entry (entry.retrievalId)}
-                  <article class="demo-result-item">
-                    <h4>{entry.label}</h4>
-                    <p class="demo-metadata">{formatRetrievalComparisonEntry(entry)}</p>
-                  </article>
-                {/each}
-              </div>
-              <div class="demo-result-grid">
-                {#each qualityData.rerankerComparison.entries as entry (entry.rerankerId)}
-                  <article class="demo-result-item">
-                    <h4>{entry.label}</h4>
-                    <p class="demo-metadata">{formatRerankerComparisonEntry(entry)}</p>
-                  </article>
-                {/each}
-              </div>
-              <div class="demo-result-grid">
-                {#each qualityData.groundingEvaluation.cases as entry (`grounding-${entry.caseId}`)}
-                  <article class="demo-result-item">
-                    <h4>{entry.label ?? entry.caseId}</h4>
-                    <p class="demo-metadata">{formatGroundingEvaluationCase(entry)}</p>
-                    <ul class="demo-detail-list">
-                      {#each formatGroundingEvaluationDetails(entry) as line, index (`${entry.caseId}-${index}`)}
-                        <li>{line}</li>
-                      {/each}
-                    </ul>
-                  </article>
-                {/each}
-              </div>
-              {#if qualityData.providerGroundingComparison}
+              {#if qualityView === "overview"}
                 <div class="demo-result-grid">
-                  {#each qualityData.providerGroundingComparison.entries as entry (`provider-grounding-${entry.providerKey}`)}
-                    <article class="demo-result-item">
-                      <h4>{entry.label}</h4>
-                      <p class="demo-metadata">{formatGroundingProviderEntry(entry)}</p>
+                  <article class="demo-result-item">
+                    <h4>Winners at a glance</h4>
+                    <div class="demo-key-value-grid">
+                      {#each formatQualityOverviewPresentation({ retrievalComparison: qualityData.retrievalComparison, rerankerComparison: qualityData.rerankerComparison, groundingEvaluation: qualityData.groundingEvaluation, groundingProviderOverview: qualityData.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison) : undefined }).rows as row, index (`quality-overview-${index}`)}
+                        <div class="demo-key-value-row">
+                          <span>{row.label}</span>
+                          <strong>{row.value}</strong>
+                        </div>
+                      {/each}
+                    </div>
+                  </article>
+                  <article class="demo-result-item">
+                    <h4>Why this matters</h4>
+                    <div class="demo-insight-stack">
+                      {#each formatQualityOverviewNotes() as insight}
+                        <p class="demo-insight-card">{insight}</p>
+                      {/each}
+                    </div>
+                  </article>
+                </div>
+              {/if}
+              {#if qualityView === "strategies"}
+                <div class="demo-result-grid">
+                  {#each formatRetrievalComparisonPresentations(qualityData.retrievalComparison) as card (card.id)}
+                    <article class="demo-result-item demo-score-card">
+                      <h4>{card.label}</h4>
+                      <p class="demo-score-headline">{card.summary}</p>
+                      <div class="demo-key-value-grid demo-trace-summary-grid">
+                        {#each card.traceSummaryRows as row (`${card.id}-${row.label}`)}
+                          <div class="demo-key-value-row">
+                            <span>{row.label}</span>
+                            <strong>{row.value}</strong>
+                          </div>
+                        {/each}
+                      </div>
+                      <details class="demo-collapsible demo-trace-diff">
+                        <summary>
+                          <span>Trace diff vs leader</span>
+                          <strong>{card.diffLabel}</strong>
+                        </summary>
+                        <div class="demo-collapsible-content demo-trace-diff-grid">
+                          {#each card.diffRows as row (`${card.id}-diff-${row.label}`)}
+                            <div class="demo-key-value-row">
+                              <span>{row.label}</span>
+                              <strong>{row.value}</strong>
+                            </div>
+                          {/each}
+                        </div>
+                      </details>
                     </article>
                   {/each}
                 </div>
                 <div class="demo-result-grid">
-                  {#each qualityData.providerGroundingComparison.entries as entry (`provider-grounding-history-${entry.providerKey}`)}
-                    <article class="demo-result-item">
-                      <h4>{entry.label} history</h4>
-                      <ul class="demo-detail-list">
-                        {#each [...formatGroundingHistorySummary(qualityData.providerGroundingHistories[entry.providerKey]), ...formatGroundingHistoryDiff(qualityData.providerGroundingHistories[entry.providerKey]), ...formatGroundingHistorySnapshots(qualityData.providerGroundingHistories[entry.providerKey])] as line, index (`${entry.providerKey}-history-${index}`)}
-                          <li>{line}</li>
+                  {#each formatRerankerComparisonPresentations(qualityData.rerankerComparison) as card (card.id)}
+                    <article class="demo-result-item demo-score-card">
+                      <h4>{card.label}</h4>
+                      <p class="demo-score-headline">{card.summary}</p>
+                      <div class="demo-key-value-grid demo-trace-summary-grid">
+                        {#each card.traceSummaryRows as row (`${card.id}-${row.label}`)}
+                          <div class="demo-key-value-row">
+                            <span>{row.label}</span>
+                            <strong>{row.value}</strong>
+                          </div>
                         {/each}
-                      </ul>
-                    </article>
-                  {/each}
-                </div>
-                <div class="demo-result-grid">
-                  {#each qualityData.providerGroundingComparison.entries as entry (`provider-grounding-artifact-trail-${entry.providerKey}`)}
-                    <article class="demo-result-item">
-                      <h4>{entry.label} artifact trail</h4>
-                      <ul class="demo-detail-list">
-                        {#each formatGroundingHistoryArtifactTrail(qualityData.providerGroundingHistories[entry.providerKey]) as line, index (`${entry.providerKey}-trail-${index}`)}
-                          <li>{line}</li>
-                        {/each}
-                      </ul>
-                    </article>
-                  {/each}
-                </div>
-                <div class="demo-result-grid">
-                  <article class="demo-result-item">
-                    <h4>Hardest grounding cases</h4>
-                    <ul class="demo-detail-list">
-                      {#each qualityData.providerGroundingComparison.difficultyLeaderboard as entry (`provider-grounding-difficulty-${entry.caseId}`)}
-                        <li>{formatGroundingCaseDifficultyEntry(entry)}</li>
-                      {/each}
-                    </ul>
-                  </article>
-                  <article class="demo-result-item">
-                    <h4>Grounding difficulty history</h4>
-                    <ul class="demo-detail-list">
-                      {#each [...formatGroundingDifficultyHistorySummary(qualityData.providerGroundingDifficultyHistory), ...formatGroundingDifficultyHistoryDiff(qualityData.providerGroundingDifficultyHistory)] as line, index (`provider-grounding-difficulty-history-${index}`)}
-                        <li>{line}</li>
-                      {/each}
-                    </ul>
-                  </article>
-                </div>
-                <div class="demo-result-grid">
-                  {#each qualityData.providerGroundingComparison.caseComparisons as entry (`provider-grounding-case-${entry.caseId}`)}
-                    <article class="demo-result-item">
-                      <h4>{entry.label}</h4>
-                      <ul class="demo-detail-list">
-                        {#each [...formatGroundingProviderCaseSummary(entry), ...entry.entries.flatMap((candidate) => [formatGroundingProviderCaseEntry(candidate), ...formatGroundingProviderCaseDetails(candidate)])] as line, index (`${entry.caseId}-${index}`)}
-                          <li>{line}</li>
-                        {/each}
-                      </ul>
+                      </div>
+                      <details class="demo-collapsible demo-trace-diff">
+                        <summary>
+                          <span>Trace diff vs leader</span>
+                          <strong>{card.diffLabel}</strong>
+                        </summary>
+                        <div class="demo-collapsible-content demo-trace-diff-grid">
+                          {#each card.diffRows as row (`${card.id}-diff-${row.label}`)}
+                            <div class="demo-key-value-row">
+                              <span>{row.label}</span>
+                              <strong>{row.value}</strong>
+                            </div>
+                          {/each}
+                        </div>
+                      </details>
                     </article>
                   {/each}
                 </div>
               {/if}
-              <div class="demo-result-grid">
-                {#each qualityData.retrievalComparison.entries as entry (entry.retrievalId)}
-                  <article class="demo-result-item">
-                    <h4>{entry.label} history</h4>
-                    <ul class="demo-detail-list">
-                      {#each [...formatEvaluationHistorySummary(qualityData.retrievalHistories[entry.retrievalId]), ...formatEvaluationHistoryDiff(qualityData.retrievalHistories[entry.retrievalId])] as line, index (`${entry.retrievalId}-${index}`)}
-                        <li>{line}</li>
-                      {/each}
-                    </ul>
-                  </article>
-                {/each}
-              </div>
-              <div class="demo-result-grid">
-                {#each qualityData.rerankerComparison.entries as entry (entry.rerankerId)}
-                  <article class="demo-result-item">
-                    <h4>{entry.label} history</h4>
-                    <ul class="demo-detail-list">
-                      {#each [...formatEvaluationHistorySummary(qualityData.rerankerHistories[entry.rerankerId]), ...formatEvaluationHistoryDiff(qualityData.rerankerHistories[entry.rerankerId])] as line, index (`${entry.rerankerId}-${index}`)}
-                        <li>{line}</li>
-                      {/each}
-                    </ul>
-                  </article>
+              {#if qualityView === "grounding"}
+                <div class="demo-result-grid">
+                  {#each qualityData.groundingEvaluation.cases as entry (`grounding-${entry.caseId}`)}
+                    <details class="demo-result-item demo-collapsible">
+                      <summary>
+                        <span>{entry.label ?? entry.caseId}</span>
+                        <strong>{formatGroundingEvaluationCase(entry)}</strong>
+                      </summary>
+                      <div class="demo-collapsible-content">
+                        {#each formatGroundingEvaluationDetails(entry) as line, index (`${entry.caseId}-${index}`)}
+                          <p class="demo-metadata">{line}</p>
+                        {/each}
+                      </div>
+                    </details>
+                  {/each}
+                </div>
+                {#if qualityData.providerGroundingComparison}
+                  <div class="demo-result-grid">
+                    {#each formatGroundingProviderPresentations(qualityData.providerGroundingComparison.entries) as card (`provider-grounding-${card.id}`)}
+                      <article class="demo-result-item demo-score-card">
+                        <h4>{card.label}</h4>
+                        <p class="demo-score-headline">{card.summary}</p>
+                      </article>
+                    {/each}
+                    <article class="demo-result-item">
+                      <h4>Hardest cases</h4>
+                      <div class="demo-pill-row">
+                        {#each qualityData.providerGroundingComparison.difficultyLeaderboard as entry (`provider-grounding-difficulty-${entry.caseId}`)}
+                          <span class="demo-pill">{formatGroundingCaseDifficultyEntry(entry)}</span>
+                        {/each}
+                      </div>
+                    </article>
+                  </div>
+                  <div class="demo-result-grid">
+                    {#each formatGroundingProviderCasePresentations(qualityData.providerGroundingComparison.caseComparisons) as card (`provider-grounding-case-${card.caseId}`)}
+                      <details class="demo-result-item demo-collapsible">
+                        <summary>
+                          <span>{card.label}</span>
+                          <strong>{card.summary}</strong>
+                        </summary>
+                        <div class="demo-collapsible-content">
+                          {#each card.rows as row (`${card.caseId}-${row.label}`)}
+                            <div class="demo-key-value-row">
+                              <span>{row.label}</span>
+                              <strong>{row.value}</strong>
+                            </div>
+                          {/each}
+                        </div>
+                      </details>
+                    {/each}
+                  </div>
+                {/if}
+              {/if}
+              {#if qualityView === "history"}
+                <div class="demo-result-grid">
+                  {#each qualityData.retrievalComparison.entries as entry (entry.retrievalId)}
+                    <details class="demo-result-item demo-collapsible">
+                      <summary>
+                        <span>{entry.label} history</span>
+                        <strong>{formatEvaluationHistorySummary(qualityData.retrievalHistories[entry.retrievalId])[0] ?? "No runs yet"}</strong>
+                      </summary>
+                      <div class="demo-collapsible-content">
+                        {#each formatEvaluationHistoryRows(qualityData.retrievalHistories[entry.retrievalId]) as row (`${entry.retrievalId}-${row.label}`)}
+                          <div class="demo-key-value-row"><span>{row.label}</span><strong>{row.value}</strong></div>
+                        {/each}
+                        <div class="demo-result-grid">
+                          {#each formatEvaluationHistoryTracePresentations(qualityData.retrievalHistories[entry.retrievalId]) as traceCase (`${entry.retrievalId}-trace-${traceCase.caseId}`)}
+                            <details class="demo-result-item demo-collapsible">
+                              <summary><span>{traceCase.label}</span><strong>{traceCase.summary}</strong></summary>
+                              <div class="demo-collapsible-content">
+                                {#each traceCase.rows as row (`${entry.retrievalId}-${traceCase.caseId}-${row.label}`)}
+                                  <div class="demo-key-value-row"><span>{row.label}</span><strong>{row.value}</strong></div>
+                                {/each}
+                              </div>
+                            </details>
+                          {/each}
+                        </div>
+                      </div>
+                    </details>
+                  {/each}
+                  {#each qualityData.rerankerComparison.entries as entry (entry.rerankerId)}
+                    <details class="demo-result-item demo-collapsible">
+                      <summary>
+                        <span>{entry.label} history</span>
+                        <strong>{formatEvaluationHistorySummary(qualityData.rerankerHistories[entry.rerankerId])[0] ?? "No runs yet"}</strong>
+                      </summary>
+                      <div class="demo-collapsible-content">
+                        {#each formatEvaluationHistoryRows(qualityData.rerankerHistories[entry.rerankerId]) as row (`${entry.rerankerId}-${row.label}`)}
+                          <div class="demo-key-value-row"><span>{row.label}</span><strong>{row.value}</strong></div>
+                        {/each}
+                        <div class="demo-result-grid">
+                          {#each formatEvaluationHistoryTracePresentations(qualityData.rerankerHistories[entry.rerankerId]) as traceCase (`${entry.rerankerId}-trace-${traceCase.caseId}`)}
+                            <details class="demo-result-item demo-collapsible">
+                              <summary><span>{traceCase.label}</span><strong>{traceCase.summary}</strong></summary>
+                              <div class="demo-collapsible-content">
+                                {#each traceCase.rows as row (`${entry.rerankerId}-${traceCase.caseId}-${row.label}`)}
+                                  <div class="demo-key-value-row"><span>{row.label}</span><strong>{row.value}</strong></div>
+                                {/each}
+                              </div>
+                            </details>
+                          {/each}
+                        </div>
+                      </div>
+                    </details>
+                  {/each}
+                  {#if qualityData.providerGroundingComparison}
+                    {#each qualityData.providerGroundingComparison.entries as entry (`provider-grounding-history-${entry.providerKey}`)}
+                      <details class="demo-result-item demo-collapsible">
+                        <summary>
+                          <span>{entry.label} history</span>
+                          <strong>{formatGroundingHistorySummary(qualityData.providerGroundingHistories[entry.providerKey])[0] ?? "No runs yet"}</strong>
+                        </summary>
+                        <div class="demo-collapsible-content">
+                          {#each formatGroundingHistoryDetails(qualityData.providerGroundingHistories[entry.providerKey]) as line, index (`${entry.providerKey}-${index}`)}
+                            <p class="demo-metadata">{line}</p>
+                          {/each}
+                          <div class="demo-result-grid">
+                            {#each formatGroundingHistorySnapshotPresentations(qualityData.providerGroundingHistories[entry.providerKey]) as snapshot (`${entry.providerKey}-snapshot-${snapshot.caseId}`)}
+                              <details class="demo-result-item demo-collapsible">
+                                <summary><span>{snapshot.label}</span><strong>{snapshot.summary}</strong></summary>
+                                <div class="demo-collapsible-content">
+                                  {#each snapshot.rows as row (`${entry.providerKey}-${snapshot.caseId}-${row.label}`)}
+                                    <div class="demo-key-value-row"><span>{row.label}</span><strong>{row.value}</strong></div>
+                                  {/each}
+                                </div>
+                              </details>
+                            {/each}
+                          </div>
+                        </div>
+                      </details>
+                    {/each}
+                    <details class="demo-result-item demo-collapsible">
+                      <summary>
+                        <span>Grounding difficulty history</span>
+                        <strong>{formatGroundingDifficultyHistorySummary(qualityData.providerGroundingDifficultyHistory)[0] ?? "No history yet"}</strong>
+                      </summary>
+                      <div class="demo-collapsible-content">
+                        {#each formatGroundingDifficultyHistoryDetails(qualityData.providerGroundingDifficultyHistory) as line, index (`provider-grounding-difficulty-${index}`)}
+                          <p class="demo-metadata">{line}</p>
+                        {/each}
+                      </div>
+                    </details>
+                  {/if}
+                </div>
+              {/if}
+            {/if}
+          </div>
+
+          <div class="demo-results demo-quality-card">
+            <h3>Knowledge Base Operations</h3>
+            {#if $opsErrorStore}
+              <p class="demo-error">{$opsErrorStore}</p>
+            {/if}
+            <ul class="demo-detail-list">
+              {#each formatReadinessSummary($opsReadinessStore) as line}
+                <li>{line}</li>
+              {/each}
+            </ul>
+            <ul class="demo-detail-list">
+              {#each formatHealthSummary($opsHealthStore) as line}
+                <li>{line}</li>
+              {/each}
+            </ul>
+            <ul class="demo-detail-list">
+              {#each [...formatFailureSummary($opsHealthStore), ...formatInspectionSummary($opsHealthStore), ...formatInspectionSamples($opsHealthStore)] as line}
+                <li>{line}</li>
+              {/each}
+            </ul>
+            {#if buildInspectionEntries($opsHealthStore).length > 0}
+              <div class="demo-inspection-actions">
+                {#each buildInspectionEntries($opsHealthStore) as entry (entry.id)}
+                  <div class="demo-inspection-action-row">
+                    <button type="button" on:click={() => void focusInspectionEntry(entry)}>{entry.documentId ? `Inspect ${entry.kind}` : "Search source"} · {entry.label}</button>
+                    <a class="demo-inspection-link" href={buildInspectionEntryHref(selectedMode, entry)}>Open standalone view</a>
+                  </div>
                 {/each}
               </div>
             {/if}
+            <div class="demo-result-grid">
+              <article class="demo-result-item">
+                <h4>Sync Sources</h4>
+                <div class="demo-actions">
+                  <button on:click={syncAllSources} type="button">Sync all sources</button>
+                  <button on:click={queueBackgroundSync} type="button">Queue background sync</button>
+                </div>
+                <div class="demo-badge-row">
+                  {#each formatSyncDeltaChips(sortedSyncSources) as chip, index (`sync-delta-${index}`)}
+                    <span class="demo-state-chip">{chip.replace(/^sync /, "")}</span>
+                  {/each}
+                </div>
+                <div class="demo-stat-grid">
+                  {#each syncOverviewLines as line, index (`sync-overview-${index}`)}
+                    <article class="demo-stat-card">
+                      <span class="demo-stat-label">Sync overview</span>
+                      <strong>{line.includes(':') ? line.slice(0, line.indexOf(':')) : 'Sync overview'}</strong>
+                      <p>{line.includes(':') ? line.slice(line.indexOf(':') + 1).trim() : line}</p>
+                    </article>
+                  {/each}
+                </div>
+                <ul class="demo-detail-list">
+                  {#each (sortedSyncSources.length > 0 ? sortedSyncSources.flatMap((source) => [formatSyncSourceSummary(source), ...formatSyncSourceDetails(source)]) : ["No sync sources configured yet."]) as line}
+                    <li>{line}</li>
+                  {/each}
+                </ul>
+                <div class="demo-actions">
+                  {#each sortedSyncSources as source}
+                    <details class:demo-sync-action-failed={source.status === "failed"} class="demo-sync-action-details" open={source.status === "failed"}>
+                      <summary>{formatSyncSourceCollapsedSummary(source)}</summary>
+                      <div class="demo-sync-action-group">
+                        <div class="demo-actions">
+                          <button on:click={() => syncSource(source.id)} type="button">Sync {source.label}</button>
+                          <button on:click={() => queueBackgroundSourceSync(source.id)} type="button">Queue {source.label}</button>
+                          {#if source.status === "failed"}
+                            <button on:click={() => syncSource(source.id)} type="button">Retry now</button>
+                            <button on:click={() => queueBackgroundSourceSync(source.id)} type="button">Retry in background</button>
+                          {/if}
+                        </div>
+                        <p class="demo-metadata demo-sync-action-meta">{formatSyncSourceActionSummary(source)}</p>
+                        {#if formatSyncSourceActionBadges(source).length > 0}
+                          <div class="demo-badge-row">
+                            {#each formatSyncSourceActionBadges(source) as badge, index (`${source.id}-${index}`)}
+                              <span class="demo-badge">{badge}</span>
+                            {/each}
+                          </div>
+                        {/if}
+                      </div>
+                    </details>
+                  {/each}
+                </div>
+              </article>
+              <article class="demo-result-item">
+                <h4>Admin Jobs</h4>
+                <ul class="demo-detail-list">
+                  {#each (formatAdminJobList($opsAdminJobsStore).length > 0 ? formatAdminJobList($opsAdminJobsStore) : ["No admin jobs recorded yet."]) as line}
+                    <li>{line}</li>
+                  {/each}
+                </ul>
+              </article>
+              <article class="demo-result-item">
+                <h4>Recent Admin Actions</h4>
+                <ul class="demo-detail-list">
+                  {#each (formatAdminActionList($opsAdminActionsStore).length > 0 ? formatAdminActionList($opsAdminActionsStore) : ["No admin actions recorded yet."]) as line}
+                    <li>{line}</li>
+                  {/each}
+                </ul>
+              </article>
+            </div>
           </div>
 
           <div class="demo-stream-panel">
@@ -1397,6 +2171,44 @@
                 <div><dt>Current stage</dt><dd>{$streamStageStore}</dd></div>
               </dl>
             {/if}
+            {#if $streamRetrievalStore?.trace}
+              <div class="demo-results">
+                <h4>Workflow Retrieval Trace</h4>
+                <p class="demo-metadata">
+                  This is the retrieval trace attached to the workflow answer path. It explains how the answer workflow found evidence before grounding and citations were built.
+                </p>
+                <div class="demo-stat-grid">
+                  {#each workflowTracePresentation.stats as row}
+                    <article class="demo-stat-card">
+                      <p class="demo-section-caption">{row.label}</p>
+                      <strong>{row.value}</strong>
+                    </article>
+                  {/each}
+                </div>
+                <div class="demo-key-value-list">
+                  {#each workflowTracePresentation.details as row}
+                    <p class="demo-key-value-row"><strong>{row.label}</strong><span>{row.value}</span></p>
+                  {/each}
+                </div>
+                <div class="demo-result-grid">
+                  {#each workflowTracePresentation.steps as step, index}
+                    <details class="demo-collapsible demo-result-item" open={index === 0}>
+                      <summary>
+                        <strong>{index + 1}. {step.label}</strong>
+                      </summary>
+                      <div class="demo-key-value-list">
+                        {#each step.rows as row}
+                          <p class="demo-key-value-row">
+                            <strong>{row.label}</strong>
+                            <span>{row.value}</span>
+                          </p>
+                        {/each}
+                      </div>
+                    </details>
+                  {/each}
+                </div>
+              </div>
+            {/if}
             {#if $streamErrorStore}
               <p class="demo-error">{$streamErrorStore}</p>
             {/if}
@@ -1431,11 +2243,28 @@
                       {#each formatGroundedAnswerPartDetails(part) as line}
                         <p class="demo-metadata">{line}</p>
                       {/each}
-                      <p class="demo-result-text">{part.text}</p>
+                      <p class="demo-result-text">{formatGroundedAnswerPartExcerpt(part)}</p>
                     </article>
                     {/each}
                   </div>
                 {/if}
+              </div>
+            {/if}
+            {#if $streamGroundedAnswerStore.sectionSummaries.length > 0}
+              <div class="demo-results">
+                <h4>Grounding by Section</h4>
+                <div class="demo-result-grid">
+                  {#each $streamGroundedAnswerStore.sectionSummaries as summary}
+                    <article class="demo-result-item demo-grounding-card">
+                      <h3>{summary.label}</h3>
+                      <p class="demo-result-source">{summary.summary}</p>
+                      {#each formatGroundedAnswerSectionSummaryDetails(summary) as line}
+                        <p class="demo-metadata">{line}</p>
+                      {/each}
+                      <p class="demo-result-text">{formatGroundedAnswerSectionSummaryExcerpt(summary)}</p>
+                    </article>
+                  {/each}
+                </div>
               </div>
             {/if}
             {#if $streamGroundingReferencesStore.length > 0}
@@ -1445,14 +2274,22 @@
                   Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.
                 </p>
                 <div class="demo-result-grid">
-                  {#each $streamGroundingReferencesStore as reference}
-                    <article class="demo-result-item demo-grounding-card">
-                      <p class="demo-citation-badge">[{reference.number}] {formatGroundingReferenceLabel(reference)}</p>
-                      <p class="demo-result-score">{formatGroundingReferenceSummary(reference)}</p>
-                      {#each formatGroundingReferenceDetails(reference) as line}
-                        <p class="demo-metadata">{line}</p>
-                      {/each}
-                      <p class="demo-result-text">{formatGroundingReferenceExcerpt(reference)}</p>
+                  {#each streamGroundingReferenceGroups as group}
+                    <article class="demo-result-item" id={group.targetId}>
+                      <h3>{group.label}</h3>
+                      <p class="demo-result-source">{group.summary}</p>
+                      <div class="demo-result-grid">
+                        {#each group.references as reference}
+                          <article class="demo-result-item demo-grounding-card">
+                            <p class="demo-citation-badge">[{reference.number}] {formatGroundingReferenceLabel(reference)}</p>
+                            <p class="demo-result-score">{formatGroundingReferenceSummary(reference)}</p>
+                            {#each formatGroundingReferenceDetails(reference) as line}
+                              <p class="demo-metadata">{line}</p>
+                            {/each}
+                            <p class="demo-result-text">{formatGroundingReferenceExcerpt(reference)}</p>
+                          </article>
+                        {/each}
+                      </div>
                     </article>
                   {/each}
                 </div>
@@ -1462,13 +2299,21 @@
               <div class="demo-results">
                 <h4>Evidence Sources</h4>
                 <div class="demo-result-grid">
-                  {#each $streamSourceSummariesStore as summary}
-                    <article class="demo-result-item">
-                      <h3>{summary.label}</h3>
-                      {#each formatSourceSummaryDetails(summary) as line}
-                        <p class="demo-metadata">{line}</p>
-                      {/each}
-                      <p class="demo-result-text">{summary.excerpt}</p>
+                  {#each streamSourceSummaryGroups as group}
+                    <article class="demo-result-item" id={group.targetId}>
+                      <h3>{group.label}</h3>
+                      <p class="demo-result-source">{group.summary}</p>
+                      <div class="demo-result-grid">
+                        {#each group.summaries as summary}
+                          <article class="demo-result-item">
+                            <h4>{summary.label}</h4>
+                            {#each formatSourceSummaryDetails(summary) as line}
+                              <p class="demo-metadata">{line}</p>
+                            {/each}
+                            <p class="demo-result-text">{summary.excerpt}</p>
+                          </article>
+                        {/each}
+                      </div>
                     </article>
                   {/each}
                 </div>
@@ -1481,14 +2326,22 @@
                   Each citation maps a concrete retrieved chunk to a stable reference number you can carry into the answer UI.
                 </p>
                 <div class="demo-result-grid">
-                  {#each $streamCitationsStore as citation, index}
-                    <article class="demo-result-item demo-citation-card">
-                      <p class="demo-citation-badge">[{index + 1}] {formatCitationLabel(citation)}</p>
-                      <p class="demo-result-score">{formatCitationSummary(citation)}</p>
-                      {#each formatCitationDetails(citation) as line}
-                        <p class="demo-metadata">{line}</p>
-                      {/each}
-                      <p class="demo-result-text">{formatCitationExcerpt(citation)}</p>
+                  {#each streamCitationGroups as group}
+                    <article class="demo-result-item" id={group.targetId}>
+                      <h3>{group.label}</h3>
+                      <p class="demo-result-source">{group.summary}</p>
+                      <div class="demo-result-grid">
+                        {#each group.citations as citation, index}
+                          <article class="demo-result-item demo-citation-card">
+                            <p class="demo-citation-badge">[{index + 1}] {formatCitationLabel(citation)}</p>
+                            <p class="demo-result-score">{formatCitationSummary(citation)}</p>
+                            {#each formatCitationDetails(citation) as line}
+                              <p class="demo-metadata">{line}</p>
+                            {/each}
+                            <p class="demo-result-text">{formatCitationExcerpt(citation)}</p>
+                          </article>
+                        {/each}
+                      </div>
                     </article>
                   {/each}
                 </div>
@@ -1623,7 +2476,7 @@
             <button disabled={documentPage >= totalDocumentPages} type="button" on:click={() => (documentPage = Math.min(totalDocumentPages, documentPage + 1))}>Next</button>
           </div>
         </div>
-        <div class="demo-document-list">
+        <div class="demo-document-list" id="document-list">
           {#if paginatedDocuments.length === 0}
             <p class="demo-metadata">No indexed sources match the current filters.</p>
           {:else}
@@ -1683,9 +2536,75 @@
                         <h3>Normalized text</h3>
                         <p class="demo-result-text">{$chunkPreviewStore.normalizedText}</p>
                       </article>
+                      {#if $chunkPreviewNavigationStore?.activeNode}
+                        <div class="demo-chunk-nav">
+                          <div class="demo-chunk-nav-row">
+                            <button disabled={!$chunkPreviewNavigationStore.previousNode} on:click={() => $chunkPreviewNavigationStore.previousNode && rag.chunkPreview.selectChunk($chunkPreviewNavigationStore.previousNode.chunkId)} type="button">Previous chunk</button>
+                            <p class="demo-metadata">{formatChunkNavigationSectionLabel($chunkPreviewNavigationStore)} · {formatChunkNavigationNodeLabel($chunkPreviewNavigationStore.activeNode)}</p>
+                            <button disabled={!$chunkPreviewNavigationStore.nextNode} on:click={() => $chunkPreviewNavigationStore.nextNode && rag.chunkPreview.selectChunk($chunkPreviewNavigationStore.nextNode.chunkId)} type="button">Next chunk</button>
+                          </div>
+                          {#if $chunkPreviewNavigationStore.sectionNodes.length > 1}
+                            <div class="demo-chunk-nav-strip">
+                              {#each $chunkPreviewNavigationStore.sectionNodes as node}
+                                <button class={node.chunkId === $activeChunkPreviewIdStore ? "demo-chunk-nav-chip demo-chunk-nav-chip-active" : "demo-chunk-nav-chip"} on:click={() => rag.chunkPreview.selectChunk(node.chunkId)} type="button">
+                                  {formatChunkNavigationNodeLabel(node)}
+                                </button>
+                              {/each}
+                            </div>
+                          {/if}
+                          {#if $chunkPreviewNavigationStore.parentSection || $chunkPreviewNavigationStore.siblingSections.length > 0 || $chunkPreviewNavigationStore.childSections.length > 0}
+                            <div class="demo-chunk-nav-strip">
+                              {#if $chunkPreviewNavigationStore.parentSection}
+                                <button class="demo-chunk-nav-chip" on:click={() => rag.chunkPreview.selectParentSection()} type="button">
+                                  Parent · {formatChunkSectionGroupLabel($chunkPreviewNavigationStore.parentSection)}
+                                </button>
+                              {/if}
+                              {#each $chunkPreviewNavigationStore.siblingSections as section}
+                                <button class="demo-chunk-nav-chip" on:click={() => rag.chunkPreview.selectSiblingSection(section.id)} type="button">
+                                  Sibling · {formatChunkSectionGroupLabel(section)}
+                                </button>
+                              {/each}
+                              {#each $chunkPreviewNavigationStore.childSections as section}
+                                <button class="demo-chunk-nav-chip" on:click={() => rag.chunkPreview.selectChildSection(section.id)} type="button">
+                                  Child · {formatChunkSectionGroupLabel(section)}
+                                </button>
+                              {/each}
+                            </div>
+                          {/if}
+                        </div>
+                      {/if}
+                      {#if activeChunkPreviewSectionDiagnostic}
+                        <article class="demo-result-item">
+                          <h3>Active Section Diagnostic</h3>
+                          <p class="demo-result-source">{activeChunkPreviewSectionDiagnostic.label}</p>
+                          <p class="demo-metadata">{activeChunkPreviewSectionDiagnostic.summary}</p>
+                          <p class="demo-metadata">{formatSectionDiagnosticChannels(activeChunkPreviewSectionDiagnostic)}</p>
+                          <p class="demo-metadata">{formatSectionDiagnosticPipeline(activeChunkPreviewSectionDiagnostic)}</p>
+                          {#if formatSectionDiagnosticStageFlow(activeChunkPreviewSectionDiagnostic)}<p class="demo-metadata">{formatSectionDiagnosticStageFlow(activeChunkPreviewSectionDiagnostic)}</p>{/if}
+                          {#if formatSectionDiagnosticStageBounds(activeChunkPreviewSectionDiagnostic)}<p class="demo-metadata">{formatSectionDiagnosticStageBounds(activeChunkPreviewSectionDiagnostic)}</p>{/if}
+                          {#each formatSectionDiagnosticStageWeightRows(activeChunkPreviewSectionDiagnostic) as line}
+                            <p class="demo-metadata">{line}</p>
+                          {/each}
+                          <p class="demo-metadata">{formatSectionDiagnosticTopEntry(activeChunkPreviewSectionDiagnostic)}</p>
+                          {#if formatSectionDiagnosticCompetition(activeChunkPreviewSectionDiagnostic)}<p class="demo-metadata">{formatSectionDiagnosticCompetition(activeChunkPreviewSectionDiagnostic)}</p>{/if}
+                          {#if formatSectionDiagnosticReasons(activeChunkPreviewSectionDiagnostic).length > 0}
+                            <div class="demo-badge-row">
+                              {#each formatSectionDiagnosticReasons(activeChunkPreviewSectionDiagnostic) as reason}
+                                <span class="demo-state-chip">{reason}</span>
+                              {/each}
+                              {#each formatSectionDiagnosticStageWeightReasons(activeChunkPreviewSectionDiagnostic) as reason}
+                                <span class="demo-state-chip">{reason}</span>
+                              {/each}
+                            </div>
+                          {/if}
+                          {#each formatSectionDiagnosticDistributionRows(activeChunkPreviewSectionDiagnostic) as line}
+                            <p class="demo-metadata">{line}</p>
+                          {/each}
+                        </article>
+                      {/if}
                       <div class="demo-result-grid">
                         {#each $chunkPreviewStore.chunks as chunk}
-                          <article class="demo-result-item">
+                          <article class={chunk.chunkId === $activeChunkPreviewIdStore ? "demo-result-item demo-result-item-active" : "demo-result-item"}>
                             <h3>{chunk.chunkId}</h3>
                             <p class="demo-result-source">source: {chunk.source ?? $chunkPreviewStore.document.source}</p>
                             <p class="demo-metadata">{chunkIndexText(chunk, $chunkPreviewStore.chunks.length)}</p>

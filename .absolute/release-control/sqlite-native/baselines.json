@@ -1,0 +1,54 @@
+[
+	{
+		"id": "demo-release-baseline-canary-sqlite-native-ready-alpha",
+		"groupKey": "docs-release-ready",
+		"corpusGroupKey": "alpha",
+		"version": 1,
+		"status": "active",
+		"rolloutLabel": "canary",
+		"retrievalId": "hybrid",
+		"label": "Hybrid canary",
+		"suiteId": "demo-release-suite-sqlite-native-ready-canary",
+		"suiteLabel": "Release control showcase suite",
+		"sourceRunId": "demo-release-run-canary-ready-alpha",
+		"promotedAt": 1776831450455,
+		"approvedAt": 1776831450455,
+		"approvedBy": "release-bot",
+		"policy": {
+			"minAverageF1Delta": -0.05,
+			"minPassingRateDelta": -5,
+			"severity": "warn"
+		},
+		"tags": [
+			"demo-release",
+			"ready",
+			"canary"
+		]
+	},
+	{
+		"id": "demo-release-baseline-stable-sqlite-native-ready-alpha",
+		"groupKey": "docs-release-ready",
+		"corpusGroupKey": "alpha",
+		"version": 1,
+		"status": "active",
+		"rolloutLabel": "stable",
+		"retrievalId": "vector",
+		"label": "Vector stable",
+		"suiteId": "demo-release-suite-sqlite-native-ready-stable",
+		"suiteLabel": "Release control showcase suite",
+		"sourceRunId": "demo-release-run-stable-ready-alpha",
+		"promotedAt": 1776831447499,
+		"approvedAt": 1776831447499,
+		"approvedBy": "release-bot",
+		"policy": {
+			"minAverageF1Delta": 0.01,
+			"minPassingRateDelta": 1,
+			"severity": "fail"
+		},
+		"tags": [
+			"demo-release",
+			"ready",
+			"stable"
+		]
+	}
+]

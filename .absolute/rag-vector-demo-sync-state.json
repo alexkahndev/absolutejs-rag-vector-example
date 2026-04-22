@@ -12,17 +12,26 @@
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1775784757322,
-          "finishedAt": 1775784757324,
-          "durationMs": 2,
+          "startedAt": 1776831512458,
+          "finishedAt": 1776831512462,
+          "durationMs": 4,
           "documentCount": 2,
           "chunkCount": 2
         },
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1775784742362,
-          "finishedAt": 1775784742368,
+          "startedAt": 1776831497489,
+          "finishedAt": 1776831497496,
+          "durationMs": 7,
+          "documentCount": 2,
+          "chunkCount": 2
+        },
+        {
+          "trigger": "scheduled",
+          "status": "completed",
+          "startedAt": 1776831482442,
+          "finishedAt": 1776831482448,
           "durationMs": 6,
           "documentCount": 2,
           "chunkCount": 2
@@ -30,27 +39,18 @@
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1775784727300,
-          "finishedAt": 1775784727302,
-          "durationMs": 2,
+          "startedAt": 1776831467497,
+          "finishedAt": 1776831467507,
+          "durationMs": 10,
           "documentCount": 2,
           "chunkCount": 2
         },
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1775784712376,
-          "finishedAt": 1775784712382,
-          "durationMs": 6,
-          "documentCount": 2,
-          "chunkCount": 2
-        },
-        {
-          "trigger": "scheduled",
-          "status": "completed",
-          "startedAt": 1775784697274,
-          "finishedAt": 1775784697280,
-          "durationMs": 6,
+          "startedAt": 1776831452436,
+          "finishedAt": 1776831452453,
+          "durationMs": 17,
           "documentCount": 2,
           "chunkCount": 2
         }
@@ -58,10 +58,10 @@
     },
     "target": "rag-demo-corpus/sync-folder",
     "status": "completed",
-    "lastSuccessfulSyncAt": 1775784757324,
+    "lastSuccessfulSyncAt": 1776831512462,
     "consecutiveFailures": 0,
-    "lastSyncedAt": 1775784757324,
-    "lastSyncDurationMs": 2,
+    "lastSyncedAt": 1776831512462,
+    "lastSyncDurationMs": 4,
     "documentCount": 2,
     "chunkCount": 2
   },
@@ -73,36 +73,21 @@
     "target": "/demo/sync-fixtures/workflow-source.md",
     "metadata": {
       "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
-      "schedule": "manual",
-      "lastTrigger": "manual",
-      "recentRuns": [
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775783132197,
-          "finishedAt": 1775783132200,
-          "durationMs": 3,
-          "documentCount": 1,
-          "chunkCount": 1
-        },
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775777613790,
-          "finishedAt": 1775777613792,
-          "durationMs": 2,
-          "documentCount": 1,
-          "chunkCount": 1
-        }
-      ]
+      "schedule": "manual"
     },
-    "status": "completed",
-    "lastSuccessfulSyncAt": 1775783132200,
-    "lastSyncedAt": 1775783132200,
-    "lastSyncDurationMs": 3,
-    "consecutiveFailures": 0,
-    "documentCount": 1,
-    "chunkCount": 1
+    "status": "idle"
+  },
+  {
+    "id": "sync-site-discovery",
+    "label": "Site discovery fixture",
+    "kind": "url",
+    "description": "Discovers local site pages through robots, sitemap, canonical, nofollow, and noindex fixture routes so the ops surface can show discovery diagnostics on the same sync cards as every other source.",
+    "target": "/demo/sync-fixtures/site",
+    "metadata": {
+      "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
+      "schedule": "manual"
+    },
+    "status": "idle"
   },
   {
     "id": "sync-storage",
@@ -115,36 +100,9 @@
       "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
       "provider": "Amazon S3 / Cloudflare R2",
       "schedule": "manual",
-      "liveReady": "Ready for a real S3 or R2 bucket through Bun's native S3 client.",
-      "lastTrigger": "manual",
-      "recentRuns": [
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775783132201,
-          "finishedAt": 1775783132202,
-          "durationMs": 1,
-          "documentCount": 2,
-          "chunkCount": 2
-        },
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775777613793,
-          "finishedAt": 1775777614371,
-          "durationMs": 578,
-          "documentCount": 2,
-          "chunkCount": 2
-        }
-      ]
+      "liveReady": "Ready for a real S3 or R2 bucket through Bun's native S3 client."
     },
-    "status": "completed",
-    "lastSuccessfulSyncAt": 1775783132202,
-    "lastSyncedAt": 1775783132202,
-    "lastSyncDurationMs": 1,
-    "consecutiveFailures": 0,
-    "documentCount": 2,
-    "chunkCount": 2
+    "status": "idle"
   },
   {
     "id": "sync-email-gmail",
@@ -157,36 +115,9 @@
       "schedule": "manual",
       "provider": "Gmail",
       "accountMode": "fixture",
-      "liveReady": "Ready for a real Gmail OAuth token and mailbox query.",
-      "lastTrigger": "manual",
-      "recentRuns": [
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775783132203,
-          "finishedAt": 1775783132204,
-          "durationMs": 1,
-          "documentCount": 2,
-          "chunkCount": 2
-        },
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775777614375,
-          "finishedAt": 1775777615232,
-          "durationMs": 857,
-          "documentCount": 2,
-          "chunkCount": 2
-        }
-      ]
+      "liveReady": "Ready for a real Gmail OAuth token and mailbox query."
     },
-    "status": "completed",
-    "lastSuccessfulSyncAt": 1775783132204,
-    "lastSyncedAt": 1775783132204,
-    "lastSyncDurationMs": 1,
-    "consecutiveFailures": 0,
-    "documentCount": 2,
-    "chunkCount": 2
+    "status": "idle"
   },
   {
     "id": "sync-email-graph",
@@ -199,36 +130,9 @@
       "schedule": "manual",
       "provider": "Microsoft Graph",
       "accountMode": "fixture",
-      "liveReady": "Ready for a real Microsoft Graph OAuth token and mailbox query.",
-      "lastTrigger": "manual",
-      "recentRuns": [
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775783132204,
-          "finishedAt": 1775783132205,
-          "durationMs": 1,
-          "documentCount": 2,
-          "chunkCount": 2
-        },
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775777615242,
-          "finishedAt": 1775777616394,
-          "durationMs": 1152,
-          "documentCount": 2,
-          "chunkCount": 2
-        }
-      ]
+      "liveReady": "Ready for a real Microsoft Graph OAuth token and mailbox query."
     },
-    "status": "completed",
-    "lastSuccessfulSyncAt": 1775783132205,
-    "lastSyncedAt": 1775783132205,
-    "lastSyncDurationMs": 1,
-    "consecutiveFailures": 0,
-    "documentCount": 2,
-    "chunkCount": 2
+    "status": "idle"
   },
   {
     "id": "sync-email-imap",
@@ -241,35 +145,8 @@
       "schedule": "manual",
       "provider": "IMAP",
       "accountMode": "fixture",
-      "liveReady": "Ready for a real IMAP host, mailbox, and credentials.",
-      "lastTrigger": "manual",
-      "recentRuns": [
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775783132206,
-          "finishedAt": 1775783132207,
-          "durationMs": 1,
-          "documentCount": 2,
-          "chunkCount": 2
-        },
-        {
-          "trigger": "manual",
-          "status": "completed",
-          "startedAt": 1775777616402,
-          "finishedAt": 1775777617318,
-          "durationMs": 916,
-          "documentCount": 2,
-          "chunkCount": 2
-        }
-      ]
+      "liveReady": "Ready for a real IMAP host, mailbox, and credentials."
     },
-    "status": "completed",
-    "lastSuccessfulSyncAt": 1775783132207,
-    "lastSyncedAt": 1775783132207,
-    "lastSyncDurationMs": 1,
-    "consecutiveFailures": 0,
-    "documentCount": 2,
-    "chunkCount": 2
+    "status": "idle"
   }
 ]

@@ -4,7 +4,7 @@ import {
   createRAGMediaTranscriber,
   createRAGPDFOCRExtractor,
   createRAGOCRProvider,
-} from "@absolutejs/absolute/ai";
+} from "@absolutejs/rag";
 
 const resolveName = (value: { name?: string; path?: string }) =>
   (value.name ?? value.path ?? "").toLowerCase();

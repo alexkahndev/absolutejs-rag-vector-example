@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "@absolutejs/absolute": "0.19.0-beta.528",
-    "@absolutejs/absolute-rag-postgresql": "0.0.4",
-    "@absolutejs/absolute-rag-sqlite": "0.0.3",
+    "@absolutejs/absolute": "0.19.0-beta.650",
+    "@absolutejs/ai": "0.0.3",
+    "@absolutejs/rag": "0.0.2",
+    "@absolutejs/absolute-rag-sqlite": "0.0.4",
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
     "@angular/compiler-cli": "^21.0.0",
@@ -47,7 +48,6 @@
   "scripts": {
     "dev": "absolute dev",
     "dev:docker": "bun ./scripts/dev-docker.ts",
-    "rag:smoke": "bun ./scripts/rag-vector-smoke.ts",
     "format": "absolute prettier --write",
     "lint": "absolute eslint",
     "pg:start": "sh -lc 'docker start absolutejs-rag-demo-pg >/dev/null 2>&1 || docker run --rm -d --name absolutejs-rag-demo-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=absolute_rag_demo -p 55433:5432 pgvector/pgvector:pg17'",

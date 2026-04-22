@@ -1,4 +1,4 @@
-import { gemini, openaiCompatible, openaiResponses } from "@absolutejs/absolute/ai";
+import { gemini, openaiCompatible, openaiResponses } from "@absolutejs/ai";
 
 type DemoAIProviderFactory = ReturnType<typeof gemini>;
 

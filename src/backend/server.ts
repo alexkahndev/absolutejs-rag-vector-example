@@ -18,16 +18,18 @@ import {
   persistRAGEvaluationSuiteRun,
   createRAGSyncScheduler,
   createHeuristicRAGQueryTransform,
+  createHeuristicRAGRetrievalStrategy,
   createHeuristicRAGReranker,
   createRAGCollection,
   createRAGHTMXConfig,
   ragPlugin,
-} from "@absolutejs/absolute/ai";
+} from "@absolutejs/rag";
 import { join } from "node:path";
 import { Elysia, status } from "elysia";
 import { createDemoAIProviderCatalog } from "./handlers/ragAiProvider";
-import { createHtmxAIStreamRenderConfig, createHtmxWorkflowRenderConfig, renderHtmxOpsPanel, renderHtmxQualityPanel } from "./handlers/htmxRagWorkflow";
+import { createHtmxAIStreamRenderConfig, createHtmxWorkflowRenderConfig, renderHtmxChunkPreviewFragment, renderHtmxDocumentsPanel, renderHtmxOpsPanel, renderHtmxQualityPanel, renderHtmxReleasePanel } from "./handlers/htmxRagWorkflow";
 import { createRAGBackends } from "./handlers/ragBackends";
+import { createDemoReleaseController } from "./handlers/releaseDemo";
 import { ragDemoExtractors } from "./handlers/ragDemoExtractors";
 import { createRagDemoState } from "./handlers/ragDemoState";
 import { pagesPlugin } from "./plugins/pagesPlugin";
@@ -85,7 +87,26 @@ const startup = await ragDemoState.initialize();
 await syncScheduler.start();
 const demoReranker = createHeuristicRAGReranker();
 const demoQueryTransform = createHeuristicRAGQueryTransform();
+const demoRetrievalStrategy = createHeuristicRAGRetrievalStrategy();
+const createDemoCollection = (
+  backend: ReturnType<typeof createRAGBackends>["backends"][DemoBackendMode],
+  queryTransform?: typeof demoQueryTransform,
+) =>
+  createRAGCollection({
+    store: backend.rag!.store,
+    rerank: demoReranker,
+    queryTransform,
+    retrievalStrategy: demoRetrievalStrategy,
+  });
 const qualityHistoryRoot = join(process.cwd(), ".absolute", "quality-history");
+const releaseControlRoot = join(process.cwd(), ".absolute", "release-control");
+const DEMO_QUALITY_CACHE_TTL_MS = 30_000;
+type DemoQualityCacheEntry = {
+  cachedAt: number;
+  response?: DemoRetrievalQualityResponse;
+  inFlight?: Promise<DemoRetrievalQualityResponse>;
+};
+const demoQualityCache = new Map<DemoBackendMode, DemoQualityCacheEntry>();
 
 const createQualityHistoryStore = (mode: DemoBackendMode, kind: string, id: string) =>
   createRAGFileEvaluationHistoryStore(join(qualityHistoryRoot, mode, `${kind}-${id}.json`));
@@ -120,6 +141,45 @@ const buildGroundingAnswerDetail = (metadata?: Record<string, unknown>) => {
 const getRecentQueryStateId = (framework: DemoFrameworkId, mode: DemoBackendMode) =>
   `${framework}:${mode}`;
 
+const renderStandaloneDocumentsPage = ({
+  mode,
+  panelHtml,
+}: {
+  mode: DemoBackendMode;
+  panelHtml: string;
+}) => `<!doctype html>
+<html lang="en">
+  <head>
+    <title>AbsoluteJS RAG Document Inspection - ${mode}</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/assets/ico/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="../../styles/indexes/rag-vector-demo.css" />
+    <script src="/htmx/htmx.min.js"></script>
+  </head>
+  <body class="rag-demo-page">
+    <main class="demo-layout">
+      <section class="demo-card">
+        <span class="demo-hero-kicker">HTMX document inspection</span>
+        <h1>AbsoluteJS document inspection</h1>
+        <p>Inspect chunk boundaries, source-native evidence, and scoped retrieval actions from a standalone document surface.</p>
+        <div class="demo-actions">
+          <a class="demo-release-action demo-release-action-neutral" href="/htmx/${mode}#document-list">Open full HTMX demo</a>
+        </div>
+      </section>
+      <div id="mutation-status" class="demo-results">
+        <p class="demo-metadata">Document mutations and deletes will report here.</p>
+      </div>
+      <div id="search-results" class="demo-results">
+        <p class="demo-metadata">Run a source or document search from a row action to inspect scoped retrieval.</p>
+      </div>
+      <section class="demo-card">
+        <div id="document-list">${panelHtml}</div>
+      </section>
+    </main>
+  </body>
+</html>`;
+
 const readUIState = ragDb.query<
   { value: string },
   [string, string]
@@ -135,6 +195,12 @@ const writeUIState = ragDb.query<
     value = excluded.value,
     updated_at = excluded.updated_at
 `);
+
+const releaseDemo = createDemoReleaseController({
+  ragDb,
+  ragBackends,
+  releaseControlRoot,
+});
 
 const buildProviderGroundingComparison = async ({
   collection,
@@ -172,6 +238,7 @@ const buildProviderGroundingComparison = async ({
                 retrieval: "hybrid",
                 queryTransform: demoQueryTransform,
                 rerank: demoReranker,
+                retrievalStrategy: demoRetrievalStrategy,
               });
               const prompt = `Question: ${caseInput.query}\n\n${buildRAGContext(results)}\n\nAnswer in one or two sentences. Use only the provided context. Cite every claim inline with [1], [2].`;
               let answer = "";
@@ -445,10 +512,13 @@ const persistProviderGroundingDifficultyHistory = async (
   });
 };
 
-const buildDemoQualityResponse = async (mode: DemoBackendMode): Promise<DemoRetrievalQualityResponse> => {
+const buildFreshDemoQualityResponse = async (
+  mode: DemoBackendMode,
+  options?: { includeProviderGrounding?: boolean },
+): Promise<DemoRetrievalQualityResponse> => {
   const backend = ragBackends.backends[mode];
   const suite = buildDemoEvaluationSuite();
-  const collection = createRAGCollection({ store: backend.rag!.store });
+  const collection = createRAGCollection({ store: backend.rag!.store, retrievalStrategy: demoRetrievalStrategy });
   const rerankerComparison = await compareRAGRerankers({
     collection,
     rerankers: [
@@ -475,6 +545,7 @@ const buildDemoQualityResponse = async (mode: DemoBackendMode): Promise<DemoRetr
           retrieval: "hybrid",
           queryTransform: demoQueryTransform,
           rerank: demoReranker,
+          retrievalStrategy: demoRetrievalStrategy,
         });
         const bestResult = results[0];
         const answer =
@@ -502,10 +573,12 @@ const buildDemoQualityResponse = async (mode: DemoBackendMode): Promise<DemoRetr
       }),
     ),
   });
-  const providerGroundingComparison = await buildProviderGroundingComparison({
-    collection,
-    suite,
-  });
+  const providerGroundingComparison = options?.includeProviderGrounding
+    ? await buildProviderGroundingComparison({
+        collection,
+        suite,
+      })
+    : null;
   const retrievalHistories = await persistQualityHistories(mode, suite, "retrieval", retrievalComparison.entries, (entry) => entry.retrievalId);
   const rerankerHistories = await persistQualityHistories(mode, suite, "reranker", rerankerComparison.entries, (entry) => entry.rerankerId);
   const providerGroundingHistories = providerGroundingComparison
@@ -529,11 +602,61 @@ const buildDemoQualityResponse = async (mode: DemoBackendMode): Promise<DemoRetr
   };
 };
 
+const buildDemoQualityResponse = async (
+  mode: DemoBackendMode,
+  options?: { forceRefresh?: boolean },
+): Promise<DemoRetrievalQualityResponse> => {
+  const now = Date.now();
+  const cached = demoQualityCache.get(mode);
+  const isFresh = Boolean(cached?.response && now - cached.cachedAt < DEMO_QUALITY_CACHE_TTL_MS);
+  if (!options?.forceRefresh && isFresh && cached?.response) {
+    return cached.response;
+  }
+  if (!options?.forceRefresh && cached?.inFlight) {
+    return cached.inFlight;
+  }
+
+  const inFlight = buildFreshDemoQualityResponse(mode, { includeProviderGrounding: false })
+    .then((response) => {
+      demoQualityCache.set(mode, {
+        cachedAt: Date.now(),
+        response,
+      });
+      return response;
+    })
+    .catch((error) => {
+      const current = demoQualityCache.get(mode);
+      if (current?.response) {
+        demoQualityCache.set(mode, {
+          cachedAt: current.cachedAt,
+          response: current.response,
+        });
+      } else {
+        demoQualityCache.delete(mode);
+      }
+      throw error;
+    });
+
+  demoQualityCache.set(mode, {
+    cachedAt: cached?.cachedAt ?? 0,
+    response: cached?.response,
+    inFlight,
+  });
+
+  return inFlight;
+};
+
+const warmDemoQualityResponse = (mode: DemoBackendMode) => {
+  void buildDemoQualityResponse(mode).catch(() => {
+    // Keep startup resilient; the live route can rebuild on demand.
+  });
+};
+
 process.once("exit", () => {
   syncScheduler.stop();
 });
 
-const server = new Elysia()
+export const server = new Elysia()
   .use(absolutejs)
   .use(pagesPlugin(manifest, { backends: ragBackends.list() }));
 
@@ -545,15 +668,29 @@ for (const backend of ragBackends.active()) {
       provider: demoAIProvider?.provider ?? ragDemoState.unavailableProvider,
       readinessProviderName: demoAIProvider ? "runtime AI provider registry" : "demo fallback provider",
       model: (providerName) => demoAIProvider?.defaultModel(providerName) ?? "gpt-4.1-mini",
-      collection: createRAGCollection({
-        store: backend.rag!.store,
-        rerank: demoReranker,
-      }),
+      collection: createDemoCollection(backend),
       extractors: ragDemoExtractors,
       indexManager,
       htmx: createRAGHTMXConfig({
         render: createHtmxAIStreamRenderConfig(),
         workflowRender: createHtmxWorkflowRenderConfig(backend.path),
+      }),
+      ...releaseDemo.pluginConfig(backend.id),
+    }),
+  );
+  server.use(
+    ragPlugin({
+      path: `${backend.path}-transform`,
+      parseProvider: demoAIProvider?.parseMessage,
+      provider: demoAIProvider?.provider ?? ragDemoState.unavailableProvider,
+      readinessProviderName: demoAIProvider ? "runtime AI provider registry" : "demo fallback provider",
+      model: (providerName) => demoAIProvider?.defaultModel(providerName) ?? "gpt-4.1-mini",
+      collection: createDemoCollection(backend, demoQueryTransform),
+      extractors: ragDemoExtractors,
+      indexManager,
+      htmx: createRAGHTMXConfig({
+        render: createHtmxAIStreamRenderConfig(),
+        workflowRender: createHtmxWorkflowRenderConfig(`${backend.path}-transform`),
       }),
     }),
   );
@@ -566,6 +703,157 @@ server
       {
         headers: {
           "Content-Type": "text/markdown; charset=utf-8",
+        },
+      },
+    ),
+  )
+  .get("/demo/sync-fixtures/site", () =>
+    new Response(
+      [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        "<meta charset=\"utf-8\" />",
+        "<title>Site discovery fixture</title>",
+        "</head>",
+        "<body>",
+        "<h1>Site discovery fixture</h1>",
+        '<p><a href="/demo/sync-fixtures/site/docs/guide?utm_source=homepage">Canonical guide variant</a></p>',
+        '<p><a href="/demo/sync-fixtures/site/nofollow">Nofollow page</a></p>',
+        '<p><a href="/demo/sync-fixtures/site/noindex">Noindex page</a></p>',
+        '<p><a href="/demo/sync-fixtures/site/private">Robots-blocked page</a></p>',
+        "</body>",
+        "</html>",
+      ].join(""),
+      {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      },
+    ),
+  )
+  .get("/demo/sync-fixtures/site/robots.txt", ({ request }) => {
+    const origin = new URL(request.url).origin;
+    return new Response(
+      [
+        "User-agent: *",
+        "Disallow: /demo/sync-fixtures/site/private",
+        `Sitemap: ${origin}/demo/sync-fixtures/site/sitemap.xml`,
+      ].join("\n"),
+      {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      },
+    );
+  })
+  .get("/demo/sync-fixtures/site/sitemap.xml", ({ request }) => {
+    const origin = new URL(request.url).origin;
+    return new Response(
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        `<url><loc>${origin}/demo/sync-fixtures/site/docs/guide</loc></url>`,
+        `<url><loc>${origin}/demo/sync-fixtures/site/docs/guide?utm_source=sitemap</loc></url>`,
+        `<url><loc>${origin}/demo/sync-fixtures/site/nofollow</loc></url>`,
+        `<url><loc>${origin}/demo/sync-fixtures/site/noindex</loc></url>`,
+        `<url><loc>${origin}/demo/sync-fixtures/site/private</loc></url>`,
+        "</urlset>",
+      ].join(""),
+      {
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+        },
+      },
+    );
+  })
+  .get("/demo/sync-fixtures/site/docs/guide", () =>
+    new Response(
+      [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        "<meta charset=\"utf-8\" />",
+        '<link rel="canonical" href="/demo/sync-fixtures/site/docs/guide" />',
+        "<title>Guide page</title>",
+        "</head>",
+        "<body>",
+        "<h1>Guide page</h1>",
+        "<p>This guide shows how site discovery diagnostics stay visible on the same sync surface as every other source.</p>",
+        "</body>",
+        "</html>",
+      ].join(""),
+      {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      },
+    ),
+  )
+  .get("/demo/sync-fixtures/site/nofollow", () =>
+    new Response(
+      [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        "<meta charset=\"utf-8\" />",
+        '<meta name="robots" content="nofollow" />',
+        "<title>Nofollow page</title>",
+        "</head>",
+        "<body>",
+        "<h1>Nofollow page</h1>",
+        "<p>This page should count as a nofollow discovery diagnostic.</p>",
+        "</body>",
+        "</html>",
+      ].join(""),
+      {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      },
+    ),
+  )
+  .get("/demo/sync-fixtures/site/noindex", () =>
+    new Response(
+      [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        "<meta charset=\"utf-8\" />",
+        '<meta name="robots" content="noindex" />',
+        "<title>Noindex page</title>",
+        "</head>",
+        "<body>",
+        "<h1>Noindex page</h1>",
+        "<p>This page should be excluded from final ingestion.</p>",
+        "</body>",
+        "</html>",
+      ].join(""),
+      {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+        },
+      },
+    ),
+  )
+  .get("/demo/sync-fixtures/site/private", () =>
+    new Response(
+      [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head>",
+        "<meta charset=\"utf-8\" />",
+        "<title>Private page</title>",
+        "</head>",
+        "<body>",
+        "<h1>Private page</h1>",
+        "<p>This route exists only so robots blocking can be demonstrated without a missing page.</p>",
+        "</body>",
+        "</html>",
+      ].join(""),
+      {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
         },
       },
     ),
@@ -676,7 +964,7 @@ server
       '</div>',
     ].join('');
   })
-  .post("/demo/message/:mode", async ({ params, request }) => {
+  .post("/demo/message/:mode", async ({ body, params }) => {
     if (!isBackendMode(params.mode)) {
       return status(400, "Invalid backend mode");
     }
@@ -686,31 +974,95 @@ server
       return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
     }
 
-    const form = await request.formData();
-    const content = typeof form.get("content") === "string" ? String(form.get("content")) : "";
-    const modelKey = typeof form.get("modelKey") === "string" ? String(form.get("modelKey")) : (demoAIProvider?.defaultModelKey ?? "");
+    const content = body && typeof body === "object" && typeof (body as Record<string, unknown>).content === "string"
+      ? String((body as Record<string, unknown>).content)
+      : "";
+    const modelKey = body && typeof body === "object" && typeof (body as Record<string, unknown>).modelKey === "string"
+      ? String((body as Record<string, unknown>).modelKey)
+      : (demoAIProvider?.defaultModelKey ?? "");
     const firstColon = modelKey.indexOf(":");
     const providerId = firstColon > 0 ? modelKey.slice(0, firstColon) : "";
     const modelId = firstColon > 0 ? modelKey.slice(firstColon + 1) : "";
     const prefixedContent = providerId && modelId ? `${providerId}:${modelId}:${content}` : content;
-    const body = new URLSearchParams();
-    body.set("content", prefixedContent);
+    const messageBody = new URLSearchParams();
+    messageBody.set("content", prefixedContent);
 
-    const response = await server.handle(
+    return server.handle(
       new Request(`http://absolute.local${backend.path}/message`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
           "HX-Request": "true",
         },
-        body,
+        body: messageBody.toString(),
       }),
     );
+  })
+  .post("/demo/message/:mode/search", async ({ body, params, request }) => {
+    if (!isBackendMode(params.mode)) {
+      return status(400, "Invalid backend mode");
+    }
 
-    return new Response(response.body, {
-      headers: response.headers,
-      status: response.status,
-    });
+    const backend = ragBackends.backends[params.mode];
+    if (!backend.available) {
+      return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
+    }
+
+    const searchPayload: Record<string, unknown> = { includeTrace: true };
+    if (body && typeof body === "object") {
+      for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+        if (value != null) {
+          searchPayload[key] = value;
+        }
+      }
+    }
+
+    const filter: Record<string, string> = {};
+    if (searchPayload.filter && typeof searchPayload.filter === "object") {
+      for (const [key, value] of Object.entries(searchPayload.filter as Record<string, unknown>)) {
+        if (typeof value === "string" && value.trim().length > 0) {
+          filter[key] = value;
+        }
+      }
+    }
+    for (const key of ["kind", "source", "documentId"] as const) {
+      const value = searchPayload[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        filter[key] = value;
+      }
+      delete searchPayload[key];
+    }
+    if (Object.keys(filter).length > 0) {
+      searchPayload.filter = filter;
+    } else {
+      delete searchPayload.filter;
+    }
+
+    const retrievalPresetId =
+      typeof searchPayload.retrievalPresetId === "string" && searchPayload.retrievalPresetId.trim().length > 0
+        ? searchPayload.retrievalPresetId.trim()
+        : undefined;
+    delete searchPayload.retrievalPresetId;
+
+    const targetPath = retrievalPresetId === "hybrid-transform" ? `${backend.path}-transform/search` : `${backend.path}/search`;
+    if (retrievalPresetId === "hybrid-transform" && typeof searchPayload.retrieval === "undefined") {
+      searchPayload.retrieval = "hybrid";
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json;charset=UTF-8",
+    };
+    if (request.headers.get("HX-Request") === "true") {
+      headers["HX-Request"] = "true";
+    }
+
+    return server.handle(
+      new Request(`http://absolute.local${targetPath}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(searchPayload),
+      }),
+    );
   })
   .get("/demo/quality/:mode", async ({ params }) => {
     if (!isBackendMode(params.mode)) {
@@ -735,6 +1087,129 @@ server
     }
 
     return renderHtmxQualityPanel(await buildDemoQualityResponse(params.mode));
+  })
+  .get("/demo/release/:mode", async ({ params, request }) => {
+    if (!isBackendMode(params.mode)) {
+      return status(400, "Invalid backend mode");
+    }
+
+    const backend = ragBackends.backends[params.mode];
+    if (!backend.available) {
+      return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
+    }
+
+    try {
+      return await releaseDemo.buildReleaseResponse(params.mode, new URL(request.url).searchParams.get("workspace") === "beta" ? "beta" : "alpha", (request) => server.handle(request));
+    } catch (error) {
+      return status(500, error instanceof Error ? error.message : String(error));
+    }
+  })
+  .get("/demo/release/:mode/htmx", async ({ params, request }) => {
+    if (!isBackendMode(params.mode)) {
+      return status(400, "Invalid backend mode");
+    }
+
+    const backend = ragBackends.backends[params.mode];
+    if (!backend.available) {
+      return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
+    }
+
+    try {
+      return renderHtmxReleasePanel(
+        await releaseDemo.buildReleaseResponse(
+          params.mode,
+          new URL(request.url).searchParams.get("workspace") === "beta" ? "beta" : "alpha",
+          (request) => server.handle(request),
+        ),
+        undefined,
+        params.mode,
+      );
+    } catch (error) {
+      return status(500, error instanceof Error ? error.message : String(error));
+    }
+  })
+  .post("/demo/release/:mode/action", async ({ body, params, request }) => {
+    if (!isBackendMode(params.mode)) {
+      return status(400, "Invalid backend mode");
+    }
+
+    const backend = ragBackends.backends[params.mode];
+    if (!backend.available) {
+      return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
+    }
+
+    const parsedBody = body as { actionId?: string; workspace?: string } | URLSearchParams | FormData | string | null;
+    let workspace: "alpha" | "beta" = new URL(request.url).searchParams.get("workspace") === "beta" ? "beta" : "alpha";
+    let actionId: string | undefined;
+    if (typeof parsedBody === "string") {
+      const bodyParams = new URLSearchParams(parsedBody);
+      actionId = bodyParams.get("actionId") ?? undefined;
+      workspace = bodyParams.get("workspace") === "beta" ? "beta" : workspace;
+    } else if (parsedBody instanceof URLSearchParams) {
+      actionId = parsedBody.get("actionId") ?? undefined;
+      workspace = parsedBody.get("workspace") === "beta" ? "beta" : workspace;
+    } else if (parsedBody instanceof FormData) {
+      const value = parsedBody.get("actionId");
+      actionId = typeof value === "string" ? value : undefined;
+      const workspaceValue = parsedBody.get("workspace");
+      workspace = typeof workspaceValue === "string" && workspaceValue === "beta" ? "beta" : workspace;
+    } else if (parsedBody && typeof parsedBody === "object") {
+      actionId = typeof parsedBody.actionId === "string" ? parsedBody.actionId : undefined;
+      workspace = parsedBody.workspace === "beta" ? "beta" : workspace;
+    }
+
+    if (!actionId) {
+      return status(400, "Missing actionId");
+    }
+
+    try {
+      const release = await releaseDemo.handleAction({
+        mode: params.mode,
+        workspace,
+        actionId,
+        handleInternal: (internalRequest) => server.handle(internalRequest),
+      });
+
+      const releaseActionMessages: Record<string, string> = {
+        'switch-to-blocked-scenario': 'Switched the release demo to the blocked stable lane.',
+        'switch-to-blocked-general-scenario': 'Switched the release demo to the blocked stable lane.',
+        'switch-to-blocked-multivector-scenario': 'Switched the release demo to the blocked stable lane.',
+        'switch-to-ready-scenario': 'Switched the release demo to the promotable stable lane.',
+        'switch-to-completed-scenario': 'Switched the release demo to the completed stable handoff.',
+        'reset-release-demo': 'Reset the release demo back to the blocked stable lane.',
+        'inspect-release-status': 'Loaded the published release status workflow.',
+        'inspect-release-drift': 'Loaded the published release drift workflow.',
+        'run-remediation-drill': 'Ran the remediation drill through the published remediation execution workflows.',
+        'run-policy-history-drill': 'Loaded the published policy history workflows for release, gate, escalation, and handoff controls.',
+        'run-incident-drill': 'Ran the incident drill through the published incident workflows.',
+        'run-promote-revert-drill': 'Ran the promote and revert drill through the published baseline workflows.',
+        'run-handoff-completion-drill': 'Ran the stable handoff completion drill through the published handoff workflows.',
+        'run-handoff-incident-drill': 'Ran the stale handoff incident drill through the published handoff incident workflows.',
+        'promote-stable-candidate': 'Promoted the stable candidate through the published workflow.',
+        'revert-stable-baseline': 'Reverted the stable baseline through the published workflow.',
+        'approve-stable-override': 'Approved the stable candidate through the published workflow.',
+        'reject-stable-candidate': 'Rejected the stable candidate through the published workflow.',
+        'acknowledge-open-incident': 'Acknowledged the current release incident.',
+        'resolve-open-incident': 'Resolved the current release incident.',
+        'inspect-stable-handoffs': 'Loaded the published handoff status workflow.',
+        'approve-stable-handoff': 'Approved the stable handoff through the published workflow.',
+        'complete-stable-handoff': 'Completed the stable handoff through the published workflow.',
+      };
+
+      const actionMessage = releaseActionMessages[actionId] ?? actionId;
+
+      if (request.headers.get("hx-request") === "true") {
+        return renderHtmxReleasePanel(release, actionMessage, params.mode);
+      }
+
+      return {
+        message: actionMessage,
+        ok: true,
+        release,
+      };
+    } catch (error) {
+      return status(500, error instanceof Error ? error.message : String(error));
+    }
   })
   .post("/demo/upload/:mode/:id", async ({ params }) => {
     if (!isBackendMode(params.mode)) {
@@ -798,6 +1273,107 @@ server
 
     const ops = await response.json();
     return renderHtmxOpsPanel(ops, params.mode);
+  })
+  .get("/demo/documents/:mode", async ({ params, query, request }) => {
+    if (!isBackendMode(params.mode)) {
+      return status(400, "Invalid backend mode");
+    }
+
+    const backend = ragBackends.backends[params.mode];
+    if (!backend.available) {
+      return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
+    }
+
+    const documentsResponse = await server.handle(
+      new Request(`http://absolute.local${backend.path}/documents`, {
+        method: "GET",
+      }),
+    );
+
+    if (!documentsResponse.ok) {
+      return status(documentsResponse.status, await documentsResponse.text());
+    }
+
+    const documentsPayload = await documentsResponse.json() as { documents?: Array<Record<string, unknown>> };
+    const documentQuery = typeof query.query === "string" ? query.query : "";
+    const fileType = typeof query.fileType === "string" ? query.fileType : "all";
+    const requestedPage = typeof query.page === "string" ? Number.parseInt(query.page, 10) : 1;
+    const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const activeDocumentId = typeof query.documentId === "string" ? query.documentId : undefined;
+    const selectedChunkId = typeof query.chunkId === "string" ? query.chunkId : undefined;
+    const shouldInspect = query.inspect === "true" && typeof activeDocumentId === "string";
+
+    let activePreviewHtml: string | undefined;
+    if (shouldInspect && activeDocumentId) {
+      const previewResponse = await server.handle(
+        new Request(`http://absolute.local${backend.path}/documents/${encodeURIComponent(activeDocumentId)}/chunks`, {
+          method: "GET",
+        }),
+      );
+
+      if (previewResponse.ok) {
+        activePreviewHtml = renderHtmxChunkPreviewFragment(await previewResponse.json(), {
+          mode: params.mode,
+          query: documentQuery,
+          fileType,
+          page,
+          selectedChunkId,
+        });
+      }
+    }
+
+    const panelHtml = renderHtmxDocumentsPanel({
+      documents: (documentsPayload.documents ?? []) as never,
+      mode: params.mode,
+      query: documentQuery,
+      fileType,
+      page,
+      activeDocumentId: shouldInspect ? activeDocumentId : undefined,
+      activePreviewHtml,
+    });
+
+    if (request.headers.get("hx-request") === "true") {
+      return panelHtml;
+    }
+
+    return renderStandaloneDocumentsPage({
+      mode: params.mode,
+      panelHtml,
+    });
+  })
+  .get("/demo/documents/:mode/:id/chunks", async ({ params, query }) => {
+    if (!isBackendMode(params.mode)) {
+      return status(400, "Invalid backend mode");
+    }
+
+    const backend = ragBackends.backends[params.mode];
+    if (!backend.available) {
+      return status(503, backend.reason ?? `Backend mode ${params.mode} is not available`);
+    }
+
+    const previewResponse = await server.handle(
+      new Request(`http://absolute.local${backend.path}/documents/${encodeURIComponent(params.id)}/chunks`, {
+        method: "GET",
+      }),
+    );
+
+    if (!previewResponse.ok) {
+      return status(previewResponse.status, await previewResponse.text());
+    }
+
+    const documentQuery = typeof query.query === "string" ? query.query : "";
+    const fileType = typeof query.fileType === "string" ? query.fileType : "all";
+    const requestedPage = typeof query.page === "string" ? Number.parseInt(query.page, 10) : 1;
+    const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const selectedChunkId = typeof query.chunkId === "string" ? query.chunkId : undefined;
+
+    return renderHtmxChunkPreviewFragment(await previewResponse.json(), {
+      mode: params.mode,
+      query: documentQuery,
+      fileType,
+      page,
+      selectedChunkId,
+    });
   })
   .post("/demo/sync/:mode", async ({ params, request }) => {
     if (!isBackendMode(params.mode)) {

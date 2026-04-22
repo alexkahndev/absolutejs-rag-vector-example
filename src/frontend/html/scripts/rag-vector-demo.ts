@@ -1,12 +1,15 @@
 import {
   createRAGWorkflow,
   createRAGClient,
-} from "@absolutejs/absolute/ai/client";
-import { buildRAGEvaluationLeaderboard, runRAGEvaluationSuite } from "@absolutejs/absolute/ai/client";
-import type { RAGEvaluationResponse } from "@absolutejs/absolute";
+} from "@absolutejs/rag/client";
+import { buildRAGChunkPreviewNavigation } from "@absolutejs/rag/client/ui";
+import { buildRAGEvaluationLeaderboard, runRAGEvaluationSuite } from "@absolutejs/rag/client";
+import type { RAGEvaluationResponse, RAGRetrievalTrace } from "@absolutejs/rag";
 import type {
   AddFormState,
   DemoActiveRetrievalState,
+  DemoReleaseOpsResponse,
+  DemoReleaseWorkspace,
   DemoRetrievalQualityResponse,
   DemoAIModelCatalogResponse,
   DemoUploadPreset,
@@ -22,13 +25,23 @@ import {
   buildDemoAIStreamPrompt,
   buildDemoEvaluationSuite,
   buildDemoEvaluationInput,
+  buildDemoReleasePanelState,
   buildDemoUploadIngestInput,
+  attributionBenchmarkNotes,
+  benchmarkOutcomeRail,
+  formatBenchmarkOutcomeRailLabel,
+  resolveBenchmarkRetrievalPresetId,
+  buildSearchResponse,
+  buildActiveChunkPreviewSectionDiagnostic,
+  buildSearchSectionGroups,
+  buildTracePresentation,
   buildSearchPayload,
   buildStatusView,
   getAvailableDemoBackends,
   demoChunkingStrategies,
   demoContentFormats,
   demoEvaluationPresets,
+  demoReleaseWorkspaces,
   demoUploadPresets,
   formatAdminActionList,
   formatAdminJobList,
@@ -43,6 +56,9 @@ import {
   formatEvaluationRetrieved,
   formatEvaluationSummary,
   formatEvaluationHistoryDiff,
+  formatEvaluationHistoryDetails,
+  formatEvaluationHistoryRows,
+  formatEvaluationHistoryTracePresentations,
   formatEvaluationHistorySummary,
   formatEvaluationLeaderboardEntry,
   formatGroundingEvaluationCase,
@@ -51,32 +67,61 @@ import {
   formatGroundingCaseDifficultyEntry,
   formatGroundingDifficultyHistoryDiff,
   formatGroundingDifficultyHistorySummary,
+  formatGroundingDifficultyHistoryDetails,
   formatGroundingHistoryDiff,
-  formatGroundingHistoryArtifactTrail,
-  formatGroundingHistorySnapshots,
+  formatGroundingHistoryDetails,
+  formatGroundingHistorySnapshotPresentations,
   formatGroundingHistorySummary,
-  formatGroundingProviderCaseDetails,
-  formatGroundingProviderCaseEntry,
-  formatGroundingProviderCaseSummary,
-  formatGroundingProviderEntry,
-  formatGroundingProviderSummary,
+  formatGroundingProviderCasePresentations,
+  formatGroundingProviderPresentations,
+  formatGroundingProviderOverviewPresentation,
+  formatQualityOverviewPresentation,
+  formatQualityOverviewNotes,
+  formatRetrievalComparisonOverviewPresentation,
+  buildCitationGroups,
+  buildGroundingReferenceGroups,
+  buildSourceSummarySectionGroups,
+  formatChunkNavigationNodeLabel,
+  formatChunkNavigationSectionLabel,
+  formatChunkSectionGroupLabel,
+  formatSectionDiagnosticAttributionFocus,
+  formatSectionDiagnosticChannels,
+  formatSectionDiagnosticCompetition,
+  formatSectionDiagnosticDistributionRows,
+  formatSectionDiagnosticPipeline,
+  formatSectionDiagnosticStageBounds,
+  formatSectionDiagnosticStageFlow,
+  formatSectionDiagnosticStageWeightReasons,
+  formatSectionDiagnosticStageWeightRows,
+  formatSectionDiagnosticReasons,
+  formatSectionDiagnosticTopEntry,
   formatChunkStrategy,
   formatContentFormat,
+  formatOptionalContentFormat,
+  formatOptionalChunkStrategy,
   formatDemoMetadataSummary,
   formatDate,
   formatFailureSummary,
+  buildInspectionEntries,
+  buildInspectionEntryHref,
+  formatInspectionSamples,
+  formatInspectionSummary,
   formatGroundingCoverage,
   formatGroundedAnswerPartDetails,
+  formatGroundedAnswerPartExcerpt,
   formatGroundingPartReferences,
   formatGroundingReferenceDetails,
   formatGroundingReferenceExcerpt,
   formatGroundingReferenceLabel,
   formatGroundingReferenceSummary,
+  formatGroundedAnswerSectionSummaryDetails,
+  formatGroundedAnswerSectionSummaryExcerpt,
   formatGroundingSummary,
   formatSourceSummaryDetails,
-  formatRetrievalComparisonEntry,
+  formatRetrievalComparisonPresentations,
   formatRetrievalComparisonSummary,
-  formatRerankerComparisonEntry,
+  formatRerankerComparisonPresentations,
+  formatRerankerComparisonOverviewPresentation,
   formatRerankerComparisonSummary,
   formatHealthSummary,
   formatReadinessSummary,
@@ -220,11 +265,21 @@ const evaluationButtonEl = getElement<HTMLButtonElement>("evaluate-btn");
 const evaluationMessageEl = getElement<HTMLParagraphElement>("evaluation-message");
 const evaluationErrorEl = getElement<HTMLParagraphElement>("evaluation-error");
 const evaluationResultsEl = getElement<HTMLDivElement>("evaluation-results");
-const qualitySuiteListEl = getElement<HTMLUListElement>("quality-suite-list");
+const qualitySuiteListEl = getElement<HTMLDivElement>("quality-suite-list");
 const qualitySuiteButtonEl = getElement<HTMLButtonElement>("quality-suite-btn");
-const qualityLeaderboardListEl = getElement<HTMLUListElement>("quality-leaderboard-list");
-const qualitySummaryListEl = getElement<HTMLUListElement>("quality-summary-list");
+const qualityTabRowEl = getElement<HTMLDivElement>("quality-tab-row");
+const qualityStatGridEl = getElement<HTMLDivElement>("quality-stat-grid");
 const qualityComparisonGridEl = getElement<HTMLDivElement>("quality-comparison-grid");
+const releaseBannerEl = getElement<HTMLParagraphElement>("release-banner");
+const releaseSummaryEl = getElement<HTMLParagraphElement>("release-summary");
+const releaseDecisionMetaEl = getElement<HTMLParagraphElement>("release-decision-meta");
+const releasePillRowEl = getElement<HTMLDivElement>("release-pill-row");
+const releaseScenarioSwitcherEl = getElement<HTMLDivElement>("release-scenario-switcher");
+const releasePathRowEl = getElement<HTMLDivElement>("release-path-row");
+const releaseActionRowEl = getElement<HTMLDivElement>("release-action-row");
+const releaseStatGridEl = getElement<HTMLDivElement>("release-stat-grid");
+const releasePrimaryGridEl = getElement<HTMLDivElement>("release-primary-grid");
+const releaseSecondaryGridEl = getElement<HTMLDivElement>("release-secondary-grid");
 const documentListEl = getElement<HTMLElement>("document-list");
 const documentCountTotalEl = getElement<HTMLElement>("document-count-total");
 const documentCountBreakdownEl = getElement<HTMLElement>("document-count-breakdown");
@@ -240,6 +295,8 @@ const streamQueryInput = getElement<HTMLInputElement>("stream-query");
 const streamActionButton = getElement<HTMLButtonElement>("stream-action-btn");
 const streamStageRow = getElement<HTMLDivElement>("stream-stage-row");
 const streamStatsEl = getElement<HTMLDListElement>("stream-stats");
+const streamTraceEl = getElement<HTMLDivElement>("stream-trace");
+const streamTraceGridEl = getElement<HTMLDivElement>("stream-trace-grid");
 const streamErrorEl = getElement<HTMLParagraphElement>("stream-error");
 const streamThinkingEl = getElement<HTMLDivElement>("stream-thinking");
 const streamThinkingTextEl = getElement<HTMLParagraphElement>("stream-thinking-text");
@@ -249,6 +306,8 @@ const streamGroundingEl = getElement<HTMLDivElement>("stream-grounding");
 const streamGroundingBadgeEl = getElement<HTMLParagraphElement>("stream-grounding-badge");
 const streamGroundingListEl = getElement<HTMLUListElement>("stream-grounding-list");
 const streamGroundingPartsEl = getElement<HTMLDivElement>("stream-grounding-parts");
+const streamGroundingSectionsEl = getElement<HTMLDivElement>("stream-grounding-sections");
+const streamGroundingSectionsGridEl = getElement<HTMLDivElement>("stream-grounding-sections-grid");
 const streamGroundingReferencesEl = getElement<HTMLDivElement>("stream-grounding-references");
 const streamGroundingReferencesGridEl = getElement<HTMLDivElement>("stream-grounding-references-grid");
 const streamSourcesEl = getElement<HTMLDivElement>("stream-sources");
@@ -283,13 +342,19 @@ let backendOptions: DemoBackendDescriptor[] = getAvailableDemoBackends();
 let activeRagPath = getRAGPathForMode(selectedMode);
 let documentsCache: DemoDocument[] = [];
 let chunkPreview: DemoChunkPreview | null = null;
+let chunkPreviewActiveChunkId: string | null = null;
 let chunkPreviewLoadingDocumentId: string | null = null;
 let evaluationResponse: RAGEvaluationResponse | null = null;
 const evaluationSuite = buildDemoEvaluationSuite();
 let suiteRuns: Array<Awaited<ReturnType<typeof runRAGEvaluationSuite>>> = [];
 let qualityData: DemoRetrievalQualityResponse | null = null;
+let releaseData: DemoReleaseOpsResponse | null = null;
+let releaseActionBusyId: string | null = null;
+let releaseWorkspace: DemoReleaseWorkspace = "alpha";
+let qualityView: "overview" | "strategies" | "grounding" | "history" = "overview";
 let aiModelCatalog: DemoAIModelCatalogResponse = { defaultModelKey: null, models: [] };
 let scopeDriver = "manual filters";
+let activeNativeQueryProfile: SearchFormState["nativeQueryProfile"] = "";
 let recentQueries: Array<{ label: string; state: SearchFormState }> = [];
 let restoredSharedState = false;
 let restoredSharedStateSummary = "";
@@ -417,12 +482,23 @@ const renderDetailList = (el: HTMLUListElement, lines: string[], fallback: strin
   }
 };
 
+const escapeHtml = (text: string) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
 const renderQualityState = () => {
-  renderDetailList(qualitySuiteListEl, [
-    `${evaluationSuite.label ?? evaluationSuite.id} · ${evaluationSuite.input.cases.length} case(s)${evaluationSuite.description ? ` · ${evaluationSuite.description}` : ""}`
-  ], "Saved suite unavailable.");
-  renderDetailList(qualityLeaderboardListEl, suiteRuns.length > 0 ? buildRAGEvaluationLeaderboard(suiteRuns).map((entry) => formatEvaluationLeaderboardEntry(entry)) : ["Run the saved suite to rank workflow benchmark runs."], "Run the saved suite to rank workflow benchmark runs.");
-  renderDetailList(qualitySummaryListEl, qualityData ? [...formatRetrievalComparisonSummary(qualityData.retrievalComparison), ...formatRerankerComparisonSummary(qualityData.rerankerComparison), formatGroundingEvaluationSummary(qualityData.groundingEvaluation), ...(qualityData.providerGroundingComparison ? formatGroundingProviderSummary(qualityData.providerGroundingComparison) : ["Configure an AI provider to compare real model-grounded answers."])] : ["Loading quality comparison..."], "Loading quality comparison...");
+  qualitySuiteListEl.innerHTML = `<span class="demo-pill">${escapeHtml(`${evaluationSuite.label ?? evaluationSuite.id} · ${evaluationSuite.input.cases.length} cases`)}</span>`;
+  qualityTabRowEl.innerHTML = ["overview", "strategies", "grounding", "history"].map((view) => `<button class="${qualityView === view ? "demo-tab demo-tab-active" : "demo-tab"}" data-quality-view="${view}" type="button">${escapeHtml(view[0].toUpperCase() + view.slice(1))}</button>`).join("");
+  const leaderboard = suiteRuns.length > 0 ? buildRAGEvaluationLeaderboard(suiteRuns) : [];
+  qualityStatGridEl.innerHTML = [
+    `<article class="demo-stat-card"><span class="demo-stat-label">Saved suite leader</span><strong>${escapeHtml(leaderboard[0]?.label ?? "Run the saved suite")}</strong><p>${escapeHtml(leaderboard[0] ? formatEvaluationLeaderboardEntry(leaderboard[0]) : "The leaderboard will rank repeated workflow benchmark runs.")}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Retrieval winner</span><strong>${escapeHtml(qualityData ? formatRetrievalComparisonOverviewPresentation(qualityData.retrievalComparison).winnerLabel : "Loading comparison")}</strong><p>${escapeHtml(qualityData ? formatRetrievalComparisonOverviewPresentation(qualityData.retrievalComparison).summary : "Running retrieval comparison...")}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Reranker winner</span><strong>${escapeHtml(qualityData ? formatRerankerComparisonOverviewPresentation(qualityData.rerankerComparison).winnerLabel : "Loading comparison")}</strong><p>${escapeHtml(qualityData ? formatRerankerComparisonOverviewPresentation(qualityData.rerankerComparison).summary : "Running reranker comparison...")}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Grounding winner</span><strong>${escapeHtml(qualityData?.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison).winnerLabel : "Stored workflow evaluation")}</strong><p>${escapeHtml(qualityData?.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison).summary : qualityData ? formatGroundingEvaluationSummary(qualityData.groundingEvaluation) : "Loading grounding comparison...")}</p></article>`,
+  ].join("");
 
   if (!qualityData) {
     qualityComparisonGridEl.innerHTML = "";
@@ -430,17 +506,171 @@ const renderQualityState = () => {
   }
 
   const nextQualityData = qualityData;
+  if (qualityView === "overview") {
+    const overview = formatQualityOverviewPresentation({
+      retrievalComparison: nextQualityData.retrievalComparison,
+      rerankerComparison: nextQualityData.rerankerComparison,
+      groundingEvaluation: nextQualityData.groundingEvaluation,
+      groundingProviderOverview: nextQualityData.providerGroundingComparison
+        ? formatGroundingProviderOverviewPresentation(nextQualityData.providerGroundingComparison)
+        : undefined,
+    });
+    qualityComparisonGridEl.innerHTML = [
+      `<article class="demo-result-item"><h4>Winners at a glance</h4><div class="demo-key-value-grid">${overview.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></article>`,
+      `<article class="demo-result-item"><h4>Why this matters</h4><div class="demo-insight-stack">${formatQualityOverviewNotes().map((insight) => `<p class="demo-insight-card">${escapeHtml(insight)}</p>`).join("")}</div></article>`,
+    ].join("");
+    return;
+  }
+  if (qualityView === "strategies") {
+    qualityComparisonGridEl.innerHTML = [
+      ...formatRetrievalComparisonPresentations(nextQualityData.retrievalComparison).map((card) => `<article class="demo-result-item demo-score-card"><h4>${escapeHtml(card.label)}</h4><p class="demo-score-headline">${escapeHtml(card.summary)}</p><div class="demo-key-value-grid demo-trace-summary-grid">${card.traceSummaryRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div><details class="demo-collapsible demo-trace-diff"><summary><span>Trace diff vs leader</span><strong>${escapeHtml(card.diffLabel)}</strong></summary><div class="demo-collapsible-content demo-trace-diff-grid">${card.diffRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details></article>`),
+      ...formatRerankerComparisonPresentations(nextQualityData.rerankerComparison).map((card) => `<article class="demo-result-item demo-score-card"><h4>${escapeHtml(card.label)}</h4><p class="demo-score-headline">${escapeHtml(card.summary)}</p><div class="demo-key-value-grid demo-trace-summary-grid">${card.traceSummaryRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div><details class="demo-collapsible demo-trace-diff"><summary><span>Trace diff vs leader</span><strong>${escapeHtml(card.diffLabel)}</strong></summary><div class="demo-collapsible-content demo-trace-diff-grid">${card.diffRows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details></article>`),
+    ].join("");
+    return;
+  }
+  if (qualityView === "grounding") {
+    qualityComparisonGridEl.innerHTML = [
+      ...nextQualityData.groundingEvaluation.cases.map((entry) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label ?? entry.caseId)}</span><strong>${escapeHtml(formatGroundingEvaluationCase(entry))}</strong></summary><div class="demo-collapsible-content">${formatGroundingEvaluationDetails(entry).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</div></details>`),
+      ...(nextQualityData.providerGroundingComparison ? formatGroundingProviderPresentations(nextQualityData.providerGroundingComparison.entries).map((card) => `<article class="demo-result-item demo-score-card"><h4>${escapeHtml(card.label)}</h4><p class="demo-score-headline">${escapeHtml(card.summary)}</p></article>`) : []),
+      ...(nextQualityData.providerGroundingComparison ? [`<article class="demo-result-item"><h4>Hardest cases</h4><div class="demo-pill-row">${nextQualityData.providerGroundingComparison.difficultyLeaderboard.map((entry) => `<span class="demo-pill">${escapeHtml(formatGroundingCaseDifficultyEntry(entry))}</span>`).join("")}</div></article>`] : []),
+      ...(nextQualityData.providerGroundingComparison ? formatGroundingProviderCasePresentations(nextQualityData.providerGroundingComparison.caseComparisons).map((card) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(card.label)}</span><strong>${escapeHtml(card.summary)}</strong></summary><div class="demo-collapsible-content">${card.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details>`) : []),
+    ].join("");
+    return;
+  }
   qualityComparisonGridEl.innerHTML = [
-    ...nextQualityData.retrievalComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label}</h4><p class="demo-metadata">${formatRetrievalComparisonEntry(entry)}</p></article>`),
-    ...nextQualityData.rerankerComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label}</h4><p class="demo-metadata">${formatRerankerComparisonEntry(entry)}</p></article>`),
-    ...nextQualityData.groundingEvaluation.cases.map((entry) => `<article class="demo-result-item"><h4>${entry.label ?? entry.caseId}</h4><p class="demo-metadata">${formatGroundingEvaluationCase(entry)}</p><ul class="demo-detail-list">${formatGroundingEvaluationDetails(entry).map((line) => `<li>${line}</li>`).join("")}</ul></article>`),
-    ...(nextQualityData.providerGroundingComparison ? nextQualityData.providerGroundingComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label}</h4><p class="demo-metadata">${formatGroundingProviderEntry(entry)}</p></article>`) : []),
-    ...(nextQualityData.providerGroundingComparison ? nextQualityData.providerGroundingComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label} history</h4><ul class="demo-detail-list">${[...formatGroundingHistorySummary(nextQualityData.providerGroundingHistories[entry.providerKey]), ...formatGroundingHistoryDiff(nextQualityData.providerGroundingHistories[entry.providerKey]), ...formatGroundingHistorySnapshots(nextQualityData.providerGroundingHistories[entry.providerKey])].map((line) => `<li>${line}</li>`).join("")}</ul></article>`) : []),
-    ...(nextQualityData.providerGroundingComparison ? nextQualityData.providerGroundingComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label} artifact trail</h4><ul class="demo-detail-list">${formatGroundingHistoryArtifactTrail(nextQualityData.providerGroundingHistories[entry.providerKey]).map((line) => `<li>${line}</li>`).join("")}</ul></article>`) : []),
-    ...(nextQualityData.providerGroundingComparison ? [`<article class="demo-result-item"><h4>Hardest grounding cases</h4><ul class="demo-detail-list">${nextQualityData.providerGroundingComparison.difficultyLeaderboard.map((entry) => `<li>${formatGroundingCaseDifficultyEntry(entry)}</li>`).join("")}</ul></article>`, `<article class="demo-result-item"><h4>Grounding difficulty history</h4><ul class="demo-detail-list">${[...formatGroundingDifficultyHistorySummary(nextQualityData.providerGroundingDifficultyHistory), ...formatGroundingDifficultyHistoryDiff(nextQualityData.providerGroundingDifficultyHistory)].map((line) => `<li>${line}</li>`).join("")}</ul></article>`] : []),
-    ...(nextQualityData.providerGroundingComparison ? nextQualityData.providerGroundingComparison.caseComparisons.map((entry) => `<article class="demo-result-item"><h4>${entry.label}</h4><ul class="demo-detail-list">${[...formatGroundingProviderCaseSummary(entry), ...entry.entries.flatMap((candidate) => [formatGroundingProviderCaseEntry(candidate), ...formatGroundingProviderCaseDetails(candidate)])].map((line) => `<li>${line}</li>`).join("")}</ul></article>`) : []),
-    ...nextQualityData.retrievalComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label} history</h4><ul class="demo-detail-list">${[...formatEvaluationHistorySummary(nextQualityData.retrievalHistories[entry.retrievalId]), ...formatEvaluationHistoryDiff(nextQualityData.retrievalHistories[entry.retrievalId])].map((line) => `<li>${line}</li>`).join("")}</ul></article>`),
-    ...nextQualityData.rerankerComparison.entries.map((entry) => `<article class="demo-result-item"><h4>${entry.label} history</h4><ul class="demo-detail-list">${[...formatEvaluationHistorySummary(nextQualityData.rerankerHistories[entry.rerankerId]), ...formatEvaluationHistoryDiff(nextQualityData.rerankerHistories[entry.rerankerId])].map((line) => `<li>${line}</li>`).join("")}</ul></article>`),
+    ...nextQualityData.retrievalComparison.entries.map((entry) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label)} history</span><strong>${escapeHtml(formatEvaluationHistorySummary(nextQualityData.retrievalHistories[entry.retrievalId])[0] ?? "No runs yet")}</strong></summary><div class="demo-collapsible-content">${formatEvaluationHistoryRows(nextQualityData.retrievalHistories[entry.retrievalId]).map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}<div class="demo-result-grid">${formatEvaluationHistoryTracePresentations(nextQualityData.retrievalHistories[entry.retrievalId]).map((traceCase) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(traceCase.label)}</span><strong>${escapeHtml(traceCase.summary)}</strong></summary><div class="demo-collapsible-content">${traceCase.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details>`).join("")}</div></div></details>`),
+    ...nextQualityData.rerankerComparison.entries.map((entry) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label)} history</span><strong>${escapeHtml(formatEvaluationHistorySummary(nextQualityData.rerankerHistories[entry.rerankerId])[0] ?? "No runs yet")}</strong></summary><div class="demo-collapsible-content">${formatEvaluationHistoryRows(nextQualityData.rerankerHistories[entry.rerankerId]).map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}<div class="demo-result-grid">${formatEvaluationHistoryTracePresentations(nextQualityData.rerankerHistories[entry.rerankerId]).map((traceCase) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(traceCase.label)}</span><strong>${escapeHtml(traceCase.summary)}</strong></summary><div class="demo-collapsible-content">${traceCase.rows.map((row) => `<div class="demo-key-value-row"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.value)}</strong></div>`).join("")}</div></details>`).join("")}</div></div></details>`),
+    ...(nextQualityData.providerGroundingComparison
+      ? nextQualityData.providerGroundingComparison.entries.map((entry) => {
+          const history = nextQualityData.providerGroundingHistories[entry.providerKey];
+          return `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(entry.label)} history</span><strong>${escapeHtml(formatGroundingHistorySummary(history)[0] ?? "No runs yet")}</strong></summary><div class="demo-collapsible-content">${formatGroundingHistoryDetails(history).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}${formatGroundingHistorySnapshotPresentations(history).length ? `<div class="demo-result-grid">${formatGroundingHistorySnapshotPresentations(history).map((snapshot) => `<details class="demo-result-item demo-collapsible"><summary><span>${escapeHtml(snapshot.label)}</span><strong>${escapeHtml(snapshot.summary)}</strong></summary><div class="demo-collapsible-content">${snapshot.rows.map((row) => `<p class="demo-key-value-row"><strong>${escapeHtml(row.label)}</strong><span>${escapeHtml(row.value)}</span></p>`).join("")}</div></details>`).join("")}</div>` : ""}</div></details>`;
+        })
+      : []),
+    ...(nextQualityData.providerGroundingComparison ? [`<details class="demo-result-item demo-collapsible"><summary><span>Grounding difficulty history</span><strong>${escapeHtml(formatGroundingDifficultyHistorySummary(nextQualityData.providerGroundingDifficultyHistory)[0] ?? "No history yet")}</strong></summary><div class="demo-collapsible-content">${formatGroundingDifficultyHistoryDetails(nextQualityData.providerGroundingDifficultyHistory).map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</div></details>`] : []),
+  ].join("");
+};
+
+const runReleaseAction = async (actionId: string) => {
+  const releasePanel = buildDemoReleasePanelState(releaseData);
+  const action = releasePanel.actions.find((entry) => entry.id === actionId);
+  if (!action) {
+    return;
+  }
+  releaseActionBusyId = action.id;
+  renderReleaseState();
+  try {
+    const response = await fetch(action.path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ...action.payload, workspace: releaseWorkspace }),
+    });
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+    const payload = await response.json() as { message?: string; ok?: boolean; release?: DemoReleaseOpsResponse };
+    if (!payload.ok || !payload.release) {
+      throw new Error(`Release action ${action.label} failed`);
+    }
+    releaseData = payload.release;
+    showMessage(payload.message ?? `${action.label} completed through the published AbsoluteJS release-control workflow.`);
+  } catch (error) {
+    setError(addErrorEl, error instanceof Error ? error.message : `Release action ${action.label} failed`);
+  } finally {
+    releaseActionBusyId = null;
+    renderReleaseState();
+  }
+};
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+  const workspaceButton = target.closest("[data-release-workspace]") as HTMLElement | null;
+  if (workspaceButton?.dataset.releaseWorkspace) {
+    releaseWorkspace = workspaceButton.dataset.releaseWorkspace === "beta" ? "beta" : "alpha";
+    void refreshData();
+    return;
+  }
+  const evidenceButton = target.closest("[data-release-evidence-id]") as HTMLButtonElement | null;
+  if (evidenceButton) {
+    void onPresetSearch({ currentTarget: evidenceButton } as unknown as Event);
+    document.getElementById("search-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  const actionButton = target.closest("[data-release-action-id]") as HTMLElement | null;
+  if (!actionButton) {
+    return;
+  }
+  const actionId = actionButton.dataset.releaseActionId;
+  if (!actionId) {
+    return;
+  }
+  void runReleaseAction(actionId);
+});
+
+const renderReleaseState = () => {
+  const releasePanel = buildDemoReleasePanelState(releaseData);
+  releaseBannerEl.textContent = releasePanel.releaseHero;
+  releaseSummaryEl.textContent = releasePanel.releaseHeroSummary;
+  releaseDecisionMetaEl.textContent = `${releasePanel.releaseHeroMeta} · ${releasePanel.releaseScopeNote}`;
+  releasePillRowEl.innerHTML = releasePanel.releaseHeroPills.map((pill) => pill.targetCardId || pill.targetActivityId ? `<a class="demo-release-pill demo-release-pill-${escapeHtml(pill.tone)}" href="#${escapeHtml(pill.targetActivityId ?? pill.targetCardId ?? '')}" data-target-card="${escapeHtml(pill.targetCardId ?? '')}" onclick="const targetCard=this.dataset.targetCard; if(targetCard==='release-promotion-candidates-card'||targetCard==='release-stable-handoff-card'||targetCard==='release-remediation-history-card'){document.getElementById('release-diagnostics')?.setAttribute('open','open');}"><span class="demo-release-pill-label">${escapeHtml(pill.label)}</span><span class="demo-release-pill-value">${escapeHtml(pill.value)}</span></a>` : `<span class="demo-release-pill demo-release-pill-${escapeHtml(pill.tone)}"><span class="demo-release-pill-label">${escapeHtml(pill.label)}</span><span class="demo-release-pill-value">${escapeHtml(pill.value)}</span></span>`).join("");
+  const workspaceButtons = demoReleaseWorkspaces.map((entry) => `<span class="demo-release-scenario-chip demo-release-workspace-chip${releaseWorkspace === entry.id ? ' demo-release-scenario-chip-active' : ''}"><button type="button" data-release-workspace="${escapeHtml(entry.id)}" ${releaseWorkspace === entry.id ? "disabled" : ""} title="${escapeHtml(entry.description)}">Workspace · ${escapeHtml(entry.label)}</button></span>`).join("");
+  const scenarioButtons = releasePanel.releaseScenarioActions.map((entry) => `<span class="demo-release-scenario-chip${entry.active ? ' demo-release-scenario-chip-active' : ''}">${entry.action ? `<button type="button" data-release-action-id="${escapeHtml(entry.action.id)}">${escapeHtml(releaseActionBusyId === entry.action.id ? `Running ${entry.action.label}...` : entry.label)}</button>` : `<span>${escapeHtml(entry.label)}</span>`}</span>`).join("");
+  releaseScenarioSwitcherEl.innerHTML = `${workspaceButtons}${scenarioButtons}`;
+  releasePathRowEl.innerHTML = releasePanel.releasePathSteps.map((step) => `<article class="demo-release-path-step demo-release-path-step-${escapeHtml(step.status)}"><div class="demo-release-path-step-header"><h4>${escapeHtml(step.label)}</h4><span class="demo-release-path-status demo-release-path-status-${escapeHtml(step.status)}">${escapeHtml(step.status)}</span></div><p>${escapeHtml(step.summary)}</p><p class="demo-release-path-detail">${escapeHtml(step.detail)}</p>${step.action ? `<button class="demo-release-path-action" type="button" data-release-action-id="${escapeHtml(step.action.id)}">${escapeHtml(releaseActionBusyId === step.action.id ? `Running ${step.action.label}...` : step.action.label)}</button>` : ''}</article>`).join('');
+  releaseActionRowEl.innerHTML = [
+    `<div class="demo-release-action-state"><span class="demo-release-action-state-badge">Scenario · ${escapeHtml(releasePanel.scenario?.label ?? "Blocked stable lane")}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.releaseRailDeltaChip.tone)}">${escapeHtml(releasePanel.releaseRailDeltaChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railIncidentPostureChip.tone)}">Incident posture · ${escapeHtml(releasePanel.railIncidentPostureChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railGateChip.tone)}">Gate posture · ${escapeHtml(releasePanel.railGateChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railApprovalChip.tone)}">Approval posture · ${escapeHtml(releasePanel.railApprovalChip.label)}</span><span class="demo-release-action-delta-badge demo-release-action-delta-badge-${escapeHtml(releasePanel.railRemediationChip.tone)}">Remediation posture · ${escapeHtml(releasePanel.railRemediationChip.label)}</span></div>`,
+    `<div class="demo-release-rail-meta">${releasePanel.releaseRailUpdateSource.targetCardId || releasePanel.releaseRailUpdateSource.targetActivityId ? `<a class="demo-release-activity-lane demo-release-activity-lane-${escapeHtml(releasePanel.releaseRailUpdateSource.tone)}" href="#${escapeHtml(releasePanel.releaseRailUpdateSource.targetActivityId ?? releasePanel.releaseRailUpdateSource.targetCardId ?? '')}" data-target-card="${escapeHtml(releasePanel.releaseRailUpdateSource.targetCardId ?? '')}" onclick="const targetCard=this.dataset.targetCard; if(targetCard==='release-promotion-candidates-card'||targetCard==='release-stable-handoff-card'||targetCard==='release-remediation-history-card'){document.getElementById('release-diagnostics')?.setAttribute('open','open');}">${escapeHtml(releasePanel.releaseRailUpdateSource.label)}</a>` : `<span class="demo-release-activity-lane demo-release-activity-lane-${escapeHtml(releasePanel.releaseRailUpdateSource.tone)}">${escapeHtml(releasePanel.releaseRailUpdateSource.label)}</span>`}<p class="demo-release-updated">${escapeHtml(releasePanel.releaseRailUpdatedLabel)}</p></div>`,
+    releaseActionBusyId ? `<p class="demo-release-pending">Pending action · ${escapeHtml(releasePanel.actions.find((entry) => entry.id === releaseActionBusyId)?.label ?? releaseActionBusyId)}</p>` : "",
+    releasePanel.latestReleaseAction
+      ? `<details class="demo-collapsible demo-release-action-latest demo-release-action-latest-${escapeHtml(releasePanel.latestReleaseAction.tone)}"><summary>Latest action · ${escapeHtml(releasePanel.latestReleaseAction.title)}</summary>${releasePanel.latestReleaseAction.detail ? `<p>${escapeHtml(releasePanel.latestReleaseAction.detail)}</p>` : ""}<p class="demo-release-next-step">${escapeHtml(releasePanel.latestReleaseAction.nextStep)}</p></details>`
+      : "",
+    `<details class="demo-collapsible demo-release-rail-callout demo-release-rail-callout-${escapeHtml(releasePanel.releaseRailCallout.tone)}"><summary>${escapeHtml(releasePanel.releaseRailCallout.title)}</summary><p>${escapeHtml(releasePanel.releaseRailCallout.message)}</p>${releasePanel.releaseRailCallout.detail ? `<p>${escapeHtml(releasePanel.releaseRailCallout.detail)}</p>` : ""}<p class="demo-release-next-step">${escapeHtml(releasePanel.releaseRailCallout.nextStep)}</p></details>`,
+    releasePanel.recentReleaseActivity.length
+      ? `<div class="demo-release-activity-stack"><span class="demo-release-action-subtitle">Recent activity</span>${releasePanel.recentReleaseActivity.map((entry) => `<a id="${escapeHtml(entry.id)}" class="demo-release-activity demo-release-activity-${escapeHtml(entry.tone)}" href="#${escapeHtml(entry.targetCardId)}" onclick="if(this.getAttribute('href')==='#release-promotion-candidates-card'||this.getAttribute('href')==='#release-stable-handoff-card'){document.getElementById('release-diagnostics')?.setAttribute('open','open');}"><span class="demo-release-activity-lane demo-release-activity-lane-${escapeHtml(entry.tone)}">${escapeHtml(entry.laneLabel)}</span><strong>${escapeHtml(entry.title)}</strong>${entry.detail ? ` · ${escapeHtml(entry.detail)}` : ""}</a>`).join("")}</div>`
+      : "",
+    `<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Release</span><div class="demo-release-actions">${releasePanel.primaryReleaseActions.map((action) => `<button class="demo-release-action demo-release-action-${escapeHtml(action.tone ?? "neutral")}" type="button" data-release-action-id="${escapeHtml(action.id)}" title="${escapeHtml(action.description)}" ${releaseActionBusyId === action.id ? "disabled" : ""}>${escapeHtml(releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label)}</button>`).join("")}</div></div>`,
+    releasePanel.secondaryReleaseActions.length > 0
+      ? `<details class="demo-collapsible demo-release-more-actions"><summary>More actions</summary><div class="demo-release-actions">${releasePanel.secondaryReleaseActions.map((action) => `<button class="demo-release-action demo-release-action-${escapeHtml(action.tone ?? "neutral")}" type="button" data-release-action-id="${escapeHtml(action.id)}" title="${escapeHtml(action.description)}" ${releaseActionBusyId === action.id ? "disabled" : ""}>${escapeHtml(releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label)}</button>`).join("")}</div></details>`
+      : "",
+    releasePanel.handoffActions.length > 0
+      ? `<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Handoff</span><div class="demo-release-actions">${releasePanel.handoffActions.map((action) => `<button class="demo-release-action demo-release-action-${escapeHtml(action.tone ?? "neutral")}" type="button" data-release-action-id="${escapeHtml(action.id)}" title="${escapeHtml(action.description)}" ${releaseActionBusyId === action.id ? "disabled" : ""}>${escapeHtml(releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label)}</button>`).join("")}</div></div>`
+      : "",
+    `<div class="demo-release-action-group"><span class="demo-release-action-subtitle">Evidence drills</span><div class="demo-release-actions">${releasePanel.releaseEvidenceDrills.map((drill) => `<button class="demo-release-action demo-release-action-${escapeHtml(drill.active ? "primary" : "neutral")}" type="button" data-release-evidence-id="${escapeHtml(drill.id ?? "")}" data-query="${escapeHtml(drill.query ?? "")}" data-topk="${escapeHtml(String(drill.topK))}" data-driver="${escapeHtml(drill.driver ?? "")}" data-benchmark-preset-id="${escapeHtml(drill.benchmarkPresetId ?? "")}" data-retrieval-preset-id="${escapeHtml(drill.retrievalPresetId ?? "")}">${escapeHtml(drill.label ?? "")}</button>`).join("")}</div>${releasePanel.releaseEvidenceDrills.map((drill) => `<p class="demo-metadata"><strong>${escapeHtml(drill.classificationLabel ?? "")}:</strong> ${escapeHtml(drill.summary ?? "")} Expected source · ${escapeHtml(drill.expectedSource ?? "")}</p><p class="demo-metadata">${escapeHtml(drill.traceExpectation ?? "")}</p>`).join("")}</div>`,
+  ].join("");
+
+  releaseStatGridEl.innerHTML = [
+    `<article class="demo-stat-card"><span class="demo-stat-label">Stable baseline</span><strong>${escapeHtml(releasePanel.stableBaseline?.label ?? "Not promoted")}</strong><p>${escapeHtml(releasePanel.stableBaseline ? `${releasePanel.stableBaseline.retrievalId} · v${releasePanel.stableBaseline.version}${releasePanel.stableBaseline.approvedBy ? ` · approved by ${releasePanel.stableBaseline.approvedBy}` : ""}` : "No stable baseline has been promoted yet.")}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Canary baseline</span><strong>${escapeHtml(releasePanel.canaryBaseline?.label ?? "Not promoted")}</strong><p>${escapeHtml(releasePanel.canaryBaseline ? `${releasePanel.canaryBaseline.retrievalId} · v${releasePanel.canaryBaseline.version}${releasePanel.canaryBaseline.approvedAt ? ` · ${formatDate(releasePanel.canaryBaseline.approvedAt)}` : ""}` : "No canary baseline has been promoted yet.")}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Stable readiness</span><strong>${escapeHtml(releasePanel.stableReadiness?.ready ? "Ready" : "Blocked")}</strong><p>${escapeHtml(releasePanel.stableReadinessStatSummary)}</p></article>`,
+    `<article class="demo-stat-card"><span class="demo-stat-label">Remediation guardrails</span><strong>${escapeHtml(releasePanel.remediationSummary ? `${releasePanel.remediationSummary.guardrailBlockedCount} blocked · ${releasePanel.remediationSummary.replayCount} replays` : "No remediation executions")}</strong><p>${escapeHtml(releasePanel.remediationGuardrailSummary)}</p></article>`,
+  ].join("");
+
+  releasePrimaryGridEl.innerHTML = [
+    `<p class="demo-release-card-state demo-release-card-state-${escapeHtml(releasePanel.releaseStateBadge.tone)}">State · ${escapeHtml(releasePanel.releaseStateBadge.label)}</p>`,
+    `<article class="demo-result-item"><h4>Blocker comparison</h4><p class="demo-score-headline">${escapeHtml(releasePanel.scenarioClassificationLabel ? `Active blocker · ${releasePanel.scenarioClassificationLabel}` : "Compare both blocker classes")}</p><div class="demo-result-grid">${releasePanel.releaseBlockerComparisonCards.map((card) => `<article class="demo-result-item"><h4>${escapeHtml(card.label)}${card.active ? " · active" : ""}</h4>${card.detailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</article>`).join("")}</div></article>`,
+    `<article id="release-runtime-history-card" class="demo-result-item"><h4>Runtime planner history</h4><p class="demo-score-headline">${escapeHtml(releasePanel.runtimePlannerHistorySummary)}</p>${releasePanel.runtimePlannerHistoryLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</article>`,
+    `<article id="release-benchmark-snapshots-card" class="demo-result-item"><h4>Adaptive planner benchmark</h4><p class="demo-score-headline">${escapeHtml(releasePanel.benchmarkSnapshotSummary)}</p>${releasePanel.benchmarkSnapshotLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</article>`,
+    `<article id="release-active-deltas-card" class="demo-result-item"><h4>Active blocker deltas</h4><p class="demo-score-headline">${escapeHtml(releasePanel.activeBlockerDeltaSummary)}</p>${releasePanel.activeBlockerDeltaLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}</article>`,
+    `<article id="release-lane-readiness-card" class="demo-result-item"><h4>Lane readiness</h4><div class="demo-key-value-grid">${releasePanel.laneReadinessEntries.map((entry) => `<div class="demo-key-value-row"><span>${escapeHtml(entry.targetRolloutLabel ?? "lane")}</span><strong>${escapeHtml(entry.ready ? "ready" : "blocked")}</strong></div>${entry.reasons.slice(0, 2).map((reason) => `<p class="demo-metadata">${escapeHtml(reason)}</p>`).join("")}`).join("") || `<p class="demo-metadata">No lane readiness snapshots are available yet.</p>`}</div></article>`,
+    `<article class="demo-result-item"><h4>Lane recommendations</h4><div class="demo-insight-stack">${releasePanel.releaseRecommendations.length > 0 ? releasePanel.releaseRecommendations.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.targetRolloutLabel ?? "lane")} · ${escapeHtml(entry.classificationLabel ?? "release recommendation")}:</strong> ${escapeHtml(entry.recommendedAction.replaceAll("_", " "))}${entry.reasons[0] ? ` · ${escapeHtml(entry.reasons[0])}` : ""}</p>`).join("") : '<p class="demo-insight-card">No lane recommendations are available yet.</p>'}</div></article>`,
+    `<article id="release-open-incidents-card" class="demo-result-item"><h4>Open incidents</h4><p class="demo-score-headline">${escapeHtml(releasePanel.incidentSummaryLabel)}</p>${releasePanel.incidentClassificationDetailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<div class="demo-insight-stack">${releasePanel.recentIncidents.slice(0, 3).map((incident) => `<p class="demo-insight-card"><strong>${escapeHtml(incident.targetRolloutLabel ?? "lane")} · ${escapeHtml(incident.kind)} · ${escapeHtml(incident.classificationLabel ?? "general regression")}</strong><br />${escapeHtml(incident.message)}</p>`).join("") || '<p class="demo-insight-card">No incidents recorded.</p>'}</div></article>`,
+    `<article id="release-remediation-history-card" class="demo-result-item"><h4>Remediation execution history</h4>${releasePanel.remediationDetailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<div class="demo-key-value-grid">${releasePanel.recentIncidentRemediationExecutions.slice(0, 4).map((entry) => `<div class="demo-key-value-row"><span>${escapeHtml(entry.action?.kind ?? "execution")}</span><strong>${escapeHtml(`${entry.code ?? "unknown"}${entry.idempotentReplay ? " · replay" : ""}${entry.blockedByGuardrail ? " · blocked" : ""}`)}</strong></div>`).join("") || '<p class="demo-metadata">No remediation executions recorded yet.</p>'}</div></article>`,
+  ].join("");
+
+  releaseSecondaryGridEl.innerHTML = [
+    `<details id="release-diagnostics" class="demo-collapsible demo-release-diagnostics"><summary>Advanced release diagnostics · ${escapeHtml(releasePanel.releaseDiagnosticsSummary)}</summary><p class="demo-release-updated">${escapeHtml(releasePanel.releaseDiagnosticsUpdatedLabel)}</p><p class="demo-release-card-state demo-release-card-state-${escapeHtml(releasePanel.releaseStateBadge.tone)}">State · ${escapeHtml(releasePanel.releaseStateBadge.label)}</p><div class="demo-result-grid">`,
+    `<article id="release-promotion-candidates-card" class="demo-result-item"><h4>Promotion candidates</h4><div class="demo-key-value-grid">${releasePanel.releaseCandidates.length > 0 ? releasePanel.releaseCandidates.slice(0, 3).map((candidate) => `<div class="demo-key-value-row"><span>${escapeHtml(candidate.targetRolloutLabel ?? "lane")} · ${escapeHtml(candidate.candidateRetrievalId ?? "candidate")}</span><strong>${escapeHtml(candidate.reviewStatus)}</strong></div><p class="demo-metadata">${escapeHtml(candidate.reasons[0] ?? "No release reasons recorded.")}</p>`).join("") : '<p class="demo-metadata">No promotion candidates recorded yet.</p>'}</div></article>`,
+    `<article class="demo-result-item"><h4>Release alerts</h4><div class="demo-insight-stack">${releasePanel.releaseAlerts.length > 0 ? releasePanel.releaseAlerts.slice(0, 4).map((alert) => `<p class="demo-insight-card"><strong>${escapeHtml(alert.targetRolloutLabel ?? "lane")} · ${escapeHtml(alert.kind)} · ${escapeHtml(alert.classificationLabel ?? "general regression")}</strong><br />${escapeHtml(alert.message ?? "No alert detail")}</p>`).join("") : '<p class="demo-insight-card">No release alerts are active.</p>'}</div></article>`,
+    `<article id="release-policy-history-card" class="demo-result-item"><h4>Policy history</h4>${releasePanel.policyHistoryDetailLines.map((line) => `<p class="demo-metadata">${escapeHtml(line)}</p>`).join("")}<div class="demo-insight-stack">${releasePanel.policyHistoryEntries.length > 0 ? releasePanel.policyHistoryEntries.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.title)}</strong><br />${escapeHtml(entry.detail)}</p>`).join("") : `<p class="demo-insight-card">${escapeHtml(releasePanel.policyHistorySummary)}</p>`}</div></article>`,
+    `<article id="release-audit-surfaces-card" class="demo-result-item"><h4>Audit surfaces</h4><div class="demo-insight-stack">${releasePanel.auditSurfaceEntries.length > 0 ? releasePanel.auditSurfaceEntries.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.title)}</strong><br />${escapeHtml(entry.detail)}</p>`).join("") : `<p class="demo-insight-card">${escapeHtml(releasePanel.auditSurfaceSummary)}</p>`}</div></article>`,
+    `<article id="release-polling-surfaces-card" class="demo-result-item"><h4>Polling surfaces</h4><div class="demo-insight-stack">${releasePanel.pollingSurfaceEntries.map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.title)}</strong><br />${escapeHtml(entry.detail)}</p>`).join("")}</div></article>`,
+    `<article id="release-handoff-incidents-card" class="demo-result-item"><h4>Handoff incidents</h4><p class="demo-score-headline">${escapeHtml(releasePanel.stableHandoffIncidentSummaryLabel)}</p><div class="demo-insight-stack">${releasePanel.handoffIncidents.length > 0 ? releasePanel.handoffIncidents.slice(0, 2).map((incident) => `<p class="demo-insight-card"><strong>${escapeHtml(incident.status ?? "incident")} · ${escapeHtml(incident.kind ?? "handoff_stale")}</strong><br />${escapeHtml(incident.message ?? "No handoff incident detail")}</p>`).join("") : `<p class="demo-insight-card">No handoff incidents recorded.</p>`}${releasePanel.handoffIncidentHistory.slice(0, 3).map((entry) => `<p class="demo-insight-card"><strong>${escapeHtml(entry.action ?? "history")}</strong><br />${escapeHtml([entry.notes, entry.recordedAt ? new Date(entry.recordedAt).toLocaleString() : undefined].filter(Boolean).join(" · "))}</p>`).join("")}</div></article>`,
+    `<article id="release-stable-handoff-card" class="demo-result-item"><h4>Stable handoff</h4><div class="demo-key-value-grid">${releasePanel.stableHandoff ? `<div class="demo-key-value-row"><span>${escapeHtml(releasePanel.stableHandoff.sourceRolloutLabel)} -&gt; ${escapeHtml(releasePanel.stableHandoff.targetRolloutLabel)}</span><strong>${escapeHtml(releasePanel.stableHandoff.readyForHandoff ? "ready" : "blocked")}</strong></div><p class="demo-metadata">${escapeHtml(releasePanel.stableHandoff.candidateRetrievalId ? `candidate ${releasePanel.stableHandoff.candidateRetrievalId}` : "No candidate retrieval is attached to the handoff yet.")}${releasePanel.stableHandoffDecision?.kind ? ` · ${escapeHtml(`latest ${releasePanel.stableHandoffDecision.kind}`)}` : ""}</p>${releasePanel.stableHandoffDisplayReasons.map((reason) => `<p class="demo-metadata">${escapeHtml(reason)}</p>`).join("")}${releasePanel.stableHandoffAutoCompleteLabel ? `<p class="demo-metadata">${escapeHtml(releasePanel.stableHandoffAutoCompleteLabel)}</p>` : ""}<div class="demo-key-value-row"><span>Drift events</span><strong>${escapeHtml(String(releasePanel.stableHandoffDrift?.totalCount ?? 0))}</strong></div>` : '<p class="demo-metadata">No stable handoff posture is available yet.</p>'}</div></article>`,
+    '</div></details>',
   ].join("");
 };
 
@@ -456,7 +686,28 @@ const renderOpsState = (ops: Awaited<ReturnType<ReturnType<typeof createRAGClien
   setError(opsErrorEl, "");
   renderDetailList(opsReadinessListEl, formatReadinessSummary(ops.readiness), "Readiness unavailable.");
   renderDetailList(opsHealthListEl, formatHealthSummary(ops.health), "Health unavailable.");
-  renderDetailList(opsFailureListEl, formatFailureSummary(ops.health), "No recorded failures.");
+  renderDetailList(
+    opsFailureListEl,
+    [...formatFailureSummary(ops.health), ...formatInspectionSummary(ops.health), ...formatInspectionSamples(ops.health)],
+    "No recorded failures.",
+  );
+  const inspectionEntries = buildInspectionEntries(ops.health);
+  for (const entry of inspectionEntries) {
+    const item = document.createElement("li");
+    item.className = "demo-inspection-action-row";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = `${entry.documentId ? `Inspect ${entry.kind}` : "Search source"} · ${entry.label}`;
+    button.addEventListener("click", () => {
+      void focusInspectionEntry(entry);
+    });
+    const link = document.createElement("a");
+    link.className = "demo-inspection-link";
+    link.href = buildInspectionEntryHref(selectedMode, entry);
+    link.textContent = "Open standalone view";
+    item.append(button, link);
+    opsFailureListEl.append(item);
+  }
   renderDetailList(
     opsSyncSummaryListEl,
     formatSyncSourceOverview(sortedSyncSources),
@@ -674,9 +925,11 @@ const renderStreamState = () => {
   if (retrieval) {
     streamStatsEl.hidden = false;
     streamStatsEl.innerHTML = `<div><dt>Retrieval started</dt><dd>${retrieval.retrievalStartedAt ? formatDate(retrieval.retrievalStartedAt) : "n/a"}</dd></div><div><dt>Retrieval duration</dt><dd>${String(retrieval.retrievalDurationMs ?? 0)}ms</dd></div><div><dt>Retrieved sources</dt><dd>${String(retrieval.sources.length)}</dd></div><div><dt>Current stage</dt><dd>${currentStage}</dd></div>`;
+    renderWorkflowTrace(retrieval.trace);
   } else {
     streamStatsEl.hidden = true;
     streamStatsEl.innerHTML = "";
+    renderWorkflowTrace(undefined);
   }
 
   setError(streamErrorEl, ragWorkflow.error ?? "");
@@ -706,21 +959,44 @@ const renderStreamState = () => {
       }
       const card = document.createElement("article");
       card.className = "demo-result-item demo-grounding-card";
-      card.innerHTML = `<p class="demo-citation-badge">${formatGroundingPartReferences(part.referenceNumbers)}</p>${formatGroundedAnswerPartDetails(part).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${part.text}</p>`;
+      card.innerHTML = `<p class="demo-citation-badge">${formatGroundingPartReferences(part.referenceNumbers)}</p>${formatGroundedAnswerPartDetails(part).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${formatGroundedAnswerPartExcerpt(part)}</p>`;
       streamGroundingPartsEl.append(card);
     }
   } else {
     streamGroundingEl.hidden = true;
   }
 
+  streamGroundingSectionsGridEl.innerHTML = "";
+  if (groundedAnswer.sectionSummaries.length > 0) {
+    streamGroundingSectionsEl.hidden = false;
+    for (const summary of groundedAnswer.sectionSummaries) {
+      const card = document.createElement("article");
+      card.className = "demo-result-item demo-grounding-card";
+      card.innerHTML = `<h3>${summary.label}</h3><p class="demo-result-source">${summary.summary}</p>${formatGroundedAnswerSectionSummaryDetails(summary).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${formatGroundedAnswerSectionSummaryExcerpt(summary)}</p>`;
+      streamGroundingSectionsGridEl.append(card);
+    }
+  } else {
+    streamGroundingSectionsEl.hidden = true;
+  }
+
   streamGroundingReferencesGridEl.innerHTML = "";
   if (groundingReferences.length > 0) {
     streamGroundingReferencesEl.hidden = false;
-    for (const reference of groundingReferences) {
-      const card = document.createElement("article");
-      card.className = "demo-result-item demo-grounding-card";
-      card.innerHTML = `<p class="demo-citation-badge">[${String(reference.number)}] ${formatGroundingReferenceLabel(reference)}</p><p class="demo-result-score">${formatGroundingReferenceSummary(reference)}</p>${formatGroundingReferenceDetails(reference).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${formatGroundingReferenceExcerpt(reference)}</p>`;
-      streamGroundingReferencesGridEl.append(card);
+    for (const group of buildGroundingReferenceGroups(groundingReferences)) {
+      const groupCard = document.createElement("article");
+      groupCard.className = "demo-result-item";
+      groupCard.id = group.targetId;
+      groupCard.innerHTML = `<h3>${group.label}</h3><p class="demo-result-source">${group.summary}</p>`;
+      const nestedGrid = document.createElement("div");
+      nestedGrid.className = "demo-result-grid";
+      for (const reference of group.references) {
+        const card = document.createElement("article");
+        card.className = "demo-result-item demo-grounding-card";
+        card.innerHTML = `<p class="demo-citation-badge">[${String(reference.number)}] ${formatGroundingReferenceLabel(reference)}</p><p class="demo-result-score">${formatGroundingReferenceSummary(reference)}</p>${formatGroundingReferenceDetails(reference).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${formatGroundingReferenceExcerpt(reference)}</p>`;
+        nestedGrid.append(card);
+      }
+      groupCard.append(nestedGrid);
+      streamGroundingReferencesGridEl.append(groupCard);
     }
   } else {
     streamGroundingReferencesEl.hidden = true;
@@ -729,11 +1005,21 @@ const renderStreamState = () => {
   streamSourcesGridEl.innerHTML = "";
   if (ragWorkflow.sourceSummaries.length > 0) {
     streamSourcesEl.hidden = false;
-    for (const summary of ragWorkflow.sourceSummaries) {
-      const card = document.createElement("article");
-      card.className = "demo-result-item";
-      card.innerHTML = `<h3>${summary.label}</h3>${formatSourceSummaryDetails(summary).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${summary.excerpt}</p>`;
-      streamSourcesGridEl.append(card);
+    for (const group of buildSourceSummarySectionGroups(ragWorkflow.sourceSummaries)) {
+      const groupCard = document.createElement("article");
+      groupCard.className = "demo-result-item";
+      groupCard.id = group.targetId;
+      groupCard.innerHTML = `<h3>${group.label}</h3><p class="demo-result-source">${group.summary}</p>`;
+      const nestedGrid = document.createElement("div");
+      nestedGrid.className = "demo-result-grid";
+      for (const summary of group.summaries) {
+        const card = document.createElement("article");
+        card.className = "demo-result-item";
+        card.innerHTML = `<h4>${summary.label}</h4>${formatSourceSummaryDetails(summary).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${summary.excerpt}</p>`;
+        nestedGrid.append(card);
+      }
+      groupCard.append(nestedGrid);
+      streamSourcesGridEl.append(groupCard);
     }
   } else {
     streamSourcesEl.hidden = true;
@@ -743,11 +1029,21 @@ const renderStreamState = () => {
   const citations = ragWorkflow.citations;
   if (citations.length > 0) {
     streamCitationsEl.hidden = false;
-    for (const [index, citation] of citations.entries()) {
-      const card = document.createElement("article");
-      card.className = "demo-result-item demo-citation-card";
-      card.innerHTML = `<p class="demo-citation-badge">[${String(index + 1)}] ${formatCitationLabel(citation)}</p><p class="demo-result-score">${formatCitationSummary(citation)}</p>${formatCitationDetails(citation).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${formatCitationExcerpt(citation)}</p>`;
-      streamCitationsGridEl.append(card);
+    for (const group of buildCitationGroups(citations)) {
+      const groupCard = document.createElement("article");
+      groupCard.className = "demo-result-item";
+      groupCard.id = group.targetId;
+      groupCard.innerHTML = `<h3>${group.label}</h3><p class="demo-result-source">${group.summary}</p>`;
+      const nestedGrid = document.createElement("div");
+      nestedGrid.className = "demo-result-grid";
+      for (const [index, citation] of group.citations.entries()) {
+        const card = document.createElement("article");
+        card.className = "demo-result-item demo-citation-card";
+        card.innerHTML = `<p class="demo-citation-badge">[${String(index + 1)}] ${formatCitationLabel(citation)}</p><p class="demo-result-score">${formatCitationSummary(citation)}</p>${formatCitationDetails(citation).map((line) => `<p class="demo-metadata">${line}</p>`).join("")}<p class="demo-result-text">${formatCitationExcerpt(citation)}</p>`;
+        nestedGrid.append(card);
+      }
+      groupCard.append(nestedGrid);
+      streamCitationsGridEl.append(groupCard);
     }
   } else {
     streamCitationsEl.hidden = true;
@@ -766,12 +1062,14 @@ const resetStreamConnection = () => {
 
 const clearChunkPreview = (message = "Pick a document and click Inspect chunks to compare the normalized text with the final chunk boundaries.") => {
   chunkPreview = null;
+  chunkPreviewActiveChunkId = null;
   chunkPreviewLoadingDocumentId = null;
   formatDocuments(documentsCache, message);
 };
 
 const renderChunkPreview = (preview: DemoChunkPreview) => {
   chunkPreview = preview;
+  chunkPreviewActiveChunkId = preview.chunks[0]?.chunkId ?? null;
   chunkPreviewLoadingDocumentId = null;
   formatDocuments(documentsCache);
 };
@@ -827,6 +1125,27 @@ const inspectChunks = async (id: string) => {
     clearChunkPreview(
       error instanceof Error ? `Failed to inspect ${id}: ${error.message}` : `Failed to inspect ${id}`,
     );
+  }
+};
+
+const focusInspectionEntry = async (entry: ReturnType<typeof buildInspectionEntries>[number]) => {
+  documentTypeFilterEl.value = "all";
+  documentSearchEl.value = entry.sourceQuery ?? "";
+  documentPage = 1;
+  formatDocuments(documentsCache);
+  documentListEl.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (entry.documentId) {
+    showMessage(`Inspecting ${entry.documentId} from ops inspection.`);
+    await inspectChunks(entry.documentId);
+    return;
+  }
+  if (entry.source) {
+    scopeDriver = `ops inspection: ${entry.source}`;
+    setSearchValue("documentId", "");
+    setSearchValue("source", entry.source);
+    setSearchValue("query", `Source search for ${entry.source}`);
+    showMessage(`Scoped retrieval to ${entry.source} from ops inspection.`);
+    searchForm.requestSubmit();
   }
 };
 
@@ -1012,15 +1331,112 @@ const formatDocuments = (documents: DemoDocument[], emptyPreviewMessage = "Pick 
       caption.textContent = "Chunk Preview";
       const summaryText = document.createElement("p");
       summaryText.className = "demo-metadata";
-      summaryText.textContent = `${chunkPreview.document.title} · ${formatContentFormat(chunkPreview.document.format)} · ${formatChunkStrategy(chunkPreview.document.chunkStrategy)} · ${chunkPreview.chunks.length} chunk(s)`;
+      summaryText.textContent = `${chunkPreview.document.title} · ${formatOptionalContentFormat(chunkPreview.document.format)} · ${formatOptionalChunkStrategy(chunkPreview.document.chunkStrategy)} · ${chunkPreview.chunks.length} chunk(s)`;
       const normalizedCard = document.createElement("article");
       normalizedCard.className = "demo-result-item";
       normalizedCard.innerHTML = `<h3>Normalized text</h3><p class="demo-result-text">${chunkPreview.normalizedText}</p>`;
+      const navigation = buildRAGChunkPreviewNavigation(chunkPreview, chunkPreviewActiveChunkId ?? undefined);
       const previewGrid = document.createElement("div");
       previewGrid.className = "demo-result-grid";
+      if (navigation.activeNode) {
+        const nav = document.createElement("div");
+        nav.className = "demo-chunk-nav";
+        const navRow = document.createElement("div");
+        navRow.className = "demo-chunk-nav-row";
+        const prevButton = document.createElement("button");
+        prevButton.type = "button";
+        prevButton.textContent = "Previous chunk";
+        prevButton.disabled = !navigation.previousNode;
+        prevButton.onclick = () => {
+          if (navigation.previousNode) {
+            chunkPreviewActiveChunkId = navigation.previousNode.chunkId;
+            formatDocuments(documentsCache);
+          }
+        };
+        const navLabel = document.createElement("p");
+        navLabel.className = "demo-metadata";
+        navLabel.textContent = `${formatChunkNavigationSectionLabel(navigation)} · ${formatChunkNavigationNodeLabel(navigation.activeNode)}`;
+        const nextButton = document.createElement("button");
+        nextButton.type = "button";
+        nextButton.textContent = "Next chunk";
+        nextButton.disabled = !navigation.nextNode;
+        nextButton.onclick = () => {
+          if (navigation.nextNode) {
+            chunkPreviewActiveChunkId = navigation.nextNode.chunkId;
+            formatDocuments(documentsCache);
+          }
+        };
+        navRow.append(prevButton, navLabel, nextButton);
+        nav.append(navRow);
+        if (navigation.sectionNodes.length > 1) {
+          const strip = document.createElement("div");
+          strip.className = "demo-chunk-nav-strip";
+          for (const node of navigation.sectionNodes) {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = node.chunkId === chunkPreviewActiveChunkId ? "demo-chunk-nav-chip demo-chunk-nav-chip-active" : "demo-chunk-nav-chip";
+            chip.textContent = formatChunkNavigationNodeLabel(node);
+            chip.onclick = () => {
+              chunkPreviewActiveChunkId = node.chunkId;
+              formatDocuments(documentsCache);
+            };
+            strip.append(chip);
+          }
+          nav.append(strip);
+        }
+        if (navigation.parentSection || navigation.siblingSections.length > 0 || navigation.childSections.length > 0) {
+          const hierarchyStrip = document.createElement("div");
+          hierarchyStrip.className = "demo-chunk-nav-strip";
+          if (navigation.parentSection) {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "demo-chunk-nav-chip";
+            chip.textContent = `Parent · ${formatChunkSectionGroupLabel(navigation.parentSection)}`;
+            chip.onclick = () => {
+              if (navigation.parentSection?.leadChunkId) {
+                chunkPreviewActiveChunkId = navigation.parentSection.leadChunkId;
+                formatDocuments(documentsCache);
+              }
+            };
+            hierarchyStrip.append(chip);
+          }
+          for (const section of navigation.siblingSections) {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "demo-chunk-nav-chip";
+            chip.textContent = `Sibling · ${formatChunkSectionGroupLabel(section)}`;
+            chip.onclick = () => {
+              if (section.leadChunkId) {
+                chunkPreviewActiveChunkId = section.leadChunkId;
+                formatDocuments(documentsCache);
+              }
+            };
+            hierarchyStrip.append(chip);
+          }
+          for (const section of navigation.childSections) {
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "demo-chunk-nav-chip";
+            chip.textContent = `Child · ${formatChunkSectionGroupLabel(section)}`;
+            chip.onclick = () => {
+              if (section.leadChunkId) {
+                chunkPreviewActiveChunkId = section.leadChunkId;
+                formatDocuments(documentsCache);
+              }
+            };
+            hierarchyStrip.append(chip);
+          }
+          nav.append(hierarchyStrip);
+        }
+        inlinePreview.append(nav);
+      }
+      const activeSectionDiagnostic = buildActiveChunkPreviewSectionDiagnostic(chunkPreview, chunkPreviewActiveChunkId ?? undefined);
+      if (activeSectionDiagnostic) {
+        appendSectionDiagnosticCard(previewGrid, activeSectionDiagnostic, `preview-${activeSectionDiagnostic.key}`);
+      }
       for (const chunk of chunkPreview.chunks) {
         const card = document.createElement("article");
-        card.className = "demo-result-item";
+        card.className = chunk.chunkId === chunkPreviewActiveChunkId ? "demo-result-item demo-result-item-active" : "demo-result-item";
         card.innerHTML = `<h3>${chunk.chunkId}</h3><p class="demo-result-source">source: ${chunk.source ?? chunkPreview.document.source}</p><p class="demo-metadata">${getChunkIndexText(chunk, chunkPreview.chunks.length)}</p><p class="demo-result-text">${chunk.text}</p>`;
         previewGrid.append(card);
       }
@@ -1099,6 +1515,7 @@ const readSearchFormState = (): SearchFormState => ({
   documentId: toSafeText(
     (searchForm.elements.namedItem("documentId") as HTMLInputElement | null)?.value ?? "",
   ),
+  nativeQueryProfile: activeNativeQueryProfile ?? "",
 });
 
 const renderSearchScope = () => {
@@ -1127,6 +1544,7 @@ const fillSearchForm = (state: Partial<SearchFormState>) => {
   setSearchValue("source", state.source ?? "");
   setSearchValue("scoreThreshold", state.scoreThreshold ?? "");
   setSearchValue("documentId", state.documentId ?? "");
+  activeNativeQueryProfile = state.nativeQueryProfile ?? "";
 };
 
 const runSearchFromValues = async (state: SearchFormState) => {
@@ -1135,11 +1553,28 @@ const runSearchFromValues = async (state: SearchFormState) => {
     return;
   }
 
-  const payload = buildSearchPayload(state);
+  const payload = buildSearchPayload({
+    ...state,
+    retrievalPresetId: retrievalPresetId || undefined,
+  });
 
   try {
     const start = Date.now();
-    const results = await ragClient.search(payload as never);
+    const response = await fetch(`/demo/message/${selectedMode}/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const detailed = await response.json() as {
+      ok: boolean;
+      results?: Parameters<typeof buildSearchResponse>[2];
+      trace?: Parameters<typeof buildSearchResponse>[4];
+      error?: string;
+    };
+    if (!response.ok || !detailed.ok) {
+      throw new Error(detailed.error ?? `Search failed with status ${response.status}`);
+    }
+    const results = detailed.results ?? [];
     recentQueries = [
       { label: state.query, state: { ...state } },
       ...recentQueries.filter((entry) => JSON.stringify(entry.state) !== JSON.stringify(state)),
@@ -1154,25 +1589,15 @@ const runSearchFromValues = async (state: SearchFormState) => {
       uploadPresetId: uploadPresetId || undefined,
     });
 
-    renderSearchResults({
-      query: state.query,
-      elapsedMs: Date.now() - start,
-      topK: typeof payload.topK === "number" ? payload.topK : 6,
-      count: results.length,
-      chunks: results.map((result) => ({
-        chunkId: result.chunkId,
-        title: result.title ?? result.chunkId,
-        source: result.source ?? "unknown",
-        score: result.score,
-        metadata: result.metadata ?? {},
-        text: result.text,
-      })),
-      filter: Object.fromEntries(
-        Object.entries(payload)
-          .filter(([key, value]) => ["kind", "source", "documentId"].includes(key) && typeof value === "string" && value.length > 0)
-          .map(([key, value]) => [key, value as string]),
+    renderSearchResults(
+      buildSearchResponse(
+        state.query,
+        payload,
+        results,
+        Date.now() - start,
+        detailed.trace,
       ),
-    });
+    );
     searchMetaEl.textContent =
       `${formatRetrievalScopeSummary(state)}. Reranking is active: AbsoluteJS reorders the first vector hits with the built-in heuristic provider before these results render. Verification rule: a good result shows chunk text that answers the query and a source label you can trace back to the indexed source list.`;
   } catch (error) {
@@ -1183,40 +1608,246 @@ const runSearchFromValues = async (state: SearchFormState) => {
   }
 };
 
+const renderSearchTrace = (trace: RAGRetrievalTrace | undefined) => {
+  if (!trace) {
+    return null;
+  }
+  const presentation = buildTracePresentation(trace);
+
+  const section = document.createElement("div");
+  section.className = "demo-results";
+  const title = document.createElement("h3");
+  title.textContent = "Retrieval Trace";
+  const summary = document.createElement("p");
+  summary.className = "demo-metadata";
+  summary.textContent = "This is the first-class retrieval trace from AbsoluteJS. It shows how the query was transformed, which retrieval stages ran, and how many candidates survived each step.";
+  const stats = document.createElement("div");
+  stats.className = "demo-stat-grid";
+  presentation.stats.forEach(({ label, value }) => {
+    const card = document.createElement("article");
+    card.className = "demo-stat-card";
+    card.innerHTML = "<p class=\"demo-section-caption\">" + label + "</p><strong>" + value + "</strong>";
+    stats.append(card);
+  });
+  const kv = document.createElement("div");
+  kv.innerHTML = presentation.details.map((row) => "<p class=\"demo-key-value-row\"><strong>" + row.label + "</strong><span>" + row.value + "</span></p>").join("");
+  const stepGrid = document.createElement("div");
+  stepGrid.className = "demo-result-grid";
+  presentation.steps.forEach((step, index) => {
+    const details = document.createElement("details");
+    details.className = "demo-collapsible demo-result-item";
+    if (index === 0) details.open = true;
+    const summaryEl = document.createElement("summary");
+    summaryEl.innerHTML = "<strong>" + String(index + 1) + ". " + step.label + "</strong>";
+    details.append(summaryEl);
+    const meta = document.createElement("div");
+    meta.innerHTML = step.rows
+      .map((row) => "<p class=\"demo-key-value-row\"><strong>" + row.label + "</strong><span>" + row.value + "</span></p>")
+      .join("");
+    details.append(meta);
+    stepGrid.append(details);
+  });
+  section.append(title, summary, stats, kv, stepGrid);
+  return section;
+};
+
+const renderWorkflowTrace = (trace: RAGRetrievalTrace | undefined) => {
+  streamTraceGridEl.innerHTML = "";
+  if (!trace) {
+    streamTraceEl.hidden = true;
+    return;
+  }
+  const presentation = buildTracePresentation(trace);
+
+  streamTraceEl.hidden = false;
+
+  const summaryCard = document.createElement("article");
+  summaryCard.className = "demo-result-item";
+  summaryCard.innerHTML = [
+    "<div class=\"demo-stat-grid\">",
+    presentation.stats.map((row) => "<article class=\"demo-stat-card\"><p class=\"demo-section-caption\">" + row.label + "</p><strong>" + row.value + "</strong></article>").join(""),
+    "</div>",
+    presentation.details.map((row) => "<p class=\"demo-key-value-row\"><strong>" + row.label + "</strong><span>" + row.value + "</span></p>").join(""),
+  ].join("");
+  streamTraceGridEl.append(summaryCard);
+
+  for (const [index, step] of presentation.steps.entries()) {
+    const details = document.createElement("details");
+    details.className = "demo-collapsible demo-result-item";
+    if (index === 0) {
+      details.open = true;
+    }
+    const summary = document.createElement("summary");
+    summary.innerHTML = "<strong>" + String(index + 1) + ". " + step.label + "</strong>";
+    details.append(summary);
+    const meta = document.createElement("div");
+    meta.innerHTML = step.rows
+      .map((row) => "<p class=\"demo-key-value-row\"><strong>" + row.label + "</strong><span>" + row.value + "</span></p>")
+      .join("");
+    details.append(meta);
+    streamTraceGridEl.append(details);
+  }
+};
+
+const appendSectionDiagnosticCard = (container: HTMLElement, diagnostic: NonNullable<SearchResponse["sectionDiagnostics"]>[number], keyPrefix: string) => {
+  const card = document.createElement("article");
+  card.className = "demo-result-item";
+  card.innerHTML = `<h4>${diagnostic.label}</h4><p class="demo-result-source">${diagnostic.summary}</p>`;
+  [
+    formatSectionDiagnosticChannels(diagnostic),
+    formatSectionDiagnosticAttributionFocus(diagnostic),
+    formatSectionDiagnosticPipeline(diagnostic),
+    formatSectionDiagnosticStageFlow(diagnostic),
+    formatSectionDiagnosticStageBounds(diagnostic),
+    ...formatSectionDiagnosticStageWeightRows(diagnostic),
+    formatSectionDiagnosticTopEntry(diagnostic),
+    formatSectionDiagnosticCompetition(diagnostic),
+  ].filter(Boolean).forEach((line) => {
+    const meta = document.createElement("p");
+    meta.className = "demo-metadata";
+    meta.textContent = String(line);
+    card.append(meta);
+  });
+  const reasons = formatSectionDiagnosticReasons(diagnostic);
+  const stageWeightReasons = formatSectionDiagnosticStageWeightReasons(diagnostic);
+  if (reasons.length > 0 || stageWeightReasons.length > 0) {
+    const badgeRow = document.createElement("div");
+    badgeRow.className = "demo-badge-row";
+    [...reasons, ...stageWeightReasons].forEach((reason, index) => {
+      const badge = document.createElement("span");
+      badge.className = "demo-state-chip";
+      badge.textContent = reason;
+      badge.dataset.key = `${keyPrefix}-reason-${index}`;
+      badgeRow.append(badge);
+    });
+    card.append(badgeRow);
+  }
+  formatSectionDiagnosticDistributionRows(diagnostic).forEach((line) => {
+    const meta = document.createElement("p");
+    meta.className = "demo-metadata";
+    meta.textContent = line;
+    card.append(meta);
+  });
+  container.append(card);
+};
+
 const renderSearchResults = (result: SearchResponse) => {
   searchResultsWrapper.hidden = false;
   searchCountEl.textContent = `${result.count} results for “${result.query}” in ${result.elapsedMs}ms`;
   renderStateChips();
   if (result.count === 0) {
     searchResultGrid.innerHTML = "<p>No matching chunks.</p>";
+    const traceSection = renderSearchTrace(result.trace);
+    if (traceSection) {
+      searchResultGrid.append(traceSection);
+    }
     return;
   }
 
   searchResultGrid.innerHTML = "";
-  for (const chunk of result.chunks) {
-    const card = document.createElement("article");
+  if (result.storyHighlights.length > 0) {
+    const storySection = document.createElement("div");
+    storySection.className = "demo-results";
     const title = document.createElement("h3");
-    const score = document.createElement("p");
-    const source = document.createElement("p");
-    const text = document.createElement("p");
-
-    card.className = "demo-result-item";
-    title.textContent = chunk.title;
-    score.className = "demo-result-score";
-    score.textContent = `score: ${formatScore(chunk.score)}`;
-    source.className = "demo-result-source";
-    source.textContent = `source: ${chunk.source}`;
-    text.className = "demo-result-text";
-    text.textContent = chunk.text;
-    const metadataNodes = formatDemoMetadataSummary(chunk.metadata).map((line) => {
-      const metadataLine = document.createElement("p");
-      metadataLine.className = "demo-metadata";
-      metadataLine.textContent = line;
-      return metadataLine;
+    title.textContent = "Retrieval Story";
+    storySection.append(title);
+    result.storyHighlights.forEach((line) => {
+      const item = document.createElement("p");
+      item.className = "demo-metadata";
+      item.textContent = line;
+      storySection.append(item);
     });
+    searchResultGrid.append(storySection);
+  }
+  if (result.attributionOverview.length > 0) {
+    const attributionSection = document.createElement("div");
+    attributionSection.className = "demo-results";
+    const title = document.createElement("h3");
+    title.textContent = "Attribution Overview";
+    attributionSection.append(title);
+    result.attributionOverview.forEach((line) => {
+      const item = document.createElement("p");
+      item.className = "demo-metadata";
+      item.textContent = line;
+      attributionSection.append(item);
+    });
+    searchResultGrid.append(attributionSection);
+  }
+  if (result.sectionDiagnostics.length > 0) {
+    const diagnosticsSection = document.createElement("div");
+    diagnosticsSection.className = "demo-results";
+    const title = document.createElement("h3");
+    title.textContent = "Section Diagnostics";
+    const grid = document.createElement("div");
+    grid.className = "demo-result-grid";
+    result.sectionDiagnostics.forEach((diagnostic) => appendSectionDiagnosticCard(grid, diagnostic, `search-${diagnostic.key}`));
+    diagnosticsSection.append(title, grid);
+    searchResultGrid.append(diagnosticsSection);
+  }
+  for (const group of buildSearchSectionGroups(result)) {
+    const groupCard = document.createElement("article");
+    groupCard.className = "demo-result-item";
+    groupCard.id = group.targetId;
+    const title = document.createElement("h3");
+    title.textContent = group.label;
+    const summary = document.createElement("p");
+    summary.className = "demo-result-source";
+    summary.textContent = group.summary;
+    groupCard.append(title, summary);
+    if (group.jumps.length > 0) {
+      const jumps = document.createElement("div");
+      jumps.className = "demo-badge-row";
+      for (const jump of group.jumps) {
+        const link = document.createElement("a");
+        link.className = "demo-state-chip";
+        link.href = `#${jump.targetId}`;
+        link.textContent = jump.label;
+        jumps.append(link);
+      }
+      groupCard.append(jumps);
+    }
+    const nestedGrid = document.createElement("div");
+    nestedGrid.className = "demo-result-grid";
+    for (const chunk of group.chunks) {
+      const card = document.createElement("article");
+      const itemTitle = document.createElement("h4");
+      const score = document.createElement("p");
+      const source = document.createElement("p");
+      const text = document.createElement("p");
+      card.className = "demo-result-item";
+      card.id = chunk.targetId;
+      itemTitle.textContent = chunk.title;
+      score.className = "demo-result-score";
+      score.textContent = `score: ${formatScore(chunk.score)}`;
+      source.className = "demo-result-source";
+      source.textContent = `source: ${chunk.source}`;
+      text.className = "demo-result-text";
+      text.textContent = chunk.text;
+      const labelLines = [chunk.labels?.contextLabel, chunk.labels?.locatorLabel, chunk.labels?.provenanceLabel]
+        .filter((value) => typeof value === "string" && value.length > 0)
+        .map((line) => {
+          const metadataLine = document.createElement("p");
+          metadataLine.className = "demo-metadata";
+          metadataLine.textContent = line ?? "";
+          return metadataLine;
+        });
+      const metadataNodes = formatDemoMetadataSummary(chunk.metadata).map((line) => {
+        const metadataLine = document.createElement("p");
+        metadataLine.className = "demo-metadata";
+        metadataLine.textContent = line;
+        return metadataLine;
+      });
 
-    card.append(title, score, source, ...metadataNodes, text);
-    searchResultGrid.append(card);
+      card.append(itemTitle, score, source, ...labelLines, ...metadataNodes, text);
+      nestedGrid.append(card);
+    }
+    groupCard.append(nestedGrid);
+    searchResultGrid.append(groupCard);
+  }
+
+  const traceSection = renderSearchTrace(result.trace);
+  if (traceSection) {
+    searchResultGrid.append(traceSection);
   }
 };
 
@@ -1431,6 +2062,14 @@ const renderDocumentTypeOptions = () => {
 const renderEvaluationPresets = () => {
   evaluationPresetContainerEl.innerHTML = "";
 
+  const previousRail = evaluationPresetContainerEl.previousElementSibling;
+  if (previousRail instanceof HTMLDivElement && previousRail.dataset.role === "benchmark-outcome-rail") {
+    previousRail.remove();
+  }
+  evaluationPresetContainerEl.insertAdjacentHTML(
+    "beforebegin",
+    `<div class="demo-badge-row" data-role="benchmark-outcome-rail">${benchmarkOutcomeRail.map((entry) => `<span class="demo-state-chip" title="${escapeHtml(entry.summary)}">${escapeHtml(formatBenchmarkOutcomeRailLabel(entry, benchmarkPresetId))}</span>`).join("")}</div>`,
+  );
   for (const preset of demoEvaluationPresets) {
     const button = document.createElement("button");
     button.type = "button";
@@ -1440,12 +2079,13 @@ const renderEvaluationPresets = () => {
       fillSearchForm({
         query: preset.query,
         source: preset.expectedSources[0] ?? "",
-        topK: 4,
+        topK: preset.topK ?? 6,
       });
       benchmarkPresetId = preset.id;
-      retrievalPresetId = "";
+      retrievalPresetId = resolveBenchmarkRetrievalPresetId(preset.id);
       uploadPresetId = "";
       scopeDriver = `benchmark preset: ${preset.label}`;
+      renderEvaluationPresets();
       void runSearchFromValues(readSearchForm());
     });
     evaluationPresetContainerEl.append(button);
@@ -1476,16 +2116,19 @@ const refreshData = async () => {
     await loadBackendOptions();
     renderHeaderNav();
 
-    const [statusData, docsData, opsData, aiModelsResponse, qualityResponse] = await Promise.all([
+    const [statusData, docsData, opsData, aiModelsResponse, qualityResponse, releaseResponse] = await Promise.all([
       ragClient.status(),
       ragClient.documents(),
       ragClient.ops(),
       fetch("/demo/ai-models").then((response) => response.json()) as Promise<DemoAIModelCatalogResponse>,
       fetch(`/demo/quality/${selectedMode}`).then((response) => response.json()) as Promise<DemoRetrievalQualityResponse>,
+      fetch(`/demo/release/${selectedMode}?workspace=${releaseWorkspace}`).then((response) => response.json()) as Promise<DemoReleaseOpsResponse>,
     ]);
     aiModelCatalog = aiModelsResponse;
     qualityData = qualityResponse;
+    releaseData = releaseResponse;
     renderQualityState();
+    renderReleaseState();
     if (!streamModelKeyEl.value) {
       streamModelKeyEl.value = aiModelsResponse.defaultModelKey ?? aiModelsResponse.models[0]?.key ?? "";
     }
@@ -1578,18 +2221,20 @@ const onPresetSearch = async (event: Event) => {
   const query = toSafeText(button.dataset.query ?? "", "");
   if (query.length === 0) return;
 
-  scopeDriver = `preset: ${button.textContent?.trim().toLowerCase() ?? "preset"}`;
-  retrievalPresetId = (button.textContent?.trim().toLowerCase() ?? "preset").replace(/\s+/g, "-");
-  benchmarkPresetId = "";
+  scopeDriver = button.dataset.driver ?? `preset: ${button.textContent?.trim().toLowerCase() ?? "preset"}`;
+  benchmarkPresetId = button.dataset.benchmarkPresetId ?? (button.textContent?.trim().toLowerCase() ?? "preset").replace(/\s+/g, "-");
+  retrievalPresetId = button.dataset.retrievalPresetId ?? resolveBenchmarkRetrievalPresetId(benchmarkPresetId);
   uploadPresetId = "";
   const source = toSafeText(button.dataset.source ?? "", "");
   const kind = button.dataset.kind ?? "";
+  const nativeQueryProfile = (button.dataset.nativeQueryProfile ?? "") as SearchFormState["nativeQueryProfile"];
   const topK = Number(button.dataset.topk ?? "6");
   fillSearchForm({
     query,
     source,
     kind: kind === "seed" || kind === "custom" ? kind : "",
     documentId: "",
+    nativeQueryProfile,
     topK: Number.isFinite(topK) && topK > 0 ? Math.min(20, Math.floor(topK)) : 6,
     scoreThreshold: "",
   });
@@ -1694,6 +2339,17 @@ evaluationButtonEl.addEventListener("click", () => {
 });
 qualitySuiteButtonEl.addEventListener("click", () => {
   void runSavedSuite();
+});
+
+qualityTabRowEl.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const nextView = target.getAttribute("data-quality-view");
+  if (!nextView || !["overview", "strategies", "grounding", "history"].includes(nextView)) return;
+  if (nextView === "overview" || nextView === "strategies" || nextView === "grounding" || nextView === "history") {
+    qualityView = nextView;
+  }
+  renderQualityState();
 });
 streamActionButton.addEventListener("click", (event) => {
   if (isStreamBusy()) {

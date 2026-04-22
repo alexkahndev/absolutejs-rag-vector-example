@@ -1,11 +1,13 @@
 import { Fragment, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { useRAG } from "@absolutejs/absolute/react/ai";
+import { useRAG } from "@absolutejs/rag/react";
 import { Head } from "@absolutejs/absolute/react/components";
-import type { RAGEvaluationResponse } from "@absolutejs/absolute";
+import type { RAGEvaluationResponse, RAGRetrievalTrace, RAGSource } from "@absolutejs/rag";
 import {
   type AddFormState,
   type DemoAIModelCatalogResponse,
   type DemoActiveRetrievalState,
+  type DemoReleaseOpsResponse,
+  type DemoReleaseWorkspace,
   type DemoRetrievalQualityResponse,
   type DemoBackendDescriptor,
   type DemoBackendMode,
@@ -16,13 +18,21 @@ import {
   buildDemoAIStreamPrompt,
   buildDemoEvaluationSuite,
   buildDemoEvaluationInput,
+  buildDemoReleasePanelState,
   buildDemoUploadIngestInput,
+  buildCitationGroups,
+  buildGroundingReferenceGroups,
+  buildSourceSummarySectionGroups,
+  buildTracePresentation,
   formatEvaluationCaseSummary,
   formatEvaluationExpected,
   formatEvaluationMissing,
   formatEvaluationRetrieved,
   formatEvaluationSummary,
   formatEvaluationHistoryDiff,
+  formatEvaluationHistoryDetails,
+  formatEvaluationHistoryRows,
+  formatEvaluationHistoryTracePresentations,
   formatEvaluationHistorySummary,
   formatEvaluationLeaderboardEntry,
   formatGroundingEvaluationCase,
@@ -31,48 +41,83 @@ import {
   formatGroundingHistoryDiff,
   formatGroundingCaseDifficultyEntry,
   formatGroundingDifficultyHistoryDiff,
+  formatGroundingDifficultyHistoryDetails,
   formatGroundingDifficultyHistorySummary,
   formatGroundingHistorySnapshots,
   formatGroundingHistorySummary,
+  formatGroundingHistoryDetails,
   formatGroundingHistoryArtifactTrail,
-  formatGroundingProviderCaseDetails,
-  formatGroundingProviderCaseEntry,
-  formatGroundingProviderCaseSummary,
-  formatGroundingProviderEntry,
-  formatGroundingProviderSummary,
+  formatGroundingProviderCasePresentations,
+  formatGroundingHistorySnapshotPresentations,
+  formatGroundingProviderPresentations,
+  formatGroundingProviderOverviewPresentation,
+  formatQualityOverviewPresentation,
+  formatQualityOverviewNotes,
+  formatRetrievalComparisonOverviewPresentation,
   buildSearchPayload,
+  attributionBenchmarkNotes,
+  benchmarkOutcomeRail,
+  formatBenchmarkOutcomeRailLabel,
+  resolveBenchmarkRetrievalPresetId,
   buildSearchResponse,
+  buildActiveChunkPreviewSectionDiagnostic,
+  buildSearchSectionGroups,
   buildStatusView,
   getAvailableDemoBackends,
   demoEvaluationPresets,
   demoFrameworks,
   demoChunkingStrategies,
   demoUploadPresets,
+  demoReleaseWorkspaces,
   demoContentFormats,
   formatAdminActionList,
   formatAdminJobList,
   formatDemoAIModelLabel,
   formatCitationDetails,
+  formatChunkNavigationNodeLabel,
+  formatChunkNavigationSectionLabel,
+  formatChunkSectionGroupLabel,
+  formatSectionDiagnosticAttributionFocus,
+  formatSectionDiagnosticChannels,
+  formatSectionDiagnosticCompetition,
+  formatSectionDiagnosticDistributionRows,
+  formatSectionDiagnosticPipeline,
+  formatSectionDiagnosticStageBounds,
+  formatSectionDiagnosticStageFlow,
+  formatSectionDiagnosticStageWeightReasons,
+  formatSectionDiagnosticStageWeightRows,
+  formatSectionDiagnosticReasons,
+  formatSectionDiagnosticTopEntry,
   formatChunkStrategy,
   formatCitationExcerpt,
   formatCitationLabel,
   formatCitationSummary,
   formatContentFormat,
+  formatOptionalContentFormat,
+  formatOptionalChunkStrategy,
   formatDemoMetadataSummary,
   formatDate,
   formatFailureSummary,
+  buildInspectionEntries,
+  buildInspectionEntryHref,
+  formatInspectionSamples,
+  formatInspectionSummary,
   formatGroundingCoverage,
   formatGroundedAnswerPartDetails,
+  formatGroundedAnswerPartExcerpt,
   formatGroundingPartReferences,
   formatGroundingReferenceDetails,
   formatGroundingReferenceExcerpt,
   formatGroundingReferenceLabel,
   formatGroundingReferenceSummary,
+  formatGroundedAnswerSectionSummaryDetails,
+  formatGroundedAnswerSectionSummaryExcerpt,
   formatGroundingSummary,
   formatSourceSummaryDetails,
-  formatRetrievalComparisonEntry,
+  formatRetrievalComparisonPresentations,
   formatRetrievalComparisonSummary,
-  formatRerankerComparisonEntry,
+  formatRerankerComparisonOverviewPresentation,
+  formatRerankerComparisonPresentations,
   formatRerankerComparisonSummary,
   formatHealthSummary,
   formatReadinessSummary,
@@ -192,6 +237,7 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
   );
   const [searchForm, setSearchForm] = useState<SearchFormState>(initialSearch);
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const searchSectionGroups = useMemo(() => buildSearchSectionGroups(searchResults), [searchResults]);
   const [addForm, setAddForm] = useState<AddFormState>(initialAddForm);
   const [searchError, setSearchError] = useState("");
   const [addError, setAddError] = useState("");
@@ -212,7 +258,10 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
   const [documentTypeFilter, setDocumentTypeFilter] = useState("all");
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [qualityData, setQualityData] = useState<DemoRetrievalQualityResponse | null>(null);
+  const [releaseData, setReleaseData] = useState<DemoReleaseOpsResponse | null>(null);
+  const [releaseWorkspace, setReleaseWorkspace] = useState<DemoReleaseWorkspace>("alpha");
   const [qualityView, setQualityView] = useState<"overview" | "strategies" | "grounding" | "history">("overview");
+  const [releaseActionBusyId, setReleaseActionBusyId] = useState<string | null>(null);
   const [aiModelCatalog, setAiModelCatalog] = useState<DemoAIModelCatalogResponse>({ defaultModelKey: null, models: [] });
   const [selectedAIModelKey, setSelectedAIModelKey] = useState("");
   const [streamPrompt, setStreamPrompt] = useState("How do metadata filters change retrieval quality?");
@@ -254,6 +303,12 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
     });
   }, [documentSearchTerm, documentTypeFilter, documents]);
   const chunkPreview = rag.chunkPreview.preview as DemoChunkPreview | null;
+  const chunkPreviewNavigation = rag.chunkPreview.navigation;
+  const activeChunkPreviewId = rag.chunkPreview.activeChunkId;
+  const activeChunkPreviewSectionDiagnostic = useMemo(
+    () => buildActiveChunkPreviewSectionDiagnostic(chunkPreview, activeChunkPreviewId),
+    [chunkPreview, activeChunkPreviewId],
+  );
   const evaluation = rag.evaluate.lastResponse as RAGEvaluationResponse | null;
   const workflow = rag.workflow;
   const workflowState = workflow.state;
@@ -263,6 +318,9 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
   const streamGroundingReferences = workflow.groundingReferences;
   const streamBusy = workflow.isRetrieving || workflow.isAnswerStreaming;
   const sortedSyncSources = useMemo(() => sortSyncSources(rag.ops.syncSources), [rag.ops.syncSources]);
+  const sourceSummaryGroups = useMemo(() => buildSourceSummarySectionGroups(workflow.sourceSummaries), [workflow.sourceSummaries]);
+  const groundingReferenceGroups = useMemo(() => buildGroundingReferenceGroups(streamGroundingReferences), [streamGroundingReferences]);
+  const citationGroups = useMemo(() => buildCitationGroups(workflow.citations), [workflow.citations]);
   const totalDocumentPages = Math.max(1, Math.ceil(filteredDocuments.length / DOCUMENTS_PER_PAGE));
   const paginatedDocuments = useMemo(() => {
     const start = (documentPage - 1) * DOCUMENTS_PER_PAGE;
@@ -280,20 +338,133 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
       ),
     [documents, rag.status.capabilities, rag.status.status, selectedMode],
   );
+  const {
+    actions,
+    canaryBaseline,
+    canaryReadiness,
+    handoffActions,
+    handoffIncidents,
+    handoffIncidentHistory,
+    handoffStateLabel,
+    incidentSummary,
+    incidentSummaryLabel,
+    incidentClassificationDetailLines,
+    laneReadinessEntries,
+    recentIncidentRemediationExecutions,
+    recentIncidents,
+    releaseAlerts,
+    releaseCandidates,
+    primaryReleaseActions,
+    secondaryReleaseActions,
+    releaseDecisionHeadline,
+    releaseHeroMeta,
+    releaseScopeNote,
+    policyHistoryEntries,
+    policyHistorySummary,
+    policyHistoryDetailLines,
+    auditSurfaceEntries,
+    auditSurfaceSummary,
+    pollingSurfaceEntries,
+    releaseDiagnosticsSummary,
+    releaseStateBadge,
+    latestReleaseAction,
+    releaseHero,
+    releaseHeroPills,
+    releaseHeroSummary,
+    scenarioClassificationLabel,
+    releaseRailDeltaChip,
+    railIncidentPostureChip,
+    railGateChip,
+    railApprovalChip,
+    railRemediationChip,
+    releaseRailUpdateSource,
+    releaseRailUpdatedLabel,
+    releaseDiagnosticsUpdatedLabel,
+    stableReadinessStatSummary,
+    remediationGuardrailSummary,
+    remediationDetailLines,
+    runtimePlannerHistorySummary,
+    runtimePlannerHistoryLines,
+    benchmarkSnapshotSummary,
+    benchmarkSnapshotLines,
+    activeBlockerDeltaSummary,
+    activeBlockerDeltaLines,
+    releaseEvidenceDrills,
+    releaseBlockerComparisonCards,
+    releasePathSteps,
+    releaseRailCallout,
+    recentReleaseActivity,
+    releaseScenarioActions,
+    releaseRecommendations,
+    remediationSummary,
+    scenario,
+    stableHandoff,
+    stableHandoffAutoComplete,
+    stableHandoffAutoCompleteLabel,
+    stableHandoffDecision,
+    stableHandoffDisplayReasons,
+    stableHandoffDrift,
+    stableHandoffIncidentSummaryLabel,
+    stableBaseline,
+    stableReadiness,
+  } = useMemo(() => buildDemoReleasePanelState(releaseData), [releaseData]);
+
+  const releasePendingLabel = releaseActionBusyId
+    ? (() => {
+        const action = actions.find((entry) => entry.id === releaseActionBusyId);
+        const lane = action?.id.includes("stable") ? "stable" : action?.id.includes("canary") ? "canary" : "release";
+        return `Pending ${lane} action · ${action?.label ?? releaseActionBusyId}`;
+      })()
+    : null;
+
+  const openReleaseDiagnosticsTarget = (targetCardId: string) => {
+    if (targetCardId === "release-promotion-candidates-card" || targetCardId === "release-stable-handoff-card" || targetCardId === "release-remediation-history-card") {
+      document.getElementById("release-diagnostics")?.setAttribute("open", "open");
+    }
+  };
+
+  const runReleaseAction = async (action: { id: string; label: string; path: string; payload: { actionId: string; workspace?: DemoReleaseWorkspace } }) => {
+    setReleaseActionBusyId(action.id);
+    setAddError("");
+    try {
+      const response = await fetch(action.path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...action.payload, workspace: releaseWorkspace }),
+      });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+      const payload = await response.json() as { message?: string; ok?: boolean; release?: DemoReleaseOpsResponse };
+      if (!payload.ok || !payload.release) {
+        throw new Error(payload.message ?? `Release action ${action.label} failed`);
+      }
+      setReleaseData(payload.release);
+      setMessage(payload.message ?? `${action.label} completed through the published AbsoluteJS release-control workflow.`);
+    } catch (error) {
+      setAddError(error instanceof Error ? error.message : `Release action ${action.label} failed`);
+    } finally {
+      setReleaseActionBusyId(null);
+    }
+  };
 
   const refreshData = async () => {
     setLoading(true);
     try {
   
-      const [documentsData, _statusData, _opsData, aiModelsResponse, qualityResponse] = await Promise.all([
+      const [documentsData, _statusData, _opsData, aiModelsResponse, qualityResponse, releaseResponse] = await Promise.all([
         rag.documents.load(),
         rag.status.refresh(),
         rag.ops.refresh(),
         fetch("/demo/ai-models").then((response) => response.json()) as Promise<DemoAIModelCatalogResponse>,
         fetch(`/demo/quality/${selectedMode}`).then((response) => response.json()) as Promise<DemoRetrievalQualityResponse>,
+        fetch(`/demo/release/${selectedMode}?workspace=${releaseWorkspace}`).then((response) => response.json()) as Promise<DemoReleaseOpsResponse>,
       ]);
       setAiModelCatalog(aiModelsResponse);
       setQualityData(qualityResponse);
+      setReleaseData(releaseResponse);
       rag.evaluate.saveSuite(evaluationSuite);
       setSelectedAIModelKey((current) => current || aiModelsResponse.defaultModelKey || aiModelsResponse.models[0]?.key || "");
       if (chunkPreview && !documentsData.documents.some((document) => document.id === chunkPreview.document.id)) {
@@ -313,7 +484,7 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
 
   useEffect(() => {
     void refreshData();
-  }, []);
+  }, [selectedMode, releaseWorkspace]);
 
   useEffect(() => {
     void loadRecentQueries("react", selectedMode).then((entries) => {
@@ -413,9 +584,26 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
       const payload = buildSearchPayload({
         ...searchValues,
         query,
+        retrievalPresetId: retrievalPresetId || undefined,
       });
       const start = performance.now();
-      const results = await rag.search.search(payload as never);
+      const response = await fetch(`/demo/message/${selectedMode}/search`, {
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const parsed = await response.json() as {
+        ok: boolean;
+        results?: RAGSource[];
+        trace?: RAGRetrievalTrace;
+        error?: string;
+      };
+
+      if (!response.ok || !parsed.ok) {
+        throw new Error(parsed.error ?? `Search failed with status ${response.status}`);
+      }
+
+      const results = parsed.results ?? [];
       setRecentQueries((prev) => {
         const next = [
           { label: query, state: { ...searchValues, query } },
@@ -427,12 +615,38 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
         return next.slice(0, 4);
       });
       setSearchResults(
-        buildSearchResponse(query, payload, results, Math.round(performance.now() - start)),
+        buildSearchResponse(
+          query,
+          payload,
+          results,
+          Math.round(performance.now() - start),
+          parsed.trace,
+        ),
       );
     } catch (error) {
       setSearchError(
         error instanceof Error ? `Search failed: ${error.message}` : "Search failed",
       );
+    }
+  };
+
+  const focusInspectionEntry = async (entry: ReturnType<typeof buildInspectionEntries>[number]) => {
+    setDocumentTypeFilter("all");
+    setDocumentSearchTerm(entry.sourceQuery ?? "");
+    setDocumentPage(1);
+    document.getElementById("document-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (entry.documentId) {
+      setMessage(`Inspecting ${entry.documentId} from ops inspection.`);
+      await inspectChunks(entry.documentId);
+      return;
+    }
+    if (entry.source) {
+      const nextState = { ...searchForm, source: entry.source, documentId: "", query: `Source search for ${entry.source}` } as SearchFormState;
+      setSearchForm(nextState);
+      setScopeDriver(`ops inspection: ${entry.source}`);
+      setPendingScrollTarget("search-results");
+      setMessage(`Scoped retrieval to ${entry.source} from ops inspection.`);
+      await executeSearch(nextState);
     }
   };
 
@@ -527,6 +741,7 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
           : "",
       source: options.source ?? "",
       documentId: options.documentId ?? "",
+      nativeQueryProfile: options.nativeQueryProfile ?? "",
       scoreThreshold: options.scoreThreshold ?? "",
       topK: options.topK ?? 6,
     } as SearchFormState;
@@ -538,7 +753,7 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
     }
     if (driver.startsWith("benchmark preset:")) {
       setBenchmarkPresetId(presetId);
-      setRetrievalPresetId("");
+      setRetrievalPresetId(resolveBenchmarkRetrievalPresetId(presetId));
       setUploadPresetId("");
     } else if (driver === "upload verification") {
       setRetrievalPresetId("");
@@ -549,6 +764,16 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
       setUploadPresetId("");
     }
     void executeSearch(nextSearch);
+  };
+
+  const runReleaseEvidenceDrill = (drill: (typeof releaseEvidenceDrills)[number]) => {
+    runPresetSearch(
+      drill.query,
+      { topK: drill.topK },
+      drill.driver,
+      drill.benchmarkPresetId || drill.retrievalPresetId || "",
+      "search-results",
+    );
   };
 
   const uploadSelectedFile = async () => {
@@ -809,6 +1034,9 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
               Use one route to ingest, sync, retrieve, stream grounded answers, and inspect
               ops health against the same stuffed multi-format knowledge base.
             </p>
+            <p className="demo-metadata">
+              Pinned to <code>@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.3 + @absolutejs/rag@0.0.2</code> and surfacing the shared <code>@absolutejs/ai + @absolutejs/rag</code> plus <code>@absolutejs/rag/ui</code> diagnostics on this page.
+            </p>
             <div className="demo-hero-grid">
               <article className="demo-stat-card">
                 <span className="demo-stat-label">Corpus</span>
@@ -872,7 +1100,1029 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                 <p className="demo-metadata">
                   Backend capabilities: <strong>{status.capabilities.join(" · ")}</strong>
                 </p>
+                <div className="demo-results demo-release-card">
+                  <h3>Retrieval Release Control</h3>
+                  <p className="demo-metadata">
+                    This panel exercises the same AbsoluteJS release-control surface that backs retrieval baselines, incidents, lane readiness, and remediation execution tracking.
+                  </p>
+                  <div className="demo-release-scenario-switcher">
+                    {demoReleaseWorkspaces.map((entry) => (
+                      <span className={`demo-release-scenario-chip demo-release-workspace-chip${releaseWorkspace === entry.id ? " demo-release-scenario-chip-active" : ""}`} key={`release-workspace-${entry.id}`}>
+                        <button type="button" onClick={() => setReleaseWorkspace(entry.id)} disabled={releaseWorkspace === entry.id} title={entry.description}>
+                          Workspace · {entry.label}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="demo-release-hero">
+                    <div className="demo-release-hero-copy">
+                      <p className="demo-release-kicker">AbsoluteJS release workflow</p>
+                      <p className="demo-release-banner">{releaseHero}</p>
+                      <p className="demo-release-summary">{releaseHeroSummary}</p>
+                      <p className="demo-metadata">{releaseHeroMeta}</p>
+                      <p className="demo-metadata">{releaseScopeNote}</p>
+                      <div className="demo-release-pills">
+                        {releaseHeroPills.map((pill) => (
+                          pill.targetCardId || pill.targetActivityId ? (
+                            <a className={`demo-release-pill demo-release-pill-${pill.tone}`} key={pill.label} href={`#${pill.targetActivityId ?? pill.targetCardId}`} onClick={() => openReleaseDiagnosticsTarget(pill.targetCardId)}>
+                              <span className="demo-release-pill-label">{pill.label}</span>
+                              <span className="demo-release-pill-value">{pill.value}</span>
+                            </a>
+                          ) : (
+                            <span className={`demo-release-pill demo-release-pill-${pill.tone}`} key={pill.label}>
+                              <span className="demo-release-pill-label">{pill.label}</span>
+                              <span className="demo-release-pill-value">{pill.value}</span>
+                            </span>
+                          )
+                        ))}
+                      </div>
+                      <div className="demo-release-scenario-switcher">
+                        {releaseScenarioActions.map((entry) => (
+                          <span className={`demo-release-scenario-chip${entry.active ? " demo-release-scenario-chip-active" : ""}`} key={entry.id}>
+                            {entry.action ? (
+                              <button
+                                type="button"
+                                onClick={() => runReleaseAction(entry.action!)}
+                                disabled={entry.active || releaseActionBusyId === entry.action.id}
+                                title={entry.action.description}
+                              >
+                                {releaseActionBusyId === entry.action.id ? `Running ${entry.action.label}...` : entry.label}
+                              </button>
+                            ) : (
+                              <span>{entry.label}</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="demo-release-path">
+                        {releasePathSteps.map((step) => (
+                          <article className={`demo-release-path-step demo-release-path-step-${step.status}`} key={step.id}>
+                            <div className="demo-release-path-step-header">
+                              <h4>{step.label}</h4>
+                              <span className={`demo-release-path-status demo-release-path-status-${step.status}`}>{step.status}</span>
+                            </div>
+                            <p>{step.summary}</p>
+                            <p className="demo-release-path-detail">{step.detail}</p>
+                            {step.action ? (
+                              <button
+                                className="demo-release-path-action"
+                                type="button"
+                                onClick={() => runReleaseAction(step.action!)}
+                                disabled={releaseActionBusyId === step.action.id}
+                              >
+                                {releaseActionBusyId === step.action.id ? `Running ${step.action.label}...` : step.action.label}
+                              </button>
+                            ) : null}
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="demo-release-action-rail">
+                      <span className="demo-release-action-label">Live actions</span>
+                      <div className="demo-release-action-state">
+                        <span className="demo-release-action-state-badge">Scenario · {scenario?.label ?? "Blocked stable lane"}</span>
+                        <span className={`demo-release-action-delta-badge demo-release-action-delta-badge-${releaseRailDeltaChip.tone}`}>{releaseRailDeltaChip.label}</span>
+                                              <span className={`demo-release-action-delta-badge demo-release-action-delta-badge-${railIncidentPostureChip.tone}`}>Incident posture · {railIncidentPostureChip.label}</span>
+                        <span className={`demo-release-action-delta-badge demo-release-action-delta-badge-${railGateChip.tone}`}>Gate posture · {railGateChip.label}</span>
+                        <span className={`demo-release-action-delta-badge demo-release-action-delta-badge-${railApprovalChip.tone}`}>Approval posture · {railApprovalChip.label}</span>
+                        <span className={`demo-release-action-delta-badge demo-release-action-delta-badge-${railRemediationChip.tone}`}>Remediation posture · {railRemediationChip.label}</span>
+                      </div>
+                      <div className="demo-release-rail-meta">{releaseRailUpdateSource.targetCardId || releaseRailUpdateSource.targetActivityId ? <a className={`demo-release-activity-lane demo-release-activity-lane-${releaseRailUpdateSource.tone}`} href={`#${releaseRailUpdateSource.targetActivityId ?? releaseRailUpdateSource.targetCardId}`} onClick={() => openReleaseDiagnosticsTarget(releaseRailUpdateSource.targetCardId)}>{releaseRailUpdateSource.label}</a> : <span className={`demo-release-activity-lane demo-release-activity-lane-${releaseRailUpdateSource.tone}`}>{releaseRailUpdateSource.label}</span>}<p className="demo-release-updated">{releaseRailUpdatedLabel}</p></div>
+                      {releasePendingLabel ? (
+                        <p className="demo-release-pending">{releasePendingLabel}</p>
+                      ) : null}
+                      {latestReleaseAction ? (
+                        <details className={`demo-collapsible demo-release-action-latest demo-release-action-latest-${latestReleaseAction.tone}`}>
+                          <summary>Latest action · {latestReleaseAction.title}</summary>
+                          {latestReleaseAction.detail ? <p>{latestReleaseAction.detail}</p> : null}
+                          <p className="demo-release-next-step">{latestReleaseAction.nextStep}</p>
+                        </details>
+                      ) : null}
+                      <details className={`demo-collapsible demo-release-rail-callout demo-release-rail-callout-${releaseRailCallout.tone}`}>
+                        <summary>{releaseRailCallout.title}</summary>
+                        <p>{releaseRailCallout.message}</p>
+                        {releaseRailCallout.detail ? <p>{releaseRailCallout.detail}</p> : null}
+                        <p className="demo-release-next-step">{releaseRailCallout.nextStep}</p>
+                      </details>
+                      {recentReleaseActivity.length ? (
+                        <div className="demo-release-activity-stack">
+                          <span className="demo-release-action-subtitle">Recent activity</span>
+                          {recentReleaseActivity.map((entry, index) => (
+                            <a id={entry.id} key={`${entry.laneLabel}-${entry.title}-${index}`} className={`demo-release-activity demo-release-activity-${entry.tone}`} href={`#${entry.targetCardId}`} onClick={() => openReleaseDiagnosticsTarget(entry.targetCardId)}>
+                              <span className={`demo-release-activity-lane demo-release-activity-lane-${entry.tone}`}>{entry.laneLabel}</span>
+                              <strong>{entry.title}</strong>
+                              {entry.detail ? ` · ${entry.detail}` : ""}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="demo-release-action-group">
+                        <span className="demo-release-action-subtitle">Release</span>
+                        <div className="demo-release-actions">
+                          {primaryReleaseActions.map((action) => (
+                            <button
+                              key={action.id}
+                              className={`demo-release-action demo-release-action-${action.tone ?? "neutral"}`}
+                              type="button"
+                              onClick={() => runReleaseAction(action)}
+                              disabled={releaseActionBusyId === action.id}
+                              title={action.description}
+                            >
+                              {releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label}
+                            </button>
+                          ))}
+                        </div>
+                        {secondaryReleaseActions.length > 0 ? (
+                          <details className="demo-collapsible demo-release-more-actions">
+                            <summary>More actions</summary>
+                            <div className="demo-release-actions">
+                              {secondaryReleaseActions.map((action) => (
+                                <button
+                                  key={action.id}
+                                  className={`demo-release-action demo-release-action-${action.tone ?? "neutral"}`}
+                                  type="button"
+                                  onClick={() => runReleaseAction(action)}
+                                  disabled={releaseActionBusyId === action.id}
+                                  title={action.description}
+                                >
+                                  {releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label}
+                                </button>
+                              ))}
+                            </div>
+                          </details>
+                        ) : null}
+                      </div>
+                      {handoffActions.length > 0 ? (
+                        <div className="demo-release-action-group">
+                          <span className="demo-release-action-subtitle">Handoff</span>
+                          <div className="demo-release-actions">
+                            {handoffActions.map((action) => (
+                              <button
+                                key={action.id}
+                                className={`demo-release-action demo-release-action-${action.tone ?? "neutral"}`}
+                                type="button"
+                                onClick={() => runReleaseAction(action)}
+                                disabled={releaseActionBusyId === action.id}
+                                title={action.description}
+                              >
+                                {releaseActionBusyId === action.id ? `Running ${action.label}...` : action.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="demo-stat-grid">
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Stable baseline</span>
+                      <strong>{stableBaseline?.label ?? "Not promoted"}</strong>
+                      <p>
+                        {stableBaseline
+                          ? `${stableBaseline.retrievalId} · v${stableBaseline.version}${stableBaseline.approvedBy ? ` · approved by ${stableBaseline.approvedBy}` : ""}`
+                          : "No stable baseline has been promoted yet."}
+                      </p>
+                    </article>
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Canary baseline</span>
+                      <strong>{canaryBaseline?.label ?? "Not promoted"}</strong>
+                      <p>
+                        {canaryBaseline
+                          ? `${canaryBaseline.retrievalId} · v${canaryBaseline.version}${canaryBaseline.approvedAt ? ` · ${formatDate(canaryBaseline.approvedAt)}` : ""}`
+                          : "No canary baseline has been promoted yet."}
+                      </p>
+                    </article>
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Stable readiness</span>
+                      <strong>{stableReadiness?.ready ? "Ready" : "Blocked"}</strong>
+                      <p>
+                        {stableReadinessStatSummary}
+                      </p>
+                    </article>
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Remediation guardrails</span>
+                      <strong>
+                        {remediationSummary
+                          ? `${remediationSummary.guardrailBlockedCount} blocked · ${remediationSummary.replayCount} replays`
+                          : "No remediation executions"}
+                      </strong>
+                      <p>
+                        {remediationGuardrailSummary}
+                      </p>
+                    </article>
+                  </div>
+                  <p className={`demo-release-card-state demo-release-card-state-${releaseStateBadge.tone}`}>State · {releaseStateBadge.label}</p>
+                  <div className="demo-result-grid">
+                    <article className="demo-result-item">
+                      <h4>Evidence drills</h4>
+                      <p className="demo-score-headline">Jump directly into the trace that explains each blocker class.</p>
+                      <div className="demo-release-actions">
+                        {releaseEvidenceDrills.map((drill) => (
+                          <button
+                            key={drill.id}
+                            className={`demo-release-action demo-release-action-${drill.active ? "primary" : "neutral"}`}
+                            type="button"
+                            onClick={() => runReleaseEvidenceDrill(drill)}
+                          >
+                            {drill.label}
+                          </button>
+                        ))}
+                      </div>
+                      {releaseEvidenceDrills.map((drill) => (
+                        <Fragment key={`release-drill-${drill.id}`}>
+                          <p className="demo-metadata">
+                            <strong>{drill.classificationLabel}:</strong> {drill.summary} Expected source · {drill.expectedSource}
+                          </p>
+                          <p className="demo-metadata">{drill.traceExpectation}</p>
+                        </Fragment>
+                      ))}
+                    </article>
+                    <article className="demo-result-item">
+                      <h4>Blocker comparison</h4>
+                      <p className="demo-score-headline">{scenarioClassificationLabel ? `Active blocker · ${scenarioClassificationLabel}` : "Compare both blocker classes"}</p>
+                      <div className="demo-result-grid">
+                        {releaseBlockerComparisonCards.map((card) => (
+                          <article className="demo-result-item" key={card.id}>
+                            <h4>{card.label}{card.active ? " · active" : ""}</h4>
+                            {card.detailLines.map((line) => (
+                              <p className="demo-metadata" key={`${card.id}-${line}`}>{line}</p>
+                            ))}
+                          </article>
+                        ))}
+                      </div>
+                    </article>
+                    <article className="demo-result-item" id="release-runtime-history-card">
+                      <h4>Runtime planner history</h4>
+                      <p className="demo-score-headline">{runtimePlannerHistorySummary}</p>
+                      {runtimePlannerHistoryLines.map((line) => (
+                        <p className="demo-metadata" key={`runtime-planner-${line}`}>{line}</p>
+                      ))}
+                    </article>
+                    <article className="demo-result-item" id="release-benchmark-snapshots-card">
+                      <h4>Adaptive planner benchmark</h4>
+                      <p className="demo-score-headline">{benchmarkSnapshotSummary}</p>
+                      {benchmarkSnapshotLines.map((line) => (
+                        <p className="demo-metadata" key={`benchmark-snapshot-${line}`}>{line}</p>
+                      ))}
+                    </article>
+                    <article className="demo-result-item" id="release-active-deltas-card">
+                      <h4>Active blocker deltas</h4>
+                      <p className="demo-score-headline">{activeBlockerDeltaSummary}</p>
+                      {activeBlockerDeltaLines.map((line) => (
+                        <p className="demo-metadata" key={`active-blocker-delta-${line}`}>{line}</p>
+                      ))}
+                    </article>
+                    <article className="demo-result-item" id="release-lane-readiness-card">
+                      <h4>Lane readiness</h4>
+                      <div className="demo-key-value-grid">
+                        {laneReadinessEntries.map((entry) => (
+                          <Fragment key={`lane-readiness-${entry.targetRolloutLabel}`}>
+                            <div className="demo-key-value-row">
+                              <span>{entry.targetRolloutLabel ?? "lane"}</span>
+                              <strong>{entry.ready ? "ready" : "blocked"}</strong>
+                            </div>
+                            {entry.reasons.slice(0, 2).map((reason) => (
+                              <p className="demo-metadata" key={`${entry.targetRolloutLabel}-${reason}`}>{reason}</p>
+                            ))}
+                          </Fragment>
+                        ))}
+                      </div>
+                    </article>
+                    <article className="demo-result-item">
+                      <h4>Lane recommendations</h4>
+                      <div className="demo-insight-stack">
+                        {releaseRecommendations.length > 0 ? releaseRecommendations.map((entry) => (
+                          <p className="demo-insight-card" key={`${entry.groupKey}:${entry.targetRolloutLabel}:${entry.recommendedAction}`}>
+                            <strong>{entry.targetRolloutLabel ?? "lane"} · {entry.classificationLabel ?? "release recommendation"}:</strong> {entry.recommendedAction.replaceAll("_", " ")}{entry.reasons[0] ? ` · ${entry.reasons[0]}` : ""}
+                          </p>
+                        )) : (
+                          <p className="demo-insight-card">No lane recommendations are available yet.</p>
+                        )}
+                      </div>
+                    </article>
+                    <article className="demo-result-item" id="release-open-incidents-card">
+                      <h4>Open incidents</h4>
+                      <p className="demo-score-headline">
+                        {incidentSummaryLabel}
+                      </p>
+                      {incidentClassificationDetailLines.map((line) => (
+                        <p className="demo-metadata" key={`incident-detail-${line}`}>{line}</p>
+                      ))}
+                      <div className="demo-insight-stack">
+                        {recentIncidents.slice(0, 3).map((incident) => (
+                          <p className="demo-insight-card" key={`${incident.kind}:${incident.triggeredAt}`}>
+                            <strong>{incident.targetRolloutLabel ?? "lane"} · {incident.kind} · {incident.classificationLabel ?? "general regression"}</strong>
+                            <br />
+                            {incident.message}
+                          </p>
+                        ))}
+                      </div>
+                    </article>
+                    <article className="demo-result-item" id="release-remediation-history-card">
+                      <h4>Remediation execution history</h4>
+                      {remediationDetailLines.map((line) => (
+                        <p className="demo-metadata" key={`remediation-detail-${line}`}>{line}</p>
+                      ))}
+                      <div className="demo-key-value-grid">
+                        {recentIncidentRemediationExecutions.slice(0, 4).map((entry, index) => (
+                          <div className="demo-key-value-row" key={`remediation-execution-${index}`}>
+                            <span>{entry.action?.kind ?? "execution"}</span>
+                            <strong>
+                              {entry.code}
+                              {entry.idempotentReplay ? " · replay" : ""}
+                              {entry.blockedByGuardrail ? " · blocked" : ""}
+                            </strong>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  </div>
+                  <details className="demo-collapsible demo-release-diagnostics" id="release-diagnostics">
+                    <summary>Advanced release diagnostics · {releaseDiagnosticsSummary}</summary>
+                    <p className="demo-release-updated">{releaseDiagnosticsUpdatedLabel}</p>
+                    <p className={`demo-release-card-state demo-release-card-state-${releaseStateBadge.tone}`}>State · {releaseStateBadge.label}</p>
+                    <div className="demo-result-grid">
+                    <article className="demo-result-item" id="release-promotion-candidates-card">
+                      <h4>Promotion candidates</h4>
+                      <div className="demo-key-value-grid">
+                        {releaseCandidates.length > 0 ? releaseCandidates.slice(0, 3).map((candidate, index) => (
+                          <Fragment key={`promotion-candidate-${candidate.targetRolloutLabel}-${index}`}>
+                            <div className="demo-key-value-row">
+                              <span>{candidate.targetRolloutLabel ?? "lane"} · {candidate.candidateRetrievalId ?? "candidate"}</span>
+                              <strong>{candidate.reviewStatus}</strong>
+                            </div>
+                            <p className="demo-metadata">
+                              {candidate.reasons[0] ?? "No release reasons recorded."}
+                            </p>
+                          </Fragment>
+                        )) : (
+                          <p className="demo-metadata">No promotion candidates recorded yet.</p>
+                        )}
+                      </div>
+                    </article>
+                    <article className="demo-result-item">
+                      <h4>Release alerts</h4>
+                      <div className="demo-insight-stack">
+                        {releaseAlerts.length > 0 ? releaseAlerts.slice(0, 4).map((alert, index) => (
+                          <p className="demo-insight-card" key={`${alert.kind}-${index}`}>
+                            <strong>{alert.targetRolloutLabel ?? "lane"} · {alert.kind} · {alert.classificationLabel ?? "general regression"}</strong>
+                            <br />
+                            {alert.message ?? "No alert detail"}
+                          </p>
+                        )) : (
+                          <p className="demo-insight-card">No release alerts are active.</p>
+                        )}
+                      </div>
+                    </article>
+                    <article className="demo-result-item" id="release-policy-history-card">
+                      <h4>Policy history</h4>
+                      {policyHistoryDetailLines.map((line) => (
+                        <p className="demo-metadata" key={`policy-detail-${line}`}>{line}</p>
+                      ))}
+                      <div className="demo-insight-stack">
+                        {policyHistoryEntries.length > 0 ? policyHistoryEntries.map((entry) => (
+                          <p className="demo-insight-card" key={entry.id}>
+                            <strong>{entry.title}</strong>
+                            <br />
+                            {entry.detail}
+                          </p>
+                        )) : (
+                          <p className="demo-insight-card">{policyHistorySummary}</p>
+                        )}
+                      </div>
+                    </article>
+                                        <article className="demo-result-item" id="release-audit-surfaces-card">
+                      <h4>Audit surfaces</h4>
+                      <div className="demo-insight-stack">
+                        {auditSurfaceEntries.length > 0 ? auditSurfaceEntries.map((entry) => (
+                          <p className="demo-insight-card" key={entry.id}>
+                            <strong>{entry.title}</strong>
+                            <br />
+                            {entry.detail}
+                          </p>
+                        )) : (
+                          <p className="demo-insight-card">{auditSurfaceSummary}</p>
+                        )}
+                      </div>
+                    </article>
+                    <article className="demo-result-item" id="release-polling-surfaces-card">
+                      <h4>Polling surfaces</h4>
+                      <div className="demo-insight-stack">
+                        {pollingSurfaceEntries.map((entry) => (
+                          <p className="demo-insight-card" key={entry.id}>
+                            <strong>{entry.title}</strong>
+                            <br />
+                            {entry.detail}
+                          </p>
+                        ))}
+                      </div>
+                    </article>
+<article className="demo-result-item" id="release-handoff-incidents-card">
+                      <h4>Handoff incidents</h4>
+                      <p className="demo-score-headline">{stableHandoffIncidentSummaryLabel}</p>
+                      <div className="demo-insight-stack">
+                        {handoffIncidents.length > 0 ? handoffIncidents.slice(0, 2).map((incident, index) => (
+                          <p className="demo-insight-card" key={`handoff-incident-${incident.id ?? index}`}>
+                            <strong>{incident.status ?? "incident"} · {incident.kind ?? "handoff_stale"}</strong>
+                            <br />
+                            {incident.message ?? "No handoff incident detail"}
+                          </p>
+                        )) : (
+                          <p className="demo-insight-card">No handoff incidents recorded.</p>
+                        )}
+                        {handoffIncidentHistory.slice(0, 3).map((entry, index) => (
+                          <p className="demo-insight-card" key={`handoff-history-${entry.incidentId ?? index}-${entry.recordedAt ?? 0}`}>
+                            <strong>{entry.action ?? "history"}</strong>
+                            <br />
+                            {[entry.notes, entry.recordedAt ? new Date(entry.recordedAt).toLocaleString() : undefined].filter(Boolean).join(" · ")}
+                          </p>
+                        ))}
+                      </div>
+                    </article>
+                    <article className="demo-result-item" id="release-stable-handoff-card">
+                      <h4>Stable handoff</h4>
+                      <div className="demo-key-value-grid">
+                        {stableHandoff ? (
+                          <>
+                            <div className="demo-key-value-row">
+                              <span>{stableHandoff.sourceRolloutLabel} {"->"} {stableHandoff.targetRolloutLabel}</span>
+                              <strong>{stableHandoff.readyForHandoff ? "ready" : "blocked"}</strong>
+                            </div>
+                            <p className="demo-metadata">
+                              {stableHandoff.candidateRetrievalId ? `candidate ${stableHandoff.candidateRetrievalId}` : "No candidate retrieval is attached to the handoff yet."}
+                              {stableHandoffDecision?.kind ? ` · latest ${stableHandoffDecision.kind}` : ""}
+                            </p>
+                            {stableHandoffDisplayReasons.map((reason) => (
+                              <p className="demo-metadata" key={`stable-handoff-reason-${reason}`}>{reason}</p>
+                            ))}
+                            {stableHandoffAutoComplete ? (
+                              <p className="demo-metadata">
+                                {stableHandoffAutoCompleteLabel}
+                              </p>
+                            ) : null}
+                            <div className="demo-key-value-row">
+                              <span>Drift events</span>
+                              <strong>{stableHandoffDrift?.totalCount ?? 0}</strong>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="demo-metadata">No stable handoff posture is available yet.</p>
+                        )}
+                      </div>
+                    </article>
+                    </div>
+                  </details>
+                </div>
+                <div className="demo-actions">
+                  <button onClick={reseed} type="button">Re-seed defaults</button>
+                  <button onClick={resetCustom} type="button">Reset custom docs</button>
+                  <button onClick={refreshData} type="button">Refresh</button>
+                </div>
+              </article>
+
+              <article className="demo-card">
+                <h2>Retrieve And Verify</h2>
+                <p className="demo-metadata">
+                  This section is powered by <code>useRAG</code>. Run a query, then
+                  confirm the returned chunk text and source label match the indexed
+                  source list below.
+                </p>
+                <div className="demo-preset-grid">
+                  <button type="button" onClick={() => runPresetSearch("How do metadata filters change retrieval quality?", { kind: "seed" }, "preset: filter behavior", "filter-behavior")}>Filter behavior</button>
+                  <button type="button" onClick={() => runPresetSearch("What should I verify after ingesting a new source?", {}, "preset: verify ingestion", "verify-ingestion")}>Verify ingestion</button>
+                  <button type="button" onClick={() => runPresetSearch("List support policies for shipping and returns.", { source: "guide/demo.md" }, "preset: source filter", "source-filter")}>Source filter</button>
+                  <button type="button" onClick={() => runPresetSearch("Why should metadata be stable?", { source: "guides/metadata.md" }, "preset: metadata discipline", "metadata-discipline")}>Metadata discipline</button>
+                  <button type="button" onClick={() => runPresetSearch("Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?", {}, "preset: late interaction", "hybrid")}>Late interaction / multivector</button>
+                  <button type="button" onClick={() => runPresetSearch("Which synced site discovery guide says discovery diagnostics stay visible on the same sync surface as every other source?", { source: "sync/site/demo/sync-fixtures/site/docs/guide" }, "preset: site discovery", "site-discovery")}>Site discovery (sync first)</button>
+                  <button type="button" onClick={() => runPresetSearch("release", { nativeQueryProfile: "latency", topK: 4 }, "preset: planner profile latency", "planner-profile-latency")}>Planner profile · latency</button>
+                  <button type="button" onClick={() => runPresetSearch("release", { nativeQueryProfile: "balanced", topK: 4 }, "preset: planner profile balanced", "planner-profile-balanced")}>Planner profile · balanced</button>
+                  <button type="button" onClick={() => runPresetSearch("release", { nativeQueryProfile: "recall", topK: 4 }, "preset: planner profile recall", "planner-profile-recall")}>Planner profile · recall</button>
+                </div>
+                <form className="demo-search-form" onSubmit={submitSearch}>
+                  <label htmlFor="query">Query</label>
+                  <input id="query" name="query" onChange={onSearchFieldChange} placeholder="e.g. How do metadata filters work?" required type="text" value={searchForm.query} />
+                  <label htmlFor="topK">Top K</label>
+                  <input id="topK" max={20} min={1} name="topK" onChange={onSearchFieldChange} type="number" value={searchForm.topK} />
+                  <label htmlFor="scoreThreshold">Minimum score (0-1)</label>
+                  <input id="scoreThreshold" name="scoreThreshold" onChange={onSearchFieldChange} placeholder="optional" type="number" step="0.01" min={0} max={1} value={searchForm.scoreThreshold} />
+                  <label htmlFor="kind">Kind filter</label>
+                  <select id="kind" name="kind" onChange={onSearchFieldChange} value={searchForm.kind}>
+                    <option value="">Any</option>
+                    <option value="seed">Seed</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  <label htmlFor="source">Source filter</label>
+                  <input className={searchForm.source.trim().length > 0 ? "demo-filter-active" : undefined} id="source" name="source" onChange={onSearchFieldChange} placeholder="e.g. guide/demo.md" type="text" value={searchForm.source} />
+                  <label htmlFor="documentId">Document ID filter</label>
+                  <input className={searchForm.documentId.trim().length > 0 ? "demo-filter-active" : undefined} id="documentId" name="documentId" onChange={onSearchFieldChange} placeholder="e.g. rag-demo" type="text" value={searchForm.documentId} />
+                  <button type="submit">Search index</button>
+                </form>
                 <div className="demo-results">
+                  <h3>Active Retrieval Scope</h3>
+                  <div className="demo-badge-row">
+                    <span className="demo-state-chip">{formatRetrievalScopeSummary(searchForm)}</span>
+                    <span className="demo-state-chip">Changed by: {scopeDriver.replace(/^row action: /, "row action · ")}</span>
+                    <span className="demo-state-chip">Results: {searchResults?.count ?? 0}</span>
+                  </div>
+                  <p className="demo-metadata">{formatRetrievalScopeHint(searchForm)}</p>
+                  <div className="demo-actions">
+                    <button disabled={searchForm.query.trim().length === 0 && searchForm.source.trim().length === 0 && searchForm.documentId.trim().length === 0 && searchForm.kind.length === 0} onClick={clearRetrievalScope} type="button">Clear scope</button>
+                    <button disabled={searchForm.query.trim().length === 0} onClick={rerunLastQuery} type="button">Rerun query</button>
+                    <button onClick={clearAllRetrievalState} type="button">Clear search</button>
+                  </div>
+                  {recentQueries.length > 0 && (
+                    <>
+                      <p className="demo-section-caption">Recent Searches</p>
+                      <div className="demo-badge-row">
+                        {recentQueries.map((entry) => (
+                          <button className="demo-state-chip" key={`${entry.label}-${entry.state.source}-${entry.state.documentId}-${entry.state.kind}`} onClick={() => rerunRecentQuery(entry.state)} type="button">
+                            {entry.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {searchError && <p className="demo-error">{searchError}</p>}
+                {searchResults && (
+                  <div className="demo-search-results" id="search-results">
+                    <p className="demo-metadata">{searchResults.count} results for “{searchResults.query}” in {searchResults.elapsedMs}ms</p>
+                    <p className="demo-metadata">{formatRetrievalScopeSummary(searchForm)}</p>
+                    <p className="demo-metadata">Scope changed by: {scopeDriver}</p>
+                    <p className="demo-metadata">Reranking is active: AbsoluteJS reorders the first vector hits with the built-in heuristic provider before these results render.</p>
+                    <p className="demo-metadata">Verification rule: a good result shows chunk text that answers the query and a source label you can trace back to the indexed source list.</p>
+                    {searchResults.storyHighlights.length > 0 && (
+                      <div className="demo-results">
+                        <h3>Retrieval Story</h3>
+                        {searchResults.storyHighlights.map((line) => <p className="demo-metadata" key={line}>{line}</p>)}
+                      </div>
+                    )}
+                    {searchResults.attributionOverview.length > 0 && (
+                      <div className="demo-results">
+                        <h3>Attribution Overview</h3>
+                        {searchResults.attributionOverview.map((line) => <p className="demo-metadata" key={line}>{line}</p>)}
+                      </div>
+                    )}
+                    {searchResults.sectionDiagnostics.length > 0 && (
+                      <div className="demo-results">
+                        <h3>Section Diagnostics</h3>
+                        <div className="demo-result-grid">
+                          {searchResults.sectionDiagnostics.map((diagnostic) => (
+                            <article className="demo-result-item" key={`search-diagnostic-${diagnostic.key}`}>
+                              <h4>{diagnostic.label}</h4>
+                              <p className="demo-result-source">{diagnostic.summary}</p>
+                              <p className="demo-metadata">{formatSectionDiagnosticChannels(diagnostic)}
+                              </p>
+                              <p className="demo-metadata">{formatSectionDiagnosticAttributionFocus(diagnostic)}</p>
+                              <p className="demo-metadata">{formatSectionDiagnosticPipeline(diagnostic)}</p>
+                              {formatSectionDiagnosticStageFlow(diagnostic) && <p className="demo-metadata">{formatSectionDiagnosticStageFlow(diagnostic)}</p>}
+                              {formatSectionDiagnosticStageBounds(diagnostic) && <p className="demo-metadata">{formatSectionDiagnosticStageBounds(diagnostic)}</p>}
+                              {formatSectionDiagnosticStageWeightRows(diagnostic).map((line: string) => (
+                                <p className="demo-metadata" key={`${diagnostic.key}-${line}`}>{line}</p>
+                              ))}
+                              <p className="demo-metadata">{formatSectionDiagnosticTopEntry(diagnostic)}</p>
+                              {formatSectionDiagnosticCompetition(diagnostic) && <p className="demo-metadata">{formatSectionDiagnosticCompetition(diagnostic)}</p>}
+                              {formatSectionDiagnosticReasons(diagnostic).length > 0 && (
+                                <div className="demo-badge-row">
+                                  {formatSectionDiagnosticReasons(diagnostic).map((reason) => (
+                                    <span className="demo-state-chip" key={`${diagnostic.key}-${reason}`}>{reason}</span>
+                                  ))}
+                                  {formatSectionDiagnosticStageWeightReasons(diagnostic).map((reason: string) => (
+                                    <span className="demo-state-chip" key={`${diagnostic.key}-${reason}`}>{reason}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {formatSectionDiagnosticDistributionRows(diagnostic).map((line) => (
+                                <p className="demo-metadata" key={`${diagnostic.key}-${line}`}>{line}</p>
+                              ))}
+                            </article>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="demo-result-grid">
+                      {searchSectionGroups.map((group) => (
+                        <article className="demo-result-item" id={group.targetId} key={group.id}>
+                          <h3>{group.label}</h3>
+                          <p className="demo-result-source">{group.summary}</p>
+                          {group.jumps.length > 0 && (
+                            <div className="demo-badge-row">
+                              {group.jumps.map((jump) => (
+                                <a className="demo-state-chip" href={`#${jump.targetId}`} key={jump.id}>
+                                  {jump.label}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          <div className="demo-result-grid">
+                            {group.chunks.map((chunk) => (
+                              <article className="demo-result-item" id={chunk.targetId} key={chunk.chunkId}>
+                                <h4>{chunk.title}</h4>
+                                <p className="demo-result-score">score: {formatScore(chunk.score)}</p>
+                                <p className="demo-result-source">source: {chunk.source}</p>
+                                {chunk.labels?.contextLabel && <p className="demo-metadata">{chunk.labels.contextLabel}</p>}
+                                {chunk.labels?.locatorLabel && <p className="demo-metadata">{chunk.labels.locatorLabel}</p>}
+                                {chunk.labels?.provenanceLabel && <p className="demo-metadata">{chunk.labels.provenanceLabel}</p>}
+                                {formatDemoMetadataSummary(chunk.metadata).map((line) => (
+                                  <p className="demo-metadata" key={line}>{line}</p>
+                                ))}
+                                <p className="demo-result-text">{chunk.text}</p>
+                              </article>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                    {searchResults.trace && (
+                      <div className="demo-results">
+                        <h3>Retrieval Trace</h3>
+                        <p className="demo-metadata">
+                          This is the first-class retrieval trace from AbsoluteJS. It shows how the query was transformed, which retrieval stages ran, and how many candidates survived each step.
+                        </p>
+                        <div className="demo-stat-grid">
+                          {buildTracePresentation(searchResults.trace).stats.map((row) => (
+                            <article className="demo-stat-card" key={`search-trace-stat-${row.label}`}>
+                              <p className="demo-section-caption">{row.label}</p>
+                              <strong>{row.value}</strong>
+                            </article>
+                          ))}
+                        </div>
+                        <div className="demo-key-value-list">
+                          {buildTracePresentation(searchResults.trace).details.map((row) => (
+                            <p className="demo-key-value-row" key={`search-trace-detail-${row.label}`}><strong>{row.label}</strong><span>{row.value}</span></p>
+                          ))}
+                        </div>
+                        <div className="demo-result-grid">
+                          {buildTracePresentation(searchResults.trace).steps.map((step, index) => (
+                            <details className="demo-collapsible demo-result-item" key={`${step.stage}-${index}`} open={index === 0}>
+                              <summary>
+                                <strong>{index + 1}. {step.label}</strong>
+                              </summary>
+                              <div className="demo-key-value-list">
+                                {step.rows.map((row) => (
+                                  <p className="demo-key-value-row" key={`${step.stage}-${row.label}`}>
+                                    <strong>{row.label}</strong>
+                                    <span>{row.value}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="demo-results">
+                  <h3>Benchmark Retrieval</h3>
+                  <p className="demo-metadata">
+                    This section uses <code>useRAG().evaluate</code> to run a built-in benchmark suite. Each case names the source we expect retrieval to surface so you can compare expected, retrieved, and missing evidence directly.
+                  </p>
+                  {attributionBenchmarkNotes.map((line) => <p className="demo-metadata" key={line}>{line}</p>)}
+                  <div className="demo-badge-row">
+                    {benchmarkOutcomeRail.map((entry) => (
+                      <span className="demo-state-chip" key={entry.id} title={entry.summary}>{formatBenchmarkOutcomeRailLabel(entry, benchmarkPresetId)}</span>
+                    ))}
+                  </div>
+                  <div className="demo-preset-grid">
+                    {demoEvaluationPresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        title={preset.description}
+                        onClick={() => runPresetSearch(preset.query, { source: preset.expectedSources[0] ?? "" }, `benchmark preset: ${preset.label}`, preset.id)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="demo-actions">
+                    <button disabled={rag.evaluate.isEvaluating} onClick={runEvaluation} type="button">
+                      {rag.evaluate.isEvaluating ? "Running benchmark suite..." : "Run benchmark suite"}
+                    </button>
+                  </div>
+                  {evaluationMessage && <p className="demo-metadata">{evaluationMessage}</p>}
+                  {rag.evaluate.error && <p className="demo-error">{rag.evaluate.error}</p>}
+                  {evaluation && (
+                    <>
+                      <p className="demo-metadata">Benchmark summary: {formatEvaluationSummary(evaluation)}</p>
+                      <div className="demo-result-grid">
+                        {evaluation.cases.map((entry) => (
+                          <article className={`demo-result-item demo-evaluation-card demo-evaluation-${entry.status}`} key={entry.caseId}>
+                            <h4>{entry.label ?? entry.caseId}</h4>
+                            <p className="demo-result-source">{entry.query}</p>
+                            <p className="demo-evaluation-status">{entry.status.toUpperCase()}</p>
+                            <p className="demo-metadata">{formatEvaluationCaseSummary(entry)}</p>
+                            <p className="demo-metadata">expected: {formatEvaluationExpected(entry)}</p>
+                            <p className="demo-metadata">retrieved: {formatEvaluationRetrieved(entry)}</p>
+                            <p className="demo-result-text">missing: {formatEvaluationMissing(entry)}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="demo-results">
+                  <h3>Retrieval Quality Tooling</h3>
+                  <p className="demo-metadata">This section now behaves like an evaluation dashboard instead of a log dump. The summary cards answer who is winning, the strategy tab shows why, the grounding tab keeps case drill-downs collapsed until needed, and the history tab only expands when you want regression detail.</p>
+                  <div className="demo-pill-row">
+                    {(rag.evaluate.suites.length > 0 ? rag.evaluate.suites : [evaluationSuite]).map((suite) => (
+                      <span className="demo-pill" key={suite.id}>{suite.label ?? suite.id} · {suite.input.cases.length} cases</span>
+                    ))}
+                  </div>
+                  <div className="demo-actions">
+                    <button disabled={rag.evaluate.isEvaluating} onClick={runSavedSuite} type="button">
+                      {rag.evaluate.isEvaluating ? "Running saved suite..." : "Run saved suite"}
+                    </button>
+                  </div>
+                  <div className="demo-tab-row">
+                    {(["overview", "strategies", "grounding", "history"] as const).map((view) => (
+                      <button
+                        key={view}
+                        className={qualityView === view ? "demo-tab demo-tab-active" : "demo-tab"}
+                        onClick={() => setQualityView(view)}
+                        type="button"
+                      >
+                        {view[0].toUpperCase() + view.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="demo-stat-grid">
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Saved suite leader</span>
+                      <strong>{rag.evaluate.leaderboard[0]?.label ?? "Run the saved suite"}</strong>
+                      <p>{rag.evaluate.leaderboard[0] ? formatEvaluationLeaderboardEntry(rag.evaluate.leaderboard[0]) : "The leaderboard will rank repeated workflow benchmark runs."}</p>
+                    </article>
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Retrieval winner</span>
+                      <strong>{qualityData ? formatRetrievalComparisonOverviewPresentation(qualityData.retrievalComparison).winnerLabel : "Loading comparison"}</strong>
+                      <p>{qualityData ? formatRetrievalComparisonOverviewPresentation(qualityData.retrievalComparison).summary : "Running retrieval comparison..."}</p>
+                    </article>
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Reranker winner</span>
+                      <strong>{qualityData ? formatRerankerComparisonOverviewPresentation(qualityData.rerankerComparison).winnerLabel : "Loading comparison"}</strong>
+                      <p>{qualityData ? formatRerankerComparisonOverviewPresentation(qualityData.rerankerComparison).summary : "Running reranker comparison..."}</p>
+                    </article>
+                    <article className="demo-stat-card">
+                      <span className="demo-stat-label">Grounding winner</span>
+                      <strong>{qualityData?.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison).winnerLabel : "Stored workflow evaluation"}</strong>
+                      <p>{qualityData?.providerGroundingComparison ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison).summary : qualityData ? formatGroundingEvaluationSummary(qualityData.groundingEvaluation) : "Loading grounding comparison..."}</p>
+                    </article>
+                  </div>
+                  {qualityData ? (<>
+                    {qualityView === "overview" && (
+                      <div className="demo-result-grid">
+                        <article className="demo-result-item">
+                          <h4>Winners at a glance</h4>
+                          <div className="demo-key-value-grid">
+                            {formatQualityOverviewPresentation({
+                              retrievalComparison: qualityData.retrievalComparison,
+                              rerankerComparison: qualityData.rerankerComparison,
+                              groundingEvaluation: qualityData.groundingEvaluation,
+                              groundingProviderOverview: qualityData.providerGroundingComparison
+                                ? formatGroundingProviderOverviewPresentation(qualityData.providerGroundingComparison)
+                                : undefined,
+                            }).rows.map((row) => (
+                              <div className="demo-key-value-row" key={`${row.label}:${row.value}`}>
+                                <span>{row.label}</span>
+                                <strong>{row.value}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        </article>
+                        <article className="demo-result-item">
+                          <h4>Why this matters</h4>
+                          <div className="demo-insight-stack">
+                            {formatQualityOverviewNotes().map((insight) => (
+                              <p className="demo-insight-card" key={insight}>{insight}</p>
+                            ))}
+                          </div>
+                        </article>
+                      </div>
+                    )}
+                    {qualityView === "strategies" && (<>
+                      <div className="demo-result-grid">
+                        {formatRetrievalComparisonPresentations(qualityData.retrievalComparison).map((card) => (
+                          <article className="demo-result-item demo-score-card" key={card.id}>
+                            <h4>{card.label}</h4>
+                            <p className="demo-score-headline">{card.summary}</p>
+                            <div className="demo-key-value-grid demo-trace-summary-grid">
+                              {card.traceSummaryRows.map((row) => (
+                                <div className="demo-key-value-row" key={`${card.id}-${row.label}`}>
+                                  <span>{row.label}</span>
+                                  <strong>{row.value}</strong>
+                                </div>
+                              ))}
+                            </div>
+                            <details className="demo-collapsible demo-trace-diff">
+                              <summary>
+                                <span>Trace diff vs leader</span>
+                                <strong>{card.diffLabel}</strong>
+                              </summary>
+                              <div className="demo-collapsible-content demo-trace-diff-grid">
+                                {card.diffRows.map((row) => (
+                                  <div className="demo-key-value-row" key={`${card.id}-diff-${row.label}`}>
+                                    <span>{row.label}</span>
+                                    <strong>{row.value}</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </article>
+                        ))}
+                      </div>
+                      <div className="demo-result-grid">
+                        {formatRerankerComparisonPresentations(qualityData.rerankerComparison).map((card) => (
+                          <article className="demo-result-item demo-score-card" key={card.id}>
+                            <h4>{card.label}</h4>
+                            <p className="demo-score-headline">{card.summary}</p>
+                            <div className="demo-key-value-grid demo-trace-summary-grid">
+                              {card.traceSummaryRows.map((row) => (
+                                <div className="demo-key-value-row" key={`${card.id}-${row.label}`}>
+                                  <span>{row.label}</span>
+                                  <strong>{row.value}</strong>
+                                </div>
+                              ))}
+                            </div>
+                            <details className="demo-collapsible demo-trace-diff">
+                              <summary>
+                                <span>Trace diff vs leader</span>
+                                <strong>{card.diffLabel}</strong>
+                              </summary>
+                              <div className="demo-collapsible-content demo-trace-diff-grid">
+                                {card.diffRows.map((row) => (
+                                  <div className="demo-key-value-row" key={`${card.id}-diff-${row.label}`}>
+                                    <span>{row.label}</span>
+                                    <strong>{row.value}</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </article>
+                        ))}
+                      </div>
+                    </>)}
+                    {qualityView === "grounding" && (<>
+                      <div className="demo-result-grid">
+                        {qualityData.groundingEvaluation.cases.map((entry) => (
+                          <details className="demo-result-item demo-collapsible" key={`grounding-${entry.caseId}`}>
+                            <summary>
+                              <span>{entry.label ?? entry.caseId}</span>
+                              <strong>{formatGroundingEvaluationCase(entry)}</strong>
+                            </summary>
+                            <div className="demo-collapsible-content">
+                              {formatGroundingEvaluationDetails(entry).map((line) => (
+                                <p className="demo-metadata" key={`${entry.caseId}-${line}`}>{line}</p>
+                              ))}
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                      {qualityData.providerGroundingComparison && (
+                        <div className="demo-result-grid">
+                          {formatGroundingProviderPresentations(qualityData.providerGroundingComparison.entries).map((card) => (
+                            <article className="demo-result-item demo-score-card" key={`provider-grounding-${card.id}`}>
+                              <h4>{card.label}</h4>
+                              <p className="demo-score-headline">{card.summary}</p>
+                            </article>
+                          ))}
+                          <article className="demo-result-item">
+                            <h4>Hardest cases</h4>
+                            <div className="demo-pill-row">
+                              {qualityData.providerGroundingComparison.difficultyLeaderboard.map((entry) => (
+                                <span className="demo-pill" key={`provider-grounding-difficulty-${entry.caseId}`}>{formatGroundingCaseDifficultyEntry(entry)}</span>
+                              ))}
+                            </div>
+                          </article>
+                        </div>
+                      )}
+                      {qualityData.providerGroundingComparison && (
+                        <div className="demo-result-grid">
+                          {formatGroundingProviderCasePresentations(qualityData.providerGroundingComparison.caseComparisons).map((card) => (
+                            <details className="demo-result-item demo-collapsible" key={`provider-grounding-case-${card.caseId}`}>
+                              <summary>
+                                <span>{card.label}</span>
+                                <strong>{card.summary}</strong>
+                              </summary>
+                              <div className="demo-collapsible-content">
+                                {card.rows.map((row) => (
+                                  <div className="demo-key-value-row" key={`${card.caseId}-${row.label}`}>
+                                    <span>{row.label}</span>
+                                    <strong>{row.value}</strong>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          ))}
+                        </div>
+                      )}
+                    </>)}
+                    {qualityView === "history" && (<>
+                      <div className="demo-result-grid">
+                        {qualityData.retrievalComparison.entries.map((entry) => (
+                          <details className="demo-result-item demo-collapsible" key={`retrieval-history-${entry.retrievalId}`}>
+                            <summary>
+                              <span>{entry.label} history</span>
+                              <strong>{formatEvaluationHistorySummary(qualityData.retrievalHistories[entry.retrievalId])[0] ?? "No runs yet"}</strong>
+                            </summary>
+                            <div className="demo-collapsible-content">
+                              {formatEvaluationHistoryRows(qualityData.retrievalHistories[entry.retrievalId]).map((row) => (
+                                <div className="demo-key-value-row" key={`${entry.retrievalId}-${row.label}`}><span>{row.label}</span><strong>{row.value}</strong></div>
+                              ))}
+                              <div className="demo-result-grid">
+                                {formatEvaluationHistoryTracePresentations(qualityData.retrievalHistories[entry.retrievalId]).map((traceCase) => (
+                                  <details className="demo-result-item demo-collapsible" key={`${entry.retrievalId}-trace-${traceCase.caseId}`}><summary><span>{traceCase.label}</span><strong>{traceCase.summary}</strong></summary><div className="demo-collapsible-content">{traceCase.rows.map((row) => (<div className="demo-key-value-row" key={`${entry.retrievalId}-${traceCase.caseId}-${row.label}`}><span>{row.label}</span><strong>{row.value}</strong></div>))}</div></details>
+                                ))}
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                      <div className="demo-result-grid">
+                        {qualityData.rerankerComparison.entries.map((entry) => (
+                          <details className="demo-result-item demo-collapsible" key={`reranker-history-${entry.rerankerId}`}>
+                            <summary>
+                              <span>{entry.label} history</span>
+                              <strong>{formatEvaluationHistorySummary(qualityData.rerankerHistories[entry.rerankerId])[0] ?? "No runs yet"}</strong>
+                            </summary>
+                            <div className="demo-collapsible-content">
+                              {formatEvaluationHistoryRows(qualityData.rerankerHistories[entry.rerankerId]).map((row) => (
+                                <div className="demo-key-value-row" key={`${entry.rerankerId}-${row.label}`}><span>{row.label}</span><strong>{row.value}</strong></div>
+                              ))}
+                              <div className="demo-result-grid">
+                                {formatEvaluationHistoryTracePresentations(qualityData.rerankerHistories[entry.rerankerId]).map((traceCase) => (
+                                  <details className="demo-result-item demo-collapsible" key={`${entry.rerankerId}-trace-${traceCase.caseId}`}><summary><span>{traceCase.label}</span><strong>{traceCase.summary}</strong></summary><div className="demo-collapsible-content">{traceCase.rows.map((row) => (<div className="demo-key-value-row" key={`${entry.rerankerId}-${traceCase.caseId}-${row.label}`}><span>{row.label}</span><strong>{row.value}</strong></div>))}</div></details>
+                                ))}
+                              </div>
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                      {qualityData.providerGroundingComparison && (
+                        <div className="demo-result-grid">
+                          {qualityData.providerGroundingComparison.entries.map((entry) => (
+                            <details className="demo-result-item demo-collapsible" key={`provider-grounding-history-${entry.providerKey}`}>
+                              <summary>
+                                <span>{entry.label} history</span>
+                                <strong>{formatGroundingHistorySummary(qualityData.providerGroundingHistories[entry.providerKey])[0] ?? "No runs yet"}</strong>
+                              </summary>
+                              <div className="demo-collapsible-content">
+                                {[
+                                  ...formatGroundingHistoryDetails(qualityData.providerGroundingHistories[entry.providerKey]),
+                                ].map((line) => (
+                                  <p className="demo-metadata" key={`${entry.providerKey}-${line}`}>{line}</p>
+                                ))}
+                                <div className="demo-result-grid">
+                                  {formatGroundingHistorySnapshotPresentations(
+                                    qualityData.providerGroundingHistories[entry.providerKey],
+                                  ).map((snapshot) => (
+                                    <details
+                                      className="demo-result-item demo-collapsible"
+                                      key={`${entry.providerKey}-snapshot-${snapshot.caseId}`}
+                                    >
+                                      <summary>
+                                        <span>{snapshot.label}</span>
+                                        <strong>{snapshot.summary}</strong>
+                                      </summary>
+                                      <div className="demo-collapsible-content">
+                                        {snapshot.rows.map((row) => (
+                                          <div
+                                            className="demo-key-value-row"
+                                            key={`${entry.providerKey}-${snapshot.caseId}-${row.label}`}
+                                          >
+                                            <span>{row.label}</span>
+                                            <strong>{row.value}</strong>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </details>
+                                  ))}
+                                </div>
+                              </div>
+                            </details>
+                          ))}
+                          <details className="demo-result-item demo-collapsible">
+                            <summary>
+                              <span>Grounding difficulty history</span>
+                              <strong>{formatGroundingDifficultyHistorySummary(qualityData.providerGroundingDifficultyHistory)[0] ?? "No history yet"}</strong>
+                            </summary>
+                            <div className="demo-collapsible-content">
+                              {formatGroundingDifficultyHistoryDetails(qualityData.providerGroundingDifficultyHistory).map((line) => (
+                                <p className="demo-metadata" key={`provider-grounding-difficulty-history-${line}`}>{line}</p>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                    </>)}
+                  </>) : (
+                    <p className="demo-metadata">Loading quality dashboard…</p>
+                  )}
+                </div>
+
+                <div className="demo-results demo-quality-card">
                   <h3>Knowledge Base Operations</h3>
                   {rag.ops.error && <p className="demo-error">{rag.ops.error}</p>}
                   <div className="demo-stat-grid">
@@ -1020,360 +2270,25 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                         </div>
                         <div className="demo-insight-card">
                           <span className="demo-stat-label">Failure breakdown</span>
-                          {formatFailureSummary(rag.ops.health).map((line) => (
+                          {[...formatFailureSummary(rag.ops.health), ...formatInspectionSummary(rag.ops.health), ...formatInspectionSamples(rag.ops.health)].map((line) => (
                             <p className="demo-metadata" key={line}>{line}</p>
                           ))}
+                          {buildInspectionEntries(rag.ops.health).length > 0 && (
+                            <div className="demo-inspection-actions">
+                              {buildInspectionEntries(rag.ops.health).map((entry) => (
+                                <div className="demo-inspection-action-row" key={entry.id}>
+                                  <button onClick={() => void focusInspectionEntry(entry)} type="button">
+                                    {entry.documentId ? `Inspect ${entry.kind}` : "Search source"} · {entry.label}
+                                  </button>
+                                  <a className="demo-inspection-link" href={buildInspectionEntryHref(selectedMode, entry)}>Open standalone view</a>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </article>
                   </div>
-                </div>
-                <div className="demo-actions">
-                  <button onClick={reseed} type="button">Re-seed defaults</button>
-                  <button onClick={resetCustom} type="button">Reset custom docs</button>
-                  <button onClick={refreshData} type="button">Refresh</button>
-                </div>
-              </article>
-
-              <article className="demo-card">
-                <h2>Retrieve And Verify</h2>
-                <p className="demo-metadata">
-                  This section is powered by <code>useRAG</code>. Run a query, then
-                  confirm the returned chunk text and source label match the indexed
-                  source list below.
-                </p>
-                <div className="demo-preset-grid">
-                  <button type="button" onClick={() => runPresetSearch("How do metadata filters change retrieval quality?", { kind: "seed" }, "preset: filter behavior", "filter-behavior")}>Filter behavior</button>
-                  <button type="button" onClick={() => runPresetSearch("What should I verify after ingesting a new source?", {}, "preset: verify ingestion", "verify-ingestion")}>Verify ingestion</button>
-                  <button type="button" onClick={() => runPresetSearch("List support policies for shipping and returns.", { source: "guide/demo.md" }, "preset: source filter", "source-filter")}>Source filter</button>
-                  <button type="button" onClick={() => runPresetSearch("Why should metadata be stable?", { source: "guides/metadata.md" }, "preset: metadata discipline", "metadata-discipline")}>Metadata discipline</button>
-                </div>
-                <form className="demo-search-form" onSubmit={submitSearch}>
-                  <label htmlFor="query">Query</label>
-                  <input id="query" name="query" onChange={onSearchFieldChange} placeholder="e.g. How do metadata filters work?" required type="text" value={searchForm.query} />
-                  <label htmlFor="topK">Top K</label>
-                  <input id="topK" max={20} min={1} name="topK" onChange={onSearchFieldChange} type="number" value={searchForm.topK} />
-                  <label htmlFor="scoreThreshold">Minimum score (0-1)</label>
-                  <input id="scoreThreshold" name="scoreThreshold" onChange={onSearchFieldChange} placeholder="optional" type="number" step="0.01" min={0} max={1} value={searchForm.scoreThreshold} />
-                  <label htmlFor="kind">Kind filter</label>
-                  <select id="kind" name="kind" onChange={onSearchFieldChange} value={searchForm.kind}>
-                    <option value="">Any</option>
-                    <option value="seed">Seed</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                  <label htmlFor="source">Source filter</label>
-                  <input className={searchForm.source.trim().length > 0 ? "demo-filter-active" : undefined} id="source" name="source" onChange={onSearchFieldChange} placeholder="e.g. guide/demo.md" type="text" value={searchForm.source} />
-                  <label htmlFor="documentId">Document ID filter</label>
-                  <input className={searchForm.documentId.trim().length > 0 ? "demo-filter-active" : undefined} id="documentId" name="documentId" onChange={onSearchFieldChange} placeholder="e.g. rag-demo" type="text" value={searchForm.documentId} />
-                  <button type="submit">Search index</button>
-                </form>
-                <div className="demo-results">
-                  <h3>Active Retrieval Scope</h3>
-                  <div className="demo-badge-row">
-                    <span className="demo-state-chip">{formatRetrievalScopeSummary(searchForm)}</span>
-                    <span className="demo-state-chip">Changed by: {scopeDriver.replace(/^row action: /, "row action · ")}</span>
-                    <span className="demo-state-chip">Results: {searchResults?.count ?? 0}</span>
-                  </div>
-                  <p className="demo-metadata">{formatRetrievalScopeHint(searchForm)}</p>
-                  <div className="demo-actions">
-                    <button disabled={searchForm.query.trim().length === 0 && searchForm.source.trim().length === 0 && searchForm.documentId.trim().length === 0 && searchForm.kind.length === 0} onClick={clearRetrievalScope} type="button">Clear scope</button>
-                    <button disabled={searchForm.query.trim().length === 0} onClick={rerunLastQuery} type="button">Rerun query</button>
-                    <button onClick={clearAllRetrievalState} type="button">Clear search</button>
-                  </div>
-                  {recentQueries.length > 0 && (
-                    <>
-                      <p className="demo-section-caption">Recent Searches</p>
-                      <div className="demo-badge-row">
-                        {recentQueries.map((entry) => (
-                          <button className="demo-state-chip" key={`${entry.label}-${entry.state.source}-${entry.state.documentId}-${entry.state.kind}`} onClick={() => rerunRecentQuery(entry.state)} type="button">
-                            {entry.label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-                {searchError && <p className="demo-error">{searchError}</p>}
-                {searchResults && (
-                  <div className="demo-search-results" id="search-results">
-                    <p className="demo-metadata">{searchResults.count} results for “{searchResults.query}” in {searchResults.elapsedMs}ms</p>
-                    <p className="demo-metadata">{formatRetrievalScopeSummary(searchForm)}</p>
-                    <p className="demo-metadata">Scope changed by: {scopeDriver}</p>
-                    <p className="demo-metadata">Reranking is active: AbsoluteJS reorders the first vector hits with the built-in heuristic provider before these results render.</p>
-                    <p className="demo-metadata">Verification rule: a good result shows chunk text that answers the query and a source label you can trace back to the indexed source list.</p>
-                    <div className="demo-result-grid">
-                      {searchResults.chunks.map((chunk) => (
-                        <article className="demo-result-item" key={chunk.chunkId}>
-                          <h3>{chunk.title}</h3>
-                          <p className="demo-result-score">score: {formatScore(chunk.score)}</p>
-                          <p className="demo-result-source">source: {chunk.source}</p>
-                          {formatDemoMetadataSummary(chunk.metadata).map((line) => (
-                            <p className="demo-metadata" key={line}>{line}</p>
-                          ))}
-                          <p className="demo-result-text">{chunk.text}</p>
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="demo-results">
-                  <h3>Benchmark Retrieval</h3>
-                  <p className="demo-metadata">
-                    This section uses <code>useRAG().evaluate</code> to run a built-in benchmark suite. Each case names the source we expect retrieval to surface so you can compare expected, retrieved, and missing evidence directly.
-                  </p>
-                  <div className="demo-preset-grid">
-                    {demoEvaluationPresets.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        title={preset.description}
-                        onClick={() => runPresetSearch(preset.query, { source: preset.expectedSources[0] ?? "" }, `benchmark preset: ${preset.label}`, preset.id)}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="demo-actions">
-                    <button disabled={rag.evaluate.isEvaluating} onClick={runEvaluation} type="button">
-                      {rag.evaluate.isEvaluating ? "Running benchmark suite..." : "Run benchmark suite"}
-                    </button>
-                  </div>
-                  {evaluationMessage && <p className="demo-metadata">{evaluationMessage}</p>}
-                  {rag.evaluate.error && <p className="demo-error">{rag.evaluate.error}</p>}
-                  {evaluation && (
-                    <>
-                      <p className="demo-metadata">Benchmark summary: {formatEvaluationSummary(evaluation)}</p>
-                      <div className="demo-result-grid">
-                        {evaluation.cases.map((entry) => (
-                          <article className={`demo-result-item demo-evaluation-card demo-evaluation-${entry.status}`} key={entry.caseId}>
-                            <h4>{entry.label ?? entry.caseId}</h4>
-                            <p className="demo-result-source">{entry.query}</p>
-                            <p className="demo-evaluation-status">{entry.status.toUpperCase()}</p>
-                            <p className="demo-metadata">{formatEvaluationCaseSummary(entry)}</p>
-                            <p className="demo-metadata">expected: {formatEvaluationExpected(entry)}</p>
-                            <p className="demo-metadata">retrieved: {formatEvaluationRetrieved(entry)}</p>
-                            <p className="demo-result-text">missing: {formatEvaluationMissing(entry)}</p>
-                          </article>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="demo-results">
-                  <h3>Retrieval Quality Tooling</h3>
-                  <p className="demo-metadata">This section now behaves like an evaluation dashboard instead of a log dump. The summary cards answer who is winning, the strategy tab shows why, the grounding tab keeps case drill-downs collapsed until needed, and the history tab only expands when you want regression detail.</p>
-                  <div className="demo-pill-row">
-                    {(rag.evaluate.suites.length > 0 ? rag.evaluate.suites : [evaluationSuite]).map((suite) => (
-                      <span className="demo-pill" key={suite.id}>{suite.label ?? suite.id} · {suite.input.cases.length} cases</span>
-                    ))}
-                  </div>
-                  <div className="demo-actions">
-                    <button disabled={rag.evaluate.isEvaluating} onClick={runSavedSuite} type="button">
-                      {rag.evaluate.isEvaluating ? "Running saved suite..." : "Run saved suite"}
-                    </button>
-                  </div>
-                  <div className="demo-tab-row">
-                    {(["overview", "strategies", "grounding", "history"] as const).map((view) => (
-                      <button
-                        key={view}
-                        className={qualityView === view ? "demo-tab demo-tab-active" : "demo-tab"}
-                        onClick={() => setQualityView(view)}
-                        type="button"
-                      >
-                        {view[0].toUpperCase() + view.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="demo-stat-grid">
-                    <article className="demo-stat-card">
-                      <span className="demo-stat-label">Saved suite leader</span>
-                      <strong>{rag.evaluate.leaderboard[0]?.label ?? "Run the saved suite"}</strong>
-                      <p>{rag.evaluate.leaderboard[0] ? formatEvaluationLeaderboardEntry(rag.evaluate.leaderboard[0]) : "The leaderboard will rank repeated workflow benchmark runs."}</p>
-                    </article>
-                    <article className="demo-stat-card">
-                      <span className="demo-stat-label">Retrieval winner</span>
-                      <strong>{qualityData?.retrievalComparison.entries[0]?.label ?? "Loading comparison"}</strong>
-                      <p>{qualityData ? formatRetrievalComparisonSummary(qualityData.retrievalComparison)[0] : "Running retrieval comparison..."}</p>
-                    </article>
-                    <article className="demo-stat-card">
-                      <span className="demo-stat-label">Reranker winner</span>
-                      <strong>{qualityData?.rerankerComparison.entries[0]?.label ?? "Loading comparison"}</strong>
-                      <p>{qualityData ? formatRerankerComparisonSummary(qualityData.rerankerComparison)[0] : "Running reranker comparison..."}</p>
-                    </article>
-                    <article className="demo-stat-card">
-                      <span className="demo-stat-label">Grounding winner</span>
-                      <strong>{qualityData?.providerGroundingComparison?.summary.bestByPassingRate ?? "Stored workflow evaluation"}</strong>
-                      <p>{qualityData ? formatGroundingEvaluationSummary(qualityData.groundingEvaluation) : "Loading grounding comparison..."}</p>
-                    </article>
-                  </div>
-                  {qualityData ? (<>
-                    {qualityView === "overview" && (
-                      <div className="demo-result-grid">
-                        <article className="demo-result-item">
-                          <h4>Winners at a glance</h4>
-                          <div className="demo-key-value-grid">
-                            {[
-                              ...formatRetrievalComparisonSummary(qualityData.retrievalComparison),
-                              ...formatRerankerComparisonSummary(qualityData.rerankerComparison),
-                              formatGroundingEvaluationSummary(qualityData.groundingEvaluation),
-                              ...(qualityData.providerGroundingComparison ? formatGroundingProviderSummary(qualityData.providerGroundingComparison) : ["Configure an AI provider to compare grounded answers."]),
-                            ].map((line) => (
-                              <div className="demo-key-value-row" key={line}>
-                                <span>{line.split(":")[0]}</span>
-                                <strong>{line.includes(":") ? line.slice(line.indexOf(":") + 1).trim() : line}</strong>
-                              </div>
-                            ))}
-                          </div>
-                        </article>
-                        <article className="demo-result-item">
-                          <h4>Why this matters</h4>
-                          <div className="demo-insight-stack">
-                            <p className="demo-insight-card">The example should answer three questions quickly: which strategy wins, whether grounding is stable, and whether the result regressed. Those are summary cards now, not buried in history text.</p>
-                            <p className="demo-insight-card">Detailed case-by-case evidence is still present, but it stays behind collapsible sections so the page reads like a product surface instead of a console buffer.</p>
-                          </div>
-                        </article>
-                      </div>
-                    )}
-                    {qualityView === "strategies" && (<>
-                      <div className="demo-result-grid">
-                        {qualityData.retrievalComparison.entries.map((entry) => (
-                          <article className="demo-result-item demo-score-card" key={entry.retrievalId}>
-                            <h4>{entry.label}</h4>
-                            <p className="demo-score-headline">{formatRetrievalComparisonEntry(entry)}</p>
-                          </article>
-                        ))}
-                      </div>
-                      <div className="demo-result-grid">
-                        {qualityData.rerankerComparison.entries.map((entry) => (
-                          <article className="demo-result-item demo-score-card" key={entry.rerankerId}>
-                            <h4>{entry.label}</h4>
-                            <p className="demo-score-headline">{formatRerankerComparisonEntry(entry)}</p>
-                          </article>
-                        ))}
-                      </div>
-                    </>)}
-                    {qualityView === "grounding" && (<>
-                      <div className="demo-result-grid">
-                        {qualityData.groundingEvaluation.cases.map((entry) => (
-                          <details className="demo-result-item demo-collapsible" key={`grounding-${entry.caseId}`}>
-                            <summary>
-                              <span>{entry.label ?? entry.caseId}</span>
-                              <strong>{formatGroundingEvaluationCase(entry)}</strong>
-                            </summary>
-                            <div className="demo-collapsible-content">
-                              {formatGroundingEvaluationDetails(entry).map((line) => (
-                                <p className="demo-metadata" key={`${entry.caseId}-${line}`}>{line}</p>
-                              ))}
-                            </div>
-                          </details>
-                        ))}
-                      </div>
-                      {qualityData.providerGroundingComparison && (
-                        <div className="demo-result-grid">
-                          {qualityData.providerGroundingComparison.entries.map((entry) => (
-                            <article className="demo-result-item demo-score-card" key={`provider-grounding-${entry.providerKey}`}>
-                              <h4>{entry.label}</h4>
-                              <p className="demo-score-headline">{formatGroundingProviderEntry(entry)}</p>
-                            </article>
-                          ))}
-                          <article className="demo-result-item">
-                            <h4>Hardest cases</h4>
-                            <div className="demo-pill-row">
-                              {qualityData.providerGroundingComparison.difficultyLeaderboard.map((entry) => (
-                                <span className="demo-pill" key={`provider-grounding-difficulty-${entry.caseId}`}>{formatGroundingCaseDifficultyEntry(entry)}</span>
-                              ))}
-                            </div>
-                          </article>
-                        </div>
-                      )}
-                      {qualityData.providerGroundingComparison && (
-                        <div className="demo-result-grid">
-                          {qualityData.providerGroundingComparison.caseComparisons.map((entry) => (
-                            <details className="demo-result-item demo-collapsible" key={`provider-grounding-case-${entry.caseId}`}>
-                              <summary>
-                                <span>{entry.label}</span>
-                                <strong>{formatGroundingProviderCaseSummary(entry)[0] ?? "Case comparison"}</strong>
-                              </summary>
-                              <div className="demo-collapsible-content">
-                                {entry.entries.flatMap((candidate) => [formatGroundingProviderCaseEntry(candidate), ...formatGroundingProviderCaseDetails(candidate)]).map((line) => (
-                                  <p className="demo-metadata" key={`${entry.caseId}-${line}`}>{line}</p>
-                                ))}
-                              </div>
-                            </details>
-                          ))}
-                        </div>
-                      )}
-                    </>)}
-                    {qualityView === "history" && (<>
-                      <div className="demo-result-grid">
-                        {qualityData.retrievalComparison.entries.map((entry) => (
-                          <details className="demo-result-item demo-collapsible" key={`retrieval-history-${entry.retrievalId}`}>
-                            <summary>
-                              <span>{entry.label} history</span>
-                              <strong>{formatEvaluationHistorySummary(qualityData.retrievalHistories[entry.retrievalId])[0] ?? "No runs yet"}</strong>
-                            </summary>
-                            <div className="demo-collapsible-content">
-                              {[...formatEvaluationHistorySummary(qualityData.retrievalHistories[entry.retrievalId]).slice(1), ...formatEvaluationHistoryDiff(qualityData.retrievalHistories[entry.retrievalId])].map((line) => (
-                                <p className="demo-metadata" key={`${entry.retrievalId}-${line}`}>{line}</p>
-                              ))}
-                            </div>
-                          </details>
-                        ))}
-                      </div>
-                      <div className="demo-result-grid">
-                        {qualityData.rerankerComparison.entries.map((entry) => (
-                          <details className="demo-result-item demo-collapsible" key={`reranker-history-${entry.rerankerId}`}>
-                            <summary>
-                              <span>{entry.label} history</span>
-                              <strong>{formatEvaluationHistorySummary(qualityData.rerankerHistories[entry.rerankerId])[0] ?? "No runs yet"}</strong>
-                            </summary>
-                            <div className="demo-collapsible-content">
-                              {[...formatEvaluationHistorySummary(qualityData.rerankerHistories[entry.rerankerId]).slice(1), ...formatEvaluationHistoryDiff(qualityData.rerankerHistories[entry.rerankerId])].map((line) => (
-                                <p className="demo-metadata" key={`${entry.rerankerId}-${line}`}>{line}</p>
-                              ))}
-                            </div>
-                          </details>
-                        ))}
-                      </div>
-                      {qualityData.providerGroundingComparison && (
-                        <div className="demo-result-grid">
-                          {qualityData.providerGroundingComparison.entries.map((entry) => (
-                            <details className="demo-result-item demo-collapsible" key={`provider-grounding-history-${entry.providerKey}`}>
-                              <summary>
-                                <span>{entry.label} history</span>
-                                <strong>{formatGroundingHistorySummary(qualityData.providerGroundingHistories[entry.providerKey])[0] ?? "No runs yet"}</strong>
-                              </summary>
-                              <div className="demo-collapsible-content">
-                                {[
-                                  ...formatGroundingHistorySummary(qualityData.providerGroundingHistories[entry.providerKey]).slice(1),
-                                  ...formatGroundingHistoryDiff(qualityData.providerGroundingHistories[entry.providerKey]),
-                                  ...formatGroundingHistorySnapshots(qualityData.providerGroundingHistories[entry.providerKey]),
-                                  ...formatGroundingHistoryArtifactTrail(qualityData.providerGroundingHistories[entry.providerKey]),
-                                ].map((line) => (
-                                  <p className="demo-metadata" key={`${entry.providerKey}-${line}`}>{line}</p>
-                                ))}
-                              </div>
-                            </details>
-                          ))}
-                          <details className="demo-result-item demo-collapsible">
-                            <summary>
-                              <span>Grounding difficulty history</span>
-                              <strong>{formatGroundingDifficultyHistorySummary(qualityData.providerGroundingDifficultyHistory)[0] ?? "No history yet"}</strong>
-                            </summary>
-                            <div className="demo-collapsible-content">
-                              {[...formatGroundingDifficultyHistorySummary(qualityData.providerGroundingDifficultyHistory).slice(1), ...formatGroundingDifficultyHistoryDiff(qualityData.providerGroundingDifficultyHistory)].map((line) => (
-                                <p className="demo-metadata" key={`provider-grounding-difficulty-history-${line}`}>{line}</p>
-                              ))}
-                            </div>
-                          </details>
-                        </div>
-                      )}
-                    </>)}
-                  </>) : (
-                    <p className="demo-metadata">Loading quality dashboard…</p>
-                  )}
                 </div>
 
                 <div className="demo-stream-panel">
@@ -1464,6 +2379,44 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                       <div><dt>Current stage</dt><dd>{workflow.stage}</dd></div>
                     </dl>
                   )}
+                  {streamRetrieval?.trace && (
+                    <div className="demo-results">
+                      <h4>Workflow Retrieval Trace</h4>
+                      <p className="demo-metadata">
+                        This is the retrieval trace attached to the workflow answer path. It explains how the answer workflow found evidence before grounding and citations were built.
+                      </p>
+                      <div className="demo-stat-grid">
+                        {buildTracePresentation(streamRetrieval.trace).stats.map((row) => (
+                          <article className="demo-stat-card" key={`workflow-trace-stat-${row.label}`}>
+                            <p className="demo-section-caption">{row.label}</p>
+                            <strong>{row.value}</strong>
+                          </article>
+                        ))}
+                      </div>
+                      <div className="demo-key-value-list">
+                        {buildTracePresentation(streamRetrieval.trace).details.map((row) => (
+                          <p className="demo-key-value-row" key={`workflow-trace-detail-${row.label}`}><strong>{row.label}</strong><span>{row.value}</span></p>
+                        ))}
+                      </div>
+                      <div className="demo-result-grid">
+                        {buildTracePresentation(streamRetrieval.trace).steps.map((step, index) => (
+                          <details className="demo-collapsible demo-result-item" key={`workflow-trace-${step.stage}-${index}`} open={index === 0}>
+                            <summary>
+                              <strong>{index + 1}. {step.label}</strong>
+                            </summary>
+                            <div className="demo-key-value-list">
+                              {step.rows.map((row) => (
+                                <p className="demo-key-value-row" key={`${step.stage}-${row.label}`}>
+                                  <strong>{row.label}</strong>
+                                  <span>{row.value}</span>
+                                </p>
+                              ))}
+                            </div>
+                          </details>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {workflow.error && <p className="demo-error">{workflow.error}</p>}
                   {streamLatestMessage?.thinking && (
                     <div className="demo-stream-block">
@@ -1492,17 +2445,34 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                         <div className="demo-result-grid">
                           {streamGroundedAnswer.parts.map((part, index) =>
                             part.type === "citation" ? (
-                              <article className="demo-result-item demo-grounding-card" key={`${part.text}-${index}`}>
+                              <article className="demo-result-item demo-grounding-card" key={`${formatGroundedAnswerPartExcerpt(part)}-${index}`}>
                                 <p className="demo-citation-badge">{formatGroundingPartReferences(part.referenceNumbers)}</p>
                                 {formatGroundedAnswerPartDetails(part).map((line) => (
                                   <p className="demo-metadata" key={line}>{line}</p>
                                 ))}
-                                <p className="demo-result-text">{part.text}</p>
+                                <p className="demo-result-text">{formatGroundedAnswerPartExcerpt(part)}</p>
                               </article>
                             ) : null,
                           )}
                         </div>
                       )}
+                    </div>
+                  )}
+                  {streamGroundedAnswer.sectionSummaries.length > 0 && (
+                    <div className="demo-results">
+                      <h4>Grounding by Section</h4>
+                      <div className="demo-result-grid">
+                        {streamGroundedAnswer.sectionSummaries.map((summary) => (
+                          <article className="demo-result-item demo-grounding-card" key={summary.key}>
+                            <h3>{summary.label}</h3>
+                            <p className="demo-result-source">{summary.summary}</p>
+                            {formatGroundedAnswerSectionSummaryDetails(summary).map((line) => (
+                              <p className="demo-metadata" key={line}>{line}</p>
+                            ))}
+                            <p className="demo-result-text">{formatGroundedAnswerSectionSummaryExcerpt(summary)}</p>
+                          </article>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {streamGroundingReferences.length > 0 && (
@@ -1512,14 +2482,22 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                         Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.
                       </p>
                       <div className="demo-result-grid">
-                        {streamGroundingReferences.map((reference) => (
-                          <article className="demo-result-item demo-grounding-card" key={reference.chunkId}>
-                            <p className="demo-citation-badge">[{reference.number}] {formatGroundingReferenceLabel(reference)}</p>
-                            <p className="demo-result-score">{formatGroundingReferenceSummary(reference)}</p>
-                            {formatGroundingReferenceDetails(reference).map((line) => (
-                              <p className="demo-metadata" key={line}>{line}</p>
-                            ))}
-                            <p className="demo-result-text">{formatGroundingReferenceExcerpt(reference)}</p>
+                        {groundingReferenceGroups.map((group) => (
+                          <article className="demo-result-item" id={group.targetId} key={group.id}>
+                            <h3>{group.label}</h3>
+                            <p className="demo-result-source">{group.summary}</p>
+                            <div className="demo-result-grid">
+                              {group.references.map((reference) => (
+                                <article className="demo-result-item demo-grounding-card" key={reference.chunkId}>
+                                  <p className="demo-citation-badge">[{reference.number}] {formatGroundingReferenceLabel(reference)}</p>
+                                  <p className="demo-result-score">{formatGroundingReferenceSummary(reference)}</p>
+                                  {formatGroundingReferenceDetails(reference).map((line) => (
+                                    <p className="demo-metadata" key={line}>{line}</p>
+                                  ))}
+                                  <p className="demo-result-text">{formatGroundingReferenceExcerpt(reference)}</p>
+                                </article>
+                              ))}
+                            </div>
                           </article>
                         ))}
                       </div>
@@ -1529,13 +2507,21 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                     <div className="demo-results">
                       <h4>Evidence Sources</h4>
                       <div className="demo-result-grid">
-                        {workflow.sourceSummaries.map((summary) => (
-                          <article className="demo-result-item" key={summary.key}>
-                            <h3>{summary.label}</h3>
-                            {formatSourceSummaryDetails(summary).map((line) => (
-                              <p className="demo-metadata" key={line}>{line}</p>
-                            ))}
-                            <p className="demo-result-text">{summary.excerpt}</p>
+                        {sourceSummaryGroups.map((group) => (
+                          <article className="demo-result-item" id={group.targetId} key={group.id}>
+                            <h3>{group.label}</h3>
+                            <p className="demo-result-source">{group.summary}</p>
+                            <div className="demo-result-grid">
+                              {group.summaries.map((summary) => (
+                                <article className="demo-result-item" key={summary.key}>
+                                  <h4>{summary.label}</h4>
+                                  {formatSourceSummaryDetails(summary).map((line) => (
+                                    <p className="demo-metadata" key={line}>{line}</p>
+                                  ))}
+                                  <p className="demo-result-text">{summary.excerpt}</p>
+                                </article>
+                              ))}
+                            </div>
                           </article>
                         ))}
                       </div>
@@ -1548,14 +2534,22 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                         Each citation maps a concrete retrieved chunk to a stable reference number you can carry into the answer UI.
                       </p>
                       <div className="demo-result-grid">
-                        {workflow.citations.map((citation, index) => (
-                          <article className="demo-result-item demo-citation-card" key={citation.chunkId}>
-                            <p className="demo-citation-badge">[{index + 1}] {formatCitationLabel(citation)}</p>
-                            <p className="demo-result-score">{formatCitationSummary(citation)}</p>
-                            {formatCitationDetails(citation).map((line) => (
-                              <p className="demo-metadata" key={line}>{line}</p>
-                            ))}
-                            <p className="demo-result-text">{formatCitationExcerpt(citation)}</p>
+                        {citationGroups.map((group) => (
+                          <article className="demo-result-item" id={group.targetId} key={group.id}>
+                            <h3>{group.label}</h3>
+                            <p className="demo-result-source">{group.summary}</p>
+                            <div className="demo-result-grid">
+                              {group.citations.map((citation, index) => (
+                                <article className="demo-result-item demo-citation-card" key={`${citation.chunkId}-${index}`}>
+                                  <p className="demo-citation-badge">[{index + 1}] {formatCitationLabel(citation)}</p>
+                                  <p className="demo-result-score">{formatCitationSummary(citation)}</p>
+                                  {formatCitationDetails(citation).map((line) => (
+                                    <p className="demo-metadata" key={line}>{line}</p>
+                                  ))}
+                                  <p className="demo-result-text">{formatCitationExcerpt(citation)}</p>
+                                </article>
+                              ))}
+                            </div>
                           </article>
                         ))}
                       </div>
@@ -1678,7 +2672,7 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                   <button disabled={documentPage >= totalDocumentPages} onClick={() => setDocumentPage((page) => Math.min(totalDocumentPages, page + 1))} type="button">Next</button>
                 </div>
               </div>
-              <div className="demo-document-list">
+              <div className="demo-document-list" id="document-list">
                 {paginatedDocuments.length > 0 ? (
                   paginatedDocuments.map((document) => (
                     <details className="demo-document-item demo-document-collapsible" key={document.id}>
@@ -1718,11 +2712,77 @@ export const ReactRAGVectorDemo = ({ availableBackends, cssPath, mode }: DemoPro
                             <>
                               <p className="demo-section-caption">Chunk Preview</p>
                               <p className="demo-metadata">
-                                {chunkPreview.document.title} · {formatContentFormat(chunkPreview.document.format)} · {formatChunkStrategy(chunkPreview.document.chunkStrategy)} · {chunkPreview.chunks.length} chunk(s)
+                                {chunkPreview.document.title} · {formatOptionalContentFormat(chunkPreview.document.format)} · {formatOptionalChunkStrategy(chunkPreview.document.chunkStrategy)} · {chunkPreview.chunks.length} chunk(s)
                               </p>
+                              {chunkPreviewNavigation?.activeNode && (
+                                <div className="demo-chunk-nav">
+                                  <div className="demo-chunk-nav-row">
+                                    <button disabled={!chunkPreviewNavigation.previousNode} onClick={() => chunkPreviewNavigation.previousNode && rag.chunkPreview.selectChunk(chunkPreviewNavigation.previousNode.chunkId)} type="button">Previous chunk</button>
+                                    <p className="demo-metadata">{formatChunkNavigationSectionLabel(chunkPreviewNavigation)} · {formatChunkNavigationNodeLabel(chunkPreviewNavigation.activeNode)}</p>
+                                    <button disabled={!chunkPreviewNavigation.nextNode} onClick={() => chunkPreviewNavigation.nextNode && rag.chunkPreview.selectChunk(chunkPreviewNavigation.nextNode.chunkId)} type="button">Next chunk</button>
+                                  </div>
+                                  {chunkPreviewNavigation.sectionNodes.length > 1 && (
+                                    <div className="demo-chunk-nav-strip">
+                                      {chunkPreviewNavigation.sectionNodes.map((node) => (
+                                        <button className={node.chunkId === activeChunkPreviewId ? "demo-chunk-nav-chip demo-chunk-nav-chip-active" : "demo-chunk-nav-chip"} key={node.chunkId} onClick={() => rag.chunkPreview.selectChunk(node.chunkId)} type="button">
+                                          {formatChunkNavigationNodeLabel(node)}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {(chunkPreviewNavigation.parentSection || chunkPreviewNavigation.siblingSections.length > 0 || chunkPreviewNavigation.childSections.length > 0) && (
+                                    <div className="demo-chunk-nav-strip">
+                                      {chunkPreviewNavigation.parentSection ? (
+                                        <button className="demo-chunk-nav-chip" onClick={() => rag.chunkPreview.selectParentSection()} type="button">
+                                          Parent · {formatChunkSectionGroupLabel(chunkPreviewNavigation.parentSection)}
+                                        </button>
+                                      ) : null}
+                                      {chunkPreviewNavigation.siblingSections.map((section) => (
+                                        <button className="demo-chunk-nav-chip" key={section.id} onClick={() => rag.chunkPreview.selectSiblingSection(section.id)} type="button">
+                                          Sibling · {formatChunkSectionGroupLabel(section)}
+                                        </button>
+                                      ))}
+                                      {chunkPreviewNavigation.childSections.map((section) => (
+                                        <button className="demo-chunk-nav-chip" key={section.id} onClick={() => rag.chunkPreview.selectChildSection(section.id)} type="button">
+                                          Child · {formatChunkSectionGroupLabel(section)}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {activeChunkPreviewSectionDiagnostic && (
+                                <article className="demo-result-item">
+                                  <h3>Active Section Diagnostic</h3>
+                                  <p className="demo-result-source">{activeChunkPreviewSectionDiagnostic.label}</p>
+                                  <p className="demo-metadata">{activeChunkPreviewSectionDiagnostic.summary}</p>
+                                  <p className="demo-metadata">{formatSectionDiagnosticChannels(activeChunkPreviewSectionDiagnostic)}</p>
+                                  <p className="demo-metadata">{formatSectionDiagnosticPipeline(activeChunkPreviewSectionDiagnostic)}</p>
+                                  {formatSectionDiagnosticStageFlow(activeChunkPreviewSectionDiagnostic) && <p className="demo-metadata">{formatSectionDiagnosticStageFlow(activeChunkPreviewSectionDiagnostic)}</p>}
+                                  {formatSectionDiagnosticStageBounds(activeChunkPreviewSectionDiagnostic) && <p className="demo-metadata">{formatSectionDiagnosticStageBounds(activeChunkPreviewSectionDiagnostic)}</p>}
+                                  {formatSectionDiagnosticStageWeightRows(activeChunkPreviewSectionDiagnostic).map((line: string) => (
+                                    <p className="demo-metadata" key={`active-section-${line}`}>{line}</p>
+                                  ))}
+                                  <p className="demo-metadata">{formatSectionDiagnosticTopEntry(activeChunkPreviewSectionDiagnostic)}</p>
+                                  {formatSectionDiagnosticCompetition(activeChunkPreviewSectionDiagnostic) && <p className="demo-metadata">{formatSectionDiagnosticCompetition(activeChunkPreviewSectionDiagnostic)}</p>}
+                                  {formatSectionDiagnosticReasons(activeChunkPreviewSectionDiagnostic).length > 0 && (
+                                    <div className="demo-badge-row">
+                                      {formatSectionDiagnosticReasons(activeChunkPreviewSectionDiagnostic).map((reason) => (
+                                        <span className="demo-state-chip" key={`active-section-${reason}`}>{reason}</span>
+                                      ))}
+                                      {formatSectionDiagnosticStageWeightReasons(activeChunkPreviewSectionDiagnostic).map((reason: string) => (
+                                        <span className="demo-state-chip" key={`active-section-${reason}`}>{reason}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {formatSectionDiagnosticDistributionRows(activeChunkPreviewSectionDiagnostic).map((line) => (
+                                    <p className="demo-metadata" key={`active-section-${line}`}>{line}</p>
+                                  ))}
+                                </article>
+                              )}
                               <div className="demo-result-grid">
                                 {chunkPreview.chunks.map((chunk) => (
-                                  <article className="demo-result-item" key={chunk.chunkId}>
+                                  <article className={chunk.chunkId === activeChunkPreviewId ? "demo-result-item demo-result-item-active" : "demo-result-item"} key={chunk.chunkId}>
                                     <h3>{chunk.chunkId}</h3>
                                     <p className="demo-result-source">source: {chunk.source ?? chunkPreview.document.source}</p>
                                     <p className="demo-metadata">chunk index: {String((chunk.metadata?.chunkIndex as number | undefined) ?? 0)} / count: {String((chunk.metadata?.chunkCount as number | undefined) ?? chunkPreview.chunks.length)}</p>

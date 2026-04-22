@@ -5,7 +5,7 @@ This guide is for engineers already using AbsoluteJS who want to understand what
 ## Current Package Surface
 
 This example is currently using:
-- `@absolutejs/absolute@0.19.0-beta.528`
+- `@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.2 + @absolutejs/rag@0.0.1`
 
 The React route is:
 - `/react/sqlite-native`

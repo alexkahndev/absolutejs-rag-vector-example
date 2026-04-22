@@ -1,0 +1,50 @@
+[
+	{
+		"approvalExpiredSeverity": "critical",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "critical",
+		"groupKey": "docs-release-ready",
+		"id": "6ff24f97-bc20-4739-bc56-969f81e488b8",
+		"openIncidentSeverity": "critical",
+		"recordedAt": 1776831452876,
+		"regressionSeverity": "critical",
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"approvalExpiredSeverity": "warning",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "warning",
+		"groupKey": "docs-release-ready",
+		"id": "5133a998-fb4b-47bc-bd3e-75115e4575eb",
+		"openIncidentSeverity": "warning",
+		"recordedAt": 1776831452812,
+		"regressionSeverity": "warning",
+		"targetRolloutLabel": "rollback_target"
+	},
+	{
+		"approvalExpiredSeverity": "warning",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "warning",
+		"groupKey": "docs-release-ready",
+		"id": "938fccf2-978f-4bc7-a978-8274eade1faf",
+		"openIncidentSeverity": "warning",
+		"recordedAt": 1776831452812,
+		"regressionSeverity": "warning",
+		"targetRolloutLabel": "canary"
+	},
+	{
+		"approvalExpiredSeverity": "warning",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "warning",
+		"groupKey": "docs-release-ready",
+		"id": "cda17069-8d42-48c3-80dd-a07d34e97e05",
+		"openIncidentSeverity": "warning",
+		"recordedAt": 1776831452811,
+		"regressionSeverity": "warning",
+		"targetRolloutLabel": "canary"
+	}
+]

@@ -18,7 +18,7 @@ import {
   type RAGQueryResult,
   type RAGSource,
   type RAGSyncSourceRecord,
-} from "@absolutejs/absolute/ai";
+} from "@absolutejs/rag";
 import {
   type DemoBackendMode,
   type DemoChunkingStrategy,
@@ -26,6 +26,7 @@ import {
   type DemoRAGBackend,
   type RagDocumentKind,
   type RagSeedDocument,
+  type RagSeedEmbeddingVariant,
   countPreparedChunks,
   DEFAULT_BACKEND_MODE,
   getSeedDocuments,
@@ -34,6 +35,11 @@ import {
   RAG_DEMO_DOCUMENT_TABLE_NAME,
   seedRAGStore,
 } from "./ragBackends";
+
+type DemoSyncDiagnostics = NonNullable<RAGSyncSourceRecord["diagnostics"]>;
+
+const EMBEDDING_VARIANTS_METADATA_KEY = "absoluteEmbeddingVariants";
+
 
 type DemoDocument = {
   id: string;
@@ -48,6 +54,7 @@ type DemoDocument = {
   createdAt: number;
   updatedAt: number;
   metadata: Record<string, unknown>;
+  embeddingVariants?: RagSeedEmbeddingVariant[];
 };
 
 type BackendSeedStats = {
@@ -63,7 +70,11 @@ type DemoSyncSourceDefinition = {
   description: string;
   metadata?: Record<string, unknown>;
   target: string;
-  load: () => Promise<{ documents: RAGIngestDocument[] }>;
+  load: () => Promise<{
+    documents: RAGIngestDocument[];
+    diagnostics?: DemoSyncDiagnostics;
+    metadata?: Record<string, unknown>;
+  }>;
 };
 
 type DemoEmailSyncFixture = {
@@ -301,6 +312,156 @@ const buildFixtureStorageDocuments = async ({
     ),
   });
 
+const buildSiteDiscoveryFixtureDocuments = async () => {
+  const port = process.env.PORT ?? "3000";
+  const origin = `http://127.0.0.1:${port}`;
+  const siteRoot = new URL("/demo/sync-fixtures/site", origin).toString();
+  const robotsUrl = new URL("/demo/sync-fixtures/site/robots.txt", origin).toString();
+  const fallbackSitemapUrl = new URL("/demo/sync-fixtures/site/sitemap.xml", origin).toString();
+  const discoveryCounts = {
+    canonical_dedupe_applied: 0,
+    robots_blocked: 0,
+    nofollow_skipped: 0,
+    noindex_skipped: 0,
+  };
+  const blockedPaths = new Set<string>();
+  const trackDiagnostic = (code: keyof typeof discoveryCounts) => {
+    discoveryCounts[code] += 1;
+  };
+  const normalizeDiscoveryUrl = (value: string) => {
+    const next = new URL(value, siteRoot);
+    ["utm_source", "utm_medium", "utm_campaign", "gclid", "fbclid", "ref"].forEach((key) => next.searchParams.delete(key));
+    return next.toString();
+  };
+  const extractLinks = (html: string, baseUrl: string) =>
+    [...html.matchAll(/href=["']([^"']+)["']/gi)]
+      .map((match) => match[1])
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .map((href) => new URL(href, baseUrl).toString())
+      .filter((href) => {
+        try {
+          return new URL(href).origin === new URL(siteRoot).origin;
+        } catch {
+          return false;
+        }
+      });
+
+  const robotsResponse = await fetch(robotsUrl);
+  if (!robotsResponse.ok) {
+    throw new Error(`Failed to load site discovery robots fixture: ${robotsResponse.status} ${robotsResponse.statusText}`);
+  }
+  const robotsText = await robotsResponse.text();
+  for (const match of robotsText.matchAll(/^Disallow:\s*(\S+)$/gim)) {
+    blockedPaths.add(match[1]);
+  }
+  const sitemapUrls = [...robotsText.matchAll(/^Sitemap:\s*(\S+)$/gim)].map((match) => match[1]);
+  if (sitemapUrls.length === 0) {
+    sitemapUrls.push(fallbackSitemapUrl);
+  }
+
+  const sitemapEntries: string[] = [];
+  for (const sitemapUrl of sitemapUrls) {
+    const response = await fetch(sitemapUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to load site discovery sitemap fixture: ${response.status} ${response.statusText}`);
+    }
+    const xml = await response.text();
+    sitemapEntries.push(...[...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]).filter((value) => typeof value === "string" && !value.endsWith(".xml")));
+  }
+
+  const rootResponse = await fetch(siteRoot);
+  if (!rootResponse.ok) {
+    throw new Error(`Failed to load site discovery root fixture: ${rootResponse.status} ${rootResponse.statusText}`);
+  }
+  const rootHtml = await rootResponse.text();
+  const discovered = new Map<string, Record<string, unknown>>();
+  discovered.set(siteRoot, { sourceUrl: siteRoot, siteUrl: siteRoot, siteTitle: "Site discovery fixture" });
+  for (const url of [...sitemapEntries, ...extractLinks(rootHtml, siteRoot)]) {
+    const normalized = normalizeDiscoveryUrl(url);
+    if (normalized != url) {
+      trackDiagnostic("canonical_dedupe_applied");
+    }
+    discovered.set(normalized, { sourceUrl: normalized, siteUrl: siteRoot, siteTitle: "Site discovery fixture" });
+  }
+
+  const urlInputs: Array<{
+    url: string;
+    source: string;
+    title: string;
+    metadata: Record<string, unknown>;
+  }> = [];
+  for (const [url, metadata] of discovered.entries()) {
+    const urlObject = new URL(url);
+    if ([...blockedPaths].some((blockedPath) => urlObject.pathname.startsWith(blockedPath))) {
+      trackDiagnostic("robots_blocked");
+      continue;
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load site discovery page fixture: ${response.status} ${response.statusText}`);
+    }
+    const html = await response.text();
+    const canonicalMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i);
+    if (canonicalMatch?.[1]) {
+      const canonicalUrl = normalizeDiscoveryUrl(new URL(canonicalMatch[1], url).toString());
+      if (canonicalUrl != url) {
+        trackDiagnostic("canonical_dedupe_applied");
+        if (discovered.has(canonicalUrl)) {
+          continue;
+        }
+      }
+    }
+    const robotsMetaMatch = html.match(/<meta[^>]+name=["']robots["'][^>]+content=["']([^"']+)["']/i);
+    const robotsValue = robotsMetaMatch?.[1]?.toLowerCase() ?? "";
+    if (robotsValue.includes("noindex")) {
+      trackDiagnostic("noindex_skipped");
+      continue;
+    }
+    if (robotsValue.includes("nofollow")) {
+      trackDiagnostic("nofollow_skipped");
+    }
+    urlInputs.push({
+      url,
+      source: `sync/site/${urlObject.pathname.replace(/^\//, "") || "index.html"}`,
+      title:
+        html.match(/<title>([^<]+)<\/title>/i)?.[1] ??
+        urlObject.pathname.split("/").filter(Boolean).at(-1) ??
+        "Site discovery page",
+      metadata,
+    });
+  }
+
+  const loaded = await loadRAGDocumentsFromURLs({ urls: urlInputs });
+  const diagnosticLabels: Record<keyof typeof discoveryCounts, string> = {
+    canonical_dedupe_applied: "Canonical dedupe applied",
+    robots_blocked: "Robots blocked",
+    nofollow_skipped: "Nofollow skipped",
+    noindex_skipped: "Noindex skipped",
+  };
+  const entries = Object.entries(discoveryCounts)
+    .filter(([, count]) => count > 0)
+    .map(([code, count]) => ({
+      code: code as keyof typeof discoveryCounts,
+      severity: "info" as const,
+      summary: `${diagnosticLabels[code as keyof typeof discoveryCounts]}: ${count}`,
+    }));
+
+  return {
+    documents: loaded.documents,
+    diagnostics: entries.length > 0
+      ? {
+          entries,
+          summary: entries.map((entry) => entry.summary).join(" · "),
+        }
+      : undefined,
+    metadata: {
+      discoveredUrlCount: discovered.size,
+      loadedUrlCount: urlInputs.length,
+      siteUrl: siteRoot,
+    },
+  };
+};
+
 const buildEmailSyncFixtureDocuments = async (fixture: DemoEmailSyncFixture) => {
   return buildEmailSyncDocuments({
     client: createRAGStaticEmailSyncClient({
@@ -504,6 +665,19 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
           ],
         });
       },
+    },
+    {
+      id: "sync-site-discovery",
+      label: "Site discovery fixture",
+      kind: "url",
+      description:
+        "Discovers local site pages through robots, sitemap, canonical, nofollow, and noindex fixture routes so the ops surface can show discovery diagnostics on the same sync cards as every other source.",
+      metadata: {
+        persistence: syncStatePath,
+        schedule: "manual",
+      },
+      target: "/demo/sync-fixtures/site",
+      load: async () => buildSiteDiscoveryFixtureDocuments(),
     },
     {
       id: "sync-storage",
@@ -762,6 +936,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
     metadata: source.metadata,
     target: source.target,
     status: "idle",
+    diagnostics: undefined,
   } satisfies RAGSyncSourceRecord));
 
   const toNumber = (value: unknown, fallback: number) =>
@@ -858,6 +1033,60 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
     }
   };
 
+  const normalizeEmbeddingVariants = (value: unknown): RagSeedEmbeddingVariant[] | undefined => {
+    if (!Array.isArray(value)) {
+      return undefined;
+    }
+
+    const variants = value.flatMap((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return [];
+      }
+
+      const record = entry as Record<string, unknown>;
+      const id = typeof record.id === "string" ? record.id.trim() : "";
+      if (!id) {
+        return [];
+      }
+
+      return [{
+        id,
+        label: typeof record.label === "string" && record.label.trim().length > 0 ? record.label : undefined,
+        text: typeof record.text === "string" && record.text.trim().length > 0 ? record.text : undefined,
+        metadata:
+          record.metadata && typeof record.metadata === "object" && !Array.isArray(record.metadata)
+            ? (record.metadata as Record<string, unknown>)
+            : undefined,
+      } satisfies RagSeedEmbeddingVariant];
+    });
+
+    return variants.length > 0 ? variants : undefined;
+  };
+
+  const splitStoredMetadata = (metadata: Record<string, unknown>) => {
+    const embeddingVariants = normalizeEmbeddingVariants(metadata[EMBEDDING_VARIANTS_METADATA_KEY]);
+    if (!(EMBEDDING_VARIANTS_METADATA_KEY in metadata)) {
+      return { embeddingVariants, metadata };
+    }
+
+    const nextMetadata = { ...metadata };
+    delete nextMetadata[EMBEDDING_VARIANTS_METADATA_KEY];
+    return {
+      embeddingVariants,
+      metadata: nextMetadata,
+    };
+  };
+
+  const mergeStoredMetadata = (
+    metadata: Record<string, unknown> | undefined,
+    embeddingVariants: RagSeedEmbeddingVariant[] | undefined,
+  ) => ({
+    ...(metadata ?? {}),
+    ...(embeddingVariants && embeddingVariants.length > 0
+      ? { [EMBEDDING_VARIANTS_METADATA_KEY]: embeddingVariants }
+      : {}),
+  });
+
   const normalizeDocumentRow = (row: Record<string, unknown>): DemoDocument => {
     const kind = toDocumentKind(row.kind) ?? "custom";
     const id = toSafeText(row.id, `${Date.now()}-doc`);
@@ -870,7 +1099,8 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
       row.chunk_size,
       kind === "seed" ? RAG_DEMO_DEFAULT_CHUNK_SIZE : RAG_DEMO_DEFAULT_CUSTOM_CHUNK_SIZE,
     );
-    const metadata = normalizeMetadataJson(row.metadata_json);
+    const rawMetadata = normalizeMetadataJson(row.metadata_json);
+    const { embeddingVariants, metadata } = splitStoredMetadata(rawMetadata);
     const createdAt = toNumber(row.created_at, Date.now());
     const updatedAt = toNumber(row.updated_at, createdAt);
     const chunkCount = toNumber(
@@ -883,6 +1113,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
       chunkSize,
       chunkStrategy,
       createdAt,
+      embeddingVariants,
       format,
       updatedAt,
       id,
@@ -924,6 +1155,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
     chunkStrategy: doc.chunkStrategy,
     kind: doc.kind,
     metadata: doc.metadata,
+    embeddingVariants: doc.embeddingVariants,
   });
 
   const upsertDocument = (document: {
@@ -938,6 +1170,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
     chunkSize?: number;
     createdAt?: number;
     metadata?: Record<string, unknown>;
+    embeddingVariants?: RagSeedEmbeddingVariant[];
   }) => {
     const now = Date.now();
     const chunkSize = document.chunkSize ??
@@ -954,7 +1187,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
       $chunkStrategy: document.chunkStrategy,
       $chunkSize: chunkSize,
       $chunkCount: document.chunkCount,
-      $metadataJson: JSON.stringify(document.metadata ?? {}),
+      $metadataJson: JSON.stringify(mergeStoredMetadata(document.metadata, document.embeddingVariants)),
       $createdAt: createdAt,
       $updatedAt: now,
     });
@@ -1058,6 +1291,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
         nextRetryAt: existing?.nextRetryAt,
         documentCount: existing?.documentCount,
         chunkCount: existing?.chunkCount,
+        diagnostics: existing?.diagnostics,
       } satisfies RAGSyncSourceRecord;
     });
     syncStateLoaded = true;
@@ -1169,17 +1403,22 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
         label: definition.label,
         kind: definition.kind,
         description: definition.description,
-        metadata: appendSyncHistory(definition, syncSourceRecord(id)?.metadata, {
-          trigger,
-          status: "completed",
-          startedAt,
-          finishedAt,
-          durationMs: finishedAt - startedAt,
-          documentCount: loaded.documents.length,
-          chunkCount: totalChunkCount,
-        }),
+        metadata: buildSyncMetadata(
+          definition,
+          appendSyncHistory(definition, syncSourceRecord(id)?.metadata, {
+            trigger,
+            status: "completed",
+            startedAt,
+            finishedAt,
+            durationMs: finishedAt - startedAt,
+            documentCount: loaded.documents.length,
+            chunkCount: totalChunkCount,
+          }),
+          loaded.metadata ?? {},
+        ),
         target: definition.target,
         status: "completed",
+        diagnostics: loaded.diagnostics,
         lastSuccessfulSyncAt: finishedAt,
         consecutiveFailures: 0,
         lastSyncedAt: finishedAt,
@@ -1212,6 +1451,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
         }),
         target: definition.target,
         status: "failed",
+        diagnostics: syncSourceRecord(id)?.diagnostics,
         consecutiveFailures: (syncSourceRecord(id)?.consecutiveFailures ?? 0) + 1,
         lastError: message,
         lastSyncedAt: failedAt,
@@ -1306,6 +1546,7 @@ export const createRagDemoState = ({ ragDb, ragBackends }: CreateRagDemoStateOpt
       chunkSize: RAG_DEMO_DEFAULT_CHUNK_SIZE,
       createdAt: now,
       metadata: doc.metadata ?? {},
+      embeddingVariants: doc.embeddingVariants,
     }));
 
     const seedIds = seedDocuments.map((doc) => doc.id);

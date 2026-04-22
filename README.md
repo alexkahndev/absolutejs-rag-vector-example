@@ -1,5 +1,7 @@
 # AbsoluteJS RAG Vector Example
 
+This demo is pinned to `@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.2 + @absolutejs/rag@0.0.1`.
+
 This example now demonstrates three backend modes in one repo:
 
 - `sqlite-native`
@@ -15,6 +17,21 @@ This example now demonstrates three backend modes in one repo:
 The frontend stays the same across all six framework pages. The `Backend mode`
 selector swaps the page between explicit backend routes, so the diagnostics and retrieval
 results always come from the selected backend.
+
+Every framework page is intended to stay in parity:
+
+- retrieval and source inspection
+- diagnostics and ops health
+- release control
+- quality/evaluation views
+- document inspection and chunk previews
+
+There is no separate smoke-only demo surface that carries features the pages do not.
+
+It also exercises the newer public RAG package surfaces from the published beta:
+
+- `@absolutejs/rag`
+- `@absolutejs/rag/ui`
 
 ## Run It
 
