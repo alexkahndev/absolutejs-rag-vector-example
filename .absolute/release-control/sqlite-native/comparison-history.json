@@ -11,8 +11,8 @@
 			"ready",
 			"stable"
 		],
-		"startedAt": 1776831451199,
-		"finishedAt": 1776831451449,
+		"startedAt": 1776843916680,
+		"finishedAt": 1776843916930,
 		"elapsedMs": 250,
 		"comparison": {
 			"entries": [],
@@ -94,8 +94,8 @@
 			"ready",
 			"canary"
 		],
-		"startedAt": 1776831450194,
-		"finishedAt": 1776831450444,
+		"startedAt": 1776843915675,
+		"finishedAt": 1776843915925,
 		"elapsedMs": 250,
 		"comparison": {
 			"entries": [],

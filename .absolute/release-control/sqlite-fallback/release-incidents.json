@@ -1,0 +1,33 @@
+[
+	{
+		"id": "demo-release-incident-stable-sqlite-fallback-alpha",
+		"groupKey": "docs-release-multivector",
+		"targetRolloutLabel": "stable",
+		"severity": "critical",
+		"status": "resolved",
+		"kind": "gate_failure",
+		"message": "stable multivector coverage regressed for the current candidate",
+		"triggeredAt": 1777261862637,
+		"baselineRetrievalId": "vector",
+		"candidateRetrievalId": "hybrid",
+		"sourceRunId": "demo-release-run-stable-multivector-alpha",
+		"classification": "multivector",
+		"corpusGroupKey": "alpha",
+		"resolvedAt": 1777261863414
+	},
+	{
+		"baselineRetrievalId": "vector",
+		"candidateRetrievalId": "hybrid",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "docs-release-multivector:canary:gate_failure",
+		"kind": "gate_failure",
+		"message": "multivector collapsed cases delta -1 is below 0",
+		"classification": "multivector",
+		"severity": "warning",
+		"sourceRunId": "demo-release-run-stable-multivector-alpha",
+		"status": "open",
+		"targetRolloutLabel": "canary",
+		"triggeredAt": 1777261862383
+	}
+]

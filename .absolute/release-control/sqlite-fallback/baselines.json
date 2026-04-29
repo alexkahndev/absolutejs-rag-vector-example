@@ -1,0 +1,54 @@
+[
+	{
+		"id": "demo-release-baseline-canary-sqlite-fallback-blocked-multivector-alpha",
+		"groupKey": "docs-release-multivector",
+		"corpusGroupKey": "alpha",
+		"version": 1,
+		"status": "active",
+		"rolloutLabel": "canary",
+		"retrievalId": "hybrid",
+		"label": "Hybrid canary",
+		"suiteId": "demo-release-suite-sqlite-fallback-blocked-multivector-canary",
+		"suiteLabel": "Release control showcase suite",
+		"sourceRunId": "demo-release-run-canary-multivector-alpha",
+		"promotedAt": 1777261861385,
+		"approvedAt": 1777261861385,
+		"approvedBy": "release-bot",
+		"policy": {
+			"minAverageF1Delta": -0.05,
+			"minPassingRateDelta": -5,
+			"severity": "warn"
+		},
+		"tags": [
+			"demo-release",
+			"blocked-multivector",
+			"canary"
+		]
+	},
+	{
+		"id": "demo-release-baseline-stable-sqlite-fallback-blocked-multivector-alpha",
+		"groupKey": "docs-release-multivector",
+		"corpusGroupKey": "alpha",
+		"version": 1,
+		"status": "active",
+		"rolloutLabel": "stable",
+		"retrievalId": "vector",
+		"label": "Vector stable",
+		"suiteId": "demo-release-suite-sqlite-fallback-blocked-multivector-stable",
+		"suiteLabel": "Release control showcase suite",
+		"sourceRunId": "demo-release-run-stable-multivector-alpha",
+		"promotedAt": 1777261858386,
+		"approvedAt": 1777261858386,
+		"approvedBy": "release-bot",
+		"policy": {
+			"minAverageF1Delta": 0.01,
+			"minPassingRateDelta": 1,
+			"severity": "fail"
+		},
+		"tags": [
+			"demo-release",
+			"blocked-multivector",
+			"stable"
+		]
+	}
+]

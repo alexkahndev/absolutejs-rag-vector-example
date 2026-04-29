@@ -4,72 +4,72 @@
 		"corpusGroupKey": "alpha",
 		"enabled": true,
 		"groupKey": "docs-release-ready",
-		"id": "b64ec044-24bf-4f57-a1dc-4f13b01138d4",
+		"id": "b288573c-55d8-4d7b-acfb-9814c749e79b",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452602,
+		"recordedAt": 1776843918074,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-multivector",
-		"id": "75583a31-3f0c-4dba-8e08-960f8dc43e21",
+		"id": "3454af7c-9445-419a-915e-f850a797d253",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452596,
+		"recordedAt": 1776843918073,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-general",
-		"id": "59404e3e-07df-4328-8b53-a1ce8bf0ea3c",
+		"id": "b502c1b5-55f3-46dc-a2c1-874b86e60b6e",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452575,
+		"recordedAt": 1776843918072,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-completed",
-		"id": "d13f4068-d2b8-4a15-b7f0-20c7d4c0e4c6",
+		"id": "553ebdee-520e-4382-9f2d-6b387f77a339",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452573,
+		"recordedAt": 1776843918071,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-ready",
-		"id": "cd87db47-14c0-4ea1-b3bc-3a702e8e829c",
+		"id": "ec6009dc-d7ae-4915-9c1e-b7c56a058d8b",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452562,
+		"recordedAt": 1776843918060,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-multivector",
-		"id": "b909bd06-dda2-4f88-a477-9cc85019c71c",
+		"id": "c47032fd-3e83-4340-a896-f5d138e2ec57",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452560,
+		"recordedAt": 1776843918056,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-general",
-		"id": "4fed8d96-5575-417e-875a-8db3a1de5a98",
+		"id": "45b7d621-723c-4323-ba00-0fc2ebaa7330",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452558,
+		"recordedAt": 1776843918054,
 		"targetRolloutLabel": "stable"
 	},
 	{
 		"changeKind": "snapshot",
 		"enabled": true,
 		"groupKey": "docs-release-completed",
-		"id": "b3e9d545-2d43-4a20-bb1e-44bb46298132",
+		"id": "9f320a1b-d4cd-46d3-9b02-78f536933b56",
 		"maxApprovedDecisionAgeMs": 86400000,
-		"recordedAt": 1776831452557,
+		"recordedAt": 1776843918051,
 		"targetRolloutLabel": "stable"
 	}
 ]

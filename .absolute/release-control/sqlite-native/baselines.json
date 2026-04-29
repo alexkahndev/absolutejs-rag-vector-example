@@ -11,8 +11,8 @@
 		"suiteId": "demo-release-suite-sqlite-native-ready-canary",
 		"suiteLabel": "Release control showcase suite",
 		"sourceRunId": "demo-release-run-canary-ready-alpha",
-		"promotedAt": 1776831450455,
-		"approvedAt": 1776831450455,
+		"promotedAt": 1776843915947,
+		"approvedAt": 1776843915947,
 		"approvedBy": "release-bot",
 		"policy": {
 			"minAverageF1Delta": -0.05,
@@ -37,8 +37,8 @@
 		"suiteId": "demo-release-suite-sqlite-native-ready-stable",
 		"suiteLabel": "Release control showcase suite",
 		"sourceRunId": "demo-release-run-stable-ready-alpha",
-		"promotedAt": 1776831447499,
-		"approvedAt": 1776831447499,
+		"promotedAt": 1776843912979,
+		"approvedAt": 1776843912979,
 		"approvedBy": "release-bot",
 		"policy": {
 			"minAverageF1Delta": 0.01,

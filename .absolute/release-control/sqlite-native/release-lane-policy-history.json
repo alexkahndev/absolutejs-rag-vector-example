@@ -2,29 +2,10 @@
 	{
 		"approvalMaxAgeMs": 86400000,
 		"changeKind": "snapshot",
-		"groupKey": "docs-release-completed",
-		"id": "9eb4e9ce-16cd-4505-8d85-d95e6f2c5e2c",
-		"recordedAt": 1776831452946,
-		"requireApprovalBeforePromotion": true,
-		"rolloutLabel": "stable",
-		"scope": "group_rollout_label"
-	},
-	{
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-completed",
-		"id": "0a5749df-7fd2-468f-a847-346ed747c5fe",
-		"recordedAt": 1776831452945,
-		"requireApprovalBeforePromotion": false,
-		"rolloutLabel": "canary",
-		"scope": "group_rollout_label"
-	},
-	{
-		"approvalMaxAgeMs": 86400000,
-		"changeKind": "snapshot",
 		"corpusGroupKey": "alpha",
 		"groupKey": "docs-release-ready",
-		"id": "41cc4089-3852-4eae-9bb0-fd0d38ec0e27",
-		"recordedAt": 1776831452613,
+		"id": "1fd37cb1-0d88-4b39-b29c-ca79ee4ff441",
+		"recordedAt": 1776843918105,
 		"requireApprovalBeforePromotion": true,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
@@ -33,18 +14,8 @@
 		"changeKind": "snapshot",
 		"corpusGroupKey": "alpha",
 		"groupKey": "docs-release-ready",
-		"id": "021698f3-64a8-4502-9b78-21a02157ac20",
-		"recordedAt": 1776831452612,
-		"requireApprovalBeforePromotion": false,
-		"rolloutLabel": "canary",
-		"scope": "group_rollout_label"
-	},
-	{
-		"changeKind": "snapshot",
-		"corpusGroupKey": "alpha",
-		"groupKey": "docs-release-ready",
-		"id": "63d95ba8-065b-433a-8e2a-b79c7a622c7f",
-		"recordedAt": 1776831452612,
+		"id": "2a1b7c76-0521-4ed9-8e05-a18e8c0b7df8",
+		"recordedAt": 1776843918103,
 		"requireApprovalBeforePromotion": false,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
@@ -53,8 +24,8 @@
 		"approvalMaxAgeMs": 86400000,
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-multivector",
-		"id": "51e9c866-09ea-463e-b084-7f216a460368",
-		"recordedAt": 1776831452611,
+		"id": "209bd705-e7b9-48e7-bf23-42026d44c013",
+		"recordedAt": 1776843918102,
 		"requireApprovalBeforePromotion": true,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
@@ -62,8 +33,8 @@
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-multivector",
-		"id": "448154bb-c800-4588-a509-a16e20b1d10a",
-		"recordedAt": 1776831452610,
+		"id": "b32243cb-bb30-425d-a908-4e3652f3f925",
+		"recordedAt": 1776843918100,
 		"requireApprovalBeforePromotion": false,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
@@ -72,8 +43,8 @@
 		"approvalMaxAgeMs": 86400000,
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-general",
-		"id": "7918cc42-14f2-4106-a77b-0757827028c7",
-		"recordedAt": 1776831452609,
+		"id": "52a19f6c-61f1-4356-98de-f71fcec71b39",
+		"recordedAt": 1776843918098,
 		"requireApprovalBeforePromotion": true,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
@@ -81,65 +52,8 @@
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-general",
-		"id": "23fec33d-8eff-437c-bfcc-03bf95bfc9df",
-		"recordedAt": 1776831452608,
-		"requireApprovalBeforePromotion": false,
-		"rolloutLabel": "canary",
-		"scope": "group_rollout_label"
-	},
-	{
-		"approvalMaxAgeMs": 86400000,
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-ready",
-		"id": "ba08ceac-dbc1-45b9-bd76-6cfd3cdfec5f",
-		"recordedAt": 1776831452606,
-		"requireApprovalBeforePromotion": true,
-		"rolloutLabel": "stable",
-		"scope": "group_rollout_label"
-	},
-	{
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-ready",
-		"id": "d26b8998-d687-4e4c-9f68-b864a315a7c9",
-		"recordedAt": 1776831452604,
-		"requireApprovalBeforePromotion": false,
-		"rolloutLabel": "canary",
-		"scope": "group_rollout_label"
-	},
-	{
-		"approvalMaxAgeMs": 86400000,
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-multivector",
-		"id": "05a8b2f7-0da4-4b01-9dde-6df2488d9546",
-		"recordedAt": 1776831452602,
-		"requireApprovalBeforePromotion": true,
-		"rolloutLabel": "stable",
-		"scope": "group_rollout_label"
-	},
-	{
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-multivector",
-		"id": "dece8379-9e15-482c-bd09-b6138d386070",
-		"recordedAt": 1776831452596,
-		"requireApprovalBeforePromotion": false,
-		"rolloutLabel": "canary",
-		"scope": "group_rollout_label"
-	},
-	{
-		"approvalMaxAgeMs": 86400000,
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-general",
-		"id": "749f79fd-ab8a-4901-a1b9-ddc11508b87e",
-		"recordedAt": 1776831452575,
-		"requireApprovalBeforePromotion": true,
-		"rolloutLabel": "stable",
-		"scope": "group_rollout_label"
-	},
-	{
-		"changeKind": "snapshot",
-		"groupKey": "docs-release-general",
-		"id": "27891df5-1c37-40e7-b34a-3fc35f8c0252",
-		"recordedAt": 1776831452573,
+		"id": "12c9e037-544e-4387-93b0-33a83ea27bf9",
+		"recordedAt": 1776843918091,
 		"requireApprovalBeforePromotion": false,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
@@ -148,8 +62,8 @@
 		"approvalMaxAgeMs": 86400000,
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-completed",
-		"id": "9b967883-0af0-4b0c-adb2-e837049cd051",
-		"recordedAt": 1776831452572,
+		"id": "bd38c4d1-a9ff-422a-96f7-03843b545d11",
+		"recordedAt": 1776843918088,
 		"requireApprovalBeforePromotion": true,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
@@ -157,8 +71,74 @@
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-completed",
-		"id": "d9ee5016-0c98-4f38-afb3-ead6f833a867",
-		"recordedAt": 1776831452565,
+		"id": "dc91720d-7aba-427e-b27b-f1e47c0dd41d",
+		"recordedAt": 1776843918087,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "951ceaa7-0376-4fd5-9ba4-d5d8ae5ad05c",
+		"recordedAt": 1776843918074,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "c3a2f749-1512-4539-af33-789d130dbf7b",
+		"recordedAt": 1776843918073,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "30f398e2-a067-4532-8b9a-70660a7200b4",
+		"recordedAt": 1776843918072,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "034fe2c3-34f1-4f8d-af44-4dbe9aab5156",
+		"recordedAt": 1776843918072,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "bb177cb0-e4fa-461c-a4a6-a1c8fc130d9a",
+		"recordedAt": 1776843918070,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "9881a890-bd2a-4391-bffb-03fa09392654",
+		"recordedAt": 1776843918069,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "45833191-32ee-4e10-8c8c-52cf4204df59",
+		"recordedAt": 1776843918066,
 		"requireApprovalBeforePromotion": false,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"

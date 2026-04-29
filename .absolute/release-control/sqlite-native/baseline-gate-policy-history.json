@@ -3,13 +3,13 @@
 		"changeKind": "snapshot",
 		"corpusGroupKey": "alpha",
 		"groupKey": "docs-release-ready",
-		"id": "641a1457-19e2-453d-a54b-a9d703ea2647",
+		"id": "293a65a8-252a-4376-ae28-abac1dab722f",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452810,
+		"recordedAt": 1776843918407,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
@@ -17,195 +17,195 @@
 		"changeKind": "snapshot",
 		"corpusGroupKey": "alpha",
 		"groupKey": "docs-release-ready",
-		"id": "b6d3e555-d6f3-4550-a981-b0f13a210073",
+		"id": "1c4283f8-136d-4ad4-9d17-159952fad9b0",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452809,
+		"recordedAt": 1776843918406,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-multivector",
-		"id": "6bc9cbeb-ca06-45a7-83d6-129386812415",
+		"id": "65ce18f5-e079-4485-a76f-15fc09eb0d1e",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452809,
+		"recordedAt": 1776843918405,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-multivector",
-		"id": "db42661a-56f5-41ec-8b41-14e008f128d9",
+		"id": "49d15686-aa94-4fc3-8281-9526b0914e75",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452809,
+		"recordedAt": 1776843918404,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-general",
-		"id": "36dd3647-f2e3-4a42-8f85-6ad49d0bb618",
+		"id": "2e408e13-a82a-4747-9ad8-fb0dcd1585ab",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452808,
+		"recordedAt": 1776843918403,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-general",
-		"id": "f33b8752-2d87-4c20-ad92-679b915b1c01",
+		"id": "471e5902-ce74-4855-b906-89e93736fcae",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452799,
+		"recordedAt": 1776843918393,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-completed",
-		"id": "896ccc21-3d41-486d-8015-b0061410c7fd",
+		"id": "ca1e2222-f0c4-463f-b24f-2106d225f761",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452621,
+		"recordedAt": 1776843918392,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-completed",
-		"id": "8163f3e6-a83b-42c5-8f9d-63f9a5edd471",
+		"id": "a064543f-e800-473b-b5e5-0e1d66059d95",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452613,
+		"recordedAt": 1776843918391,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-ready",
-		"id": "d00db58c-d721-4dcd-be71-d013ba97b006",
+		"id": "93d2f0d5-b9c1-4095-8e6f-0a8b5cbb926d",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452613,
+		"recordedAt": 1776843918102,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
-		"groupKey": "docs-release-completed",
-		"id": "cd9a243b-7cf2-434a-915d-edf413fd69fd",
+		"groupKey": "docs-release-ready",
+		"id": "81eb2842-2428-4c09-87f6-a24c08085350",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452613,
+		"recordedAt": 1776843918102,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-multivector",
-		"id": "494d3cc0-7f49-4821-bd67-3a921c542bfc",
+		"id": "a0227659-3830-45c0-823a-ab33569286fb",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452612,
+		"recordedAt": 1776843918101,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-multivector",
-		"id": "a0152571-c779-43f3-9fe3-5efca8ad4328",
+		"id": "896b2844-e53e-4d00-b8de-403c0d9a9106",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452612,
+		"recordedAt": 1776843918100,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-general",
-		"id": "a5f689b5-338c-4305-aaac-ba6e7b11b7f0",
+		"id": "e209d07e-133c-4190-a7f8-d29d7177083d",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452611,
+		"recordedAt": 1776843918099,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-general",
-		"id": "53148762-87c2-49bf-b728-118f7e04cd1e",
+		"id": "654e03d2-b391-4013-84ff-d3d9d43ab7b4",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452610,
+		"recordedAt": 1776843918099,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-completed",
-		"id": "df3387a4-1c65-4f57-adb0-b8bc23fffe13",
+		"id": "7b58644b-bc9f-4acb-be50-d666d9ec2efd",
 		"policy": {
 			"minAverageF1Delta": 0.01,
 			"minPassingRateDelta": 1,
 			"severity": "fail"
 		},
-		"recordedAt": 1776831452609,
+		"recordedAt": 1776843918091,
 		"rolloutLabel": "stable",
 		"scope": "group_rollout_label"
 	},
 	{
 		"changeKind": "snapshot",
 		"groupKey": "docs-release-completed",
-		"id": "5bf2472d-1946-488d-9065-e1a64c62eff3",
+		"id": "a6fdcc96-64b1-4747-a641-503d784c80cb",
 		"policy": {
 			"minAverageF1Delta": -0.05,
 			"minPassingRateDelta": -5,
 			"severity": "warn"
 		},
-		"recordedAt": 1776831452608,
+		"recordedAt": 1776843918090,
 		"rolloutLabel": "canary",
 		"scope": "group_rollout_label"
 	}

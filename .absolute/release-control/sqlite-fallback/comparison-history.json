@@ -1,0 +1,194 @@
+[
+	{
+		"id": "demo-release-run-stable-multivector-alpha",
+		"label": "Blocked stable lane · multivector stable benchmark",
+		"suiteId": "demo-release-suite-sqlite-fallback-blocked-multivector-stable",
+		"suiteLabel": "Blocked stable lane · multivector stable benchmark",
+		"groupKey": "docs-release-multivector",
+		"corpusGroupKey": "alpha",
+		"tags": [
+			"demo-release",
+			"blocked-multivector",
+			"stable"
+		],
+		"startedAt": 1777261862133,
+		"finishedAt": 1777261862383,
+		"elapsedMs": 250,
+		"comparison": {
+			"entries": [],
+			"leaderboard": [],
+			"summary": {
+				"bestByAverageF1": "hybrid",
+				"bestByPassingRate": "vector",
+				"fastest": "vector",
+				"bestByMultivectorCollapsedCases": "vector",
+				"bestByMultivectorLexicalHitCases": "vector",
+				"bestByMultivectorVectorHitCases": "hybrid"
+			},
+			"suiteId": "demo-release-suite-sqlite-fallback-blocked-multivector-stable",
+			"suiteLabel": "Blocked stable lane · multivector stable benchmark"
+		},
+		"decisionSummary": {
+			"baseline": {
+				"retrievalId": "vector",
+				"label": "Vector retrieval",
+				"passingRate": 92,
+				"averageF1": 0.62,
+				"elapsedMs": 39,
+				"multiVectorCases": 2,
+				"multiVectorCollapsedCases": 2,
+				"multiVectorLexicalHitCases": 2,
+				"multiVectorVectorHitCases": 1
+			},
+			"baselineRetrievalId": "vector",
+			"candidate": {
+				"retrievalId": "hybrid",
+				"label": "Hybrid fusion",
+				"passingRate": 88,
+				"averageF1": 0.64,
+				"elapsedMs": 47,
+				"multiVectorCases": 2,
+				"multiVectorCollapsedCases": 1,
+				"multiVectorLexicalHitCases": 1,
+				"multiVectorVectorHitCases": 1
+			},
+			"candidateRetrievalId": "hybrid",
+			"delta": {
+				"averageF1Delta": 0,
+				"passingRateDelta": -1,
+				"elapsedMsDelta": 8,
+				"multiVectorCollapsedCasesDelta": -1,
+				"multiVectorLexicalHitCasesDelta": -1,
+				"multiVectorVectorHitCasesDelta": 0
+			},
+			"gate": {
+				"status": "fail",
+				"reasons": [
+					"multivector collapsed cases delta -1 is below 0",
+					"multivector lexical hit coverage regressed on the stable candidate"
+				],
+				"policy": {
+					"minAverageF1Delta": 0.01,
+					"minPassingRateDelta": 1,
+					"severity": "fail"
+				}
+			},
+			"winnerByAverageF1": "hybrid",
+			"winnerByPassingRate": "vector",
+			"fastest": "vector",
+			"winnerByMultivectorCollapsedCases": "vector",
+			"winnerByMultivectorLexicalHitCases": "vector",
+			"winnerByMultivectorVectorHitCases": "hybrid"
+		},
+		"releaseVerdict": {
+			"status": "fail",
+			"summary": "Candidate failed the active baseline gate.",
+			"baselineGroupKey": "docs-release-multivector",
+			"baselineRetrievalId": "vector",
+			"candidateRetrievalId": "hybrid",
+			"delta": {
+				"averageF1Delta": 0,
+				"passingRateDelta": -1,
+				"elapsedMsDelta": 8,
+				"multiVectorCollapsedCasesDelta": -1,
+				"multiVectorLexicalHitCasesDelta": -1,
+				"multiVectorVectorHitCasesDelta": 0
+			},
+			"gate": {
+				"status": "fail",
+				"reasons": [
+					"multivector collapsed cases delta -1 is below 0",
+					"multivector lexical hit coverage regressed on the stable candidate"
+				],
+				"policy": {
+					"minAverageF1Delta": 0.01,
+					"minPassingRateDelta": 1,
+					"severity": "fail"
+				}
+			}
+		}
+	},
+	{
+		"id": "demo-release-run-canary-multivector-alpha",
+		"label": "Blocked stable lane · multivector canary benchmark",
+		"suiteId": "demo-release-suite-sqlite-fallback-blocked-multivector-canary",
+		"suiteLabel": "Blocked stable lane · multivector canary benchmark",
+		"groupKey": "docs-release-multivector",
+		"corpusGroupKey": "alpha",
+		"tags": [
+			"demo-release",
+			"blocked-multivector",
+			"canary"
+		],
+		"startedAt": 1777261861126,
+		"finishedAt": 1777261861376,
+		"elapsedMs": 250,
+		"comparison": {
+			"entries": [],
+			"leaderboard": [],
+			"summary": {
+				"bestByAverageF1": "hybrid",
+				"bestByPassingRate": "hybrid",
+				"fastest": "hybrid"
+			},
+			"suiteId": "demo-release-suite-sqlite-fallback-blocked-multivector-canary",
+			"suiteLabel": "Blocked stable lane · multivector canary benchmark"
+		},
+		"decisionSummary": {
+			"baseline": {
+				"retrievalId": "vector",
+				"label": "Vector retrieval",
+				"passingRate": 90,
+				"averageF1": 0.62,
+				"elapsedMs": 39
+			},
+			"baselineRetrievalId": "vector",
+			"candidate": {
+				"retrievalId": "hybrid",
+				"label": "Hybrid fusion",
+				"passingRate": 93,
+				"averageF1": 0.66,
+				"elapsedMs": 47
+			},
+			"candidateRetrievalId": "hybrid",
+			"delta": {
+				"averageF1Delta": 0.03,
+				"passingRateDelta": 4,
+				"elapsedMsDelta": -2
+			},
+			"gate": {
+				"status": "pass",
+				"reasons": [],
+				"policy": {
+					"minAverageF1Delta": -0.05,
+					"minPassingRateDelta": -5,
+					"severity": "warn"
+				}
+			},
+			"winnerByAverageF1": "hybrid",
+			"winnerByPassingRate": "hybrid",
+			"fastest": "hybrid"
+		},
+		"releaseVerdict": {
+			"status": "pass",
+			"summary": "Candidate passed the active baseline gate.",
+			"baselineGroupKey": "docs-release-multivector",
+			"baselineRetrievalId": "vector",
+			"candidateRetrievalId": "hybrid",
+			"delta": {
+				"averageF1Delta": 0.03,
+				"passingRateDelta": 4,
+				"elapsedMsDelta": -2
+			},
+			"gate": {
+				"status": "pass",
+				"reasons": [],
+				"policy": {
+					"minAverageF1Delta": -0.05,
+					"minPassingRateDelta": -5,
+					"severity": "warn"
+				}
+			}
+		}
+	}
+]

@@ -7,7 +7,7 @@
 		"targetRolloutLabel": "stable",
 		"retrievalId": "hybrid",
 		"sourceRunId": "demo-release-run-stable-ready-alpha",
-		"decidedAt": 1776831451511,
+		"decidedAt": 1776843917003,
 		"decidedBy": "demo-operator",
 		"notes": "Approved for the promotable stable-lane scenario.",
 		"gateStatus": "pass",

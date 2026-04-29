@@ -1,0 +1,38 @@
+[
+	{
+		"approvalExpiredSeverity": "critical",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "critical",
+		"groupKey": "docs-release-multivector",
+		"id": "cd7fa9ba-1079-4d8c-8a97-c7ee4592c3df",
+		"openIncidentSeverity": "critical",
+		"recordedAt": 1777261863498,
+		"regressionSeverity": "critical",
+		"targetRolloutLabel": "stable"
+	},
+	{
+		"approvalExpiredSeverity": "warning",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "warning",
+		"groupKey": "docs-release-multivector",
+		"id": "c825c28f-959d-4082-94d8-be66290f5bfa",
+		"openIncidentSeverity": "warning",
+		"recordedAt": 1777261863497,
+		"regressionSeverity": "warning",
+		"targetRolloutLabel": "rollback_target"
+	},
+	{
+		"approvalExpiredSeverity": "warning",
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"gateFailureSeverity": "warning",
+		"groupKey": "docs-release-multivector",
+		"id": "4a1ac7a9-a890-40b8-abb4-87c11512f434",
+		"openIncidentSeverity": "warning",
+		"recordedAt": 1777261863497,
+		"regressionSeverity": "warning",
+		"targetRolloutLabel": "canary"
+	}
+]

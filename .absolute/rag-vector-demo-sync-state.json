@@ -12,44 +12,44 @@
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1776831512458,
-          "finishedAt": 1776831512462,
-          "durationMs": 4,
+          "startedAt": 1777409558337,
+          "finishedAt": 1777409558385,
+          "durationMs": 48,
           "documentCount": 2,
           "chunkCount": 2
         },
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1776831497489,
-          "finishedAt": 1776831497496,
-          "durationMs": 7,
+          "startedAt": 1777263914774,
+          "finishedAt": 1777263914796,
+          "durationMs": 22,
           "documentCount": 2,
           "chunkCount": 2
         },
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1776831482442,
-          "finishedAt": 1776831482448,
-          "durationMs": 6,
+          "startedAt": 1777263899931,
+          "finishedAt": 1777263899945,
+          "durationMs": 14,
           "documentCount": 2,
           "chunkCount": 2
         },
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1776831467497,
-          "finishedAt": 1776831467507,
-          "durationMs": 10,
+          "startedAt": 1777263884795,
+          "finishedAt": 1777263884813,
+          "durationMs": 18,
           "documentCount": 2,
           "chunkCount": 2
         },
         {
           "trigger": "scheduled",
           "status": "completed",
-          "startedAt": 1776831452436,
-          "finishedAt": 1776831452453,
+          "startedAt": 1777263869866,
+          "finishedAt": 1777263869883,
           "durationMs": 17,
           "documentCount": 2,
           "chunkCount": 2
@@ -58,10 +58,10 @@
     },
     "target": "rag-demo-corpus/sync-folder",
     "status": "completed",
-    "lastSuccessfulSyncAt": 1776831512462,
+    "lastSuccessfulSyncAt": 1777409558385,
     "consecutiveFailures": 0,
-    "lastSyncedAt": 1776831512462,
-    "lastSyncDurationMs": 4,
+    "lastSyncedAt": 1777409558385,
+    "lastSyncDurationMs": 48,
     "documentCount": 2,
     "chunkCount": 2
   },
@@ -106,18 +106,162 @@
   },
   {
     "id": "sync-email-gmail",
-    "label": "Gmail sync fixture",
+    "label": "Gmail linked sync account",
     "kind": "email",
-    "description": "Shows the Gmail adapter path with a support mailbox thread and attachment lineage, so switching to a real OAuth-backed Gmail account is a straight adapter swap instead of a different workflow.",
-    "target": "gmail://support/refunds",
+    "description": "Runs the Gmail adapter against a durable linked-provider credential resolved through auth, so the demo proves the connector path without handing raw tokens to RAG.",
+    "target": "gmail://current-user",
     "metadata": {
       "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
       "schedule": "manual",
       "provider": "Gmail",
-      "accountMode": "fixture",
-      "liveReady": "Ready for a real Gmail OAuth token and mailbox query."
+      "accountMode": "live-linked",
+      "liveReady": "Using a durable Gmail linked-provider credential resolved through auth-backed storage.",
+      "lastTrigger": "scheduled",
+      "recentRuns": [
+        {
+          "trigger": "scheduled",
+          "status": "failed",
+          "startedAt": 1777145270631,
+          "finishedAt": 1777145270635,
+          "durationMs": 4,
+          "error": "Linked Gmail sync requires an authenticated user"
+        },
+        {
+          "trigger": "manual",
+          "status": "failed",
+          "startedAt": 1777079247655,
+          "finishedAt": 1777079247657,
+          "durationMs": 2,
+          "error": "Linked Gmail sync requires an authenticated user"
+        },
+        {
+          "trigger": "manual",
+          "status": "failed",
+          "startedAt": 1777079130469,
+          "finishedAt": 1777079130470,
+          "durationMs": 1,
+          "error": "Linked Gmail sync requires an authenticated user"
+        },
+        {
+          "trigger": "manual",
+          "status": "failed",
+          "startedAt": 1777079123892,
+          "finishedAt": 1777079123893,
+          "durationMs": 1,
+          "error": "Linked Gmail sync requires an authenticated user"
+        },
+        {
+          "trigger": "manual",
+          "status": "failed",
+          "startedAt": 1777079121234,
+          "finishedAt": 1777079121236,
+          "durationMs": 2,
+          "error": "Linked Gmail sync requires an authenticated user"
+        }
+      ],
+      "linkedConnectorProvider": "gmail",
+      "linkedProviderConfigured": false,
+      "linkedProviderError": "An authenticated user is required to resolve linked Gmail bindings",
+      "linkedProviderSelectionMode": "unconfigured"
+    },
+    "status": "failed",
+    "lastError": "Linked Gmail sync requires an authenticated user",
+    "lastSyncedAt": 1777145270635,
+    "lastSyncDurationMs": 4,
+    "consecutiveFailures": 7
+  },
+  {
+    "id": "sync-contacts-google",
+    "label": "Google Contacts linked account",
+    "kind": "custom",
+    "description": "Runs the Google Contacts connector against a durable linked-provider binding resolved through auth-backed storage.",
+    "target": "google_contacts://current-user",
+    "metadata": {
+      "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
+      "schedule": "manual",
+      "provider": "Google Contacts",
+      "accountMode": "live-linked",
+      "liveReady": "Using a durable Google Contacts linked-provider binding resolved through auth-backed storage.",
+      "linkedConnectorProvider": "google_contacts",
+      "linkedProviderConfigured": false,
+      "linkedProviderError": "An authenticated user is required to resolve linked Google Contacts bindings",
+      "linkedProviderSelectionMode": "unconfigured"
     },
     "status": "idle"
+  },
+  {
+    "id": "sync-social-facebook",
+    "label": "Facebook Page linked account",
+    "kind": "custom",
+    "description": "Runs the Facebook Page connector against a durable Meta linked-provider binding resolved through auth-backed storage.",
+    "target": "facebook://current-user",
+    "metadata": {
+      "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
+      "schedule": "manual",
+      "provider": "Facebook Page",
+      "accountMode": "live-linked",
+      "liveReady": "Using a durable Facebook Page linked-provider binding resolved through auth-backed storage.",
+      "lastTrigger": "manual",
+      "recentRuns": [
+        {
+          "trigger": "manual",
+          "status": "completed",
+          "startedAt": 1776897633497,
+          "finishedAt": 1776897647109,
+          "durationMs": 13612,
+          "documentCount": 1,
+          "chunkCount": 1
+        }
+      ],
+      "linkedConnectorProvider": "facebook",
+      "linkedProviderConfigured": false,
+      "linkedProviderError": "An authenticated user is required to resolve linked Meta bindings",
+      "linkedProviderSelectionMode": "unconfigured"
+    },
+    "status": "completed",
+    "lastSuccessfulSyncAt": 1776897647109,
+    "lastSyncedAt": 1776897647109,
+    "lastSyncDurationMs": 13612,
+    "consecutiveFailures": 0,
+    "documentCount": 1,
+    "chunkCount": 1
+  },
+  {
+    "id": "sync-social-instagram",
+    "label": "Instagram business linked account",
+    "kind": "custom",
+    "description": "Runs the Instagram business connector against a durable Meta linked-provider binding resolved through auth-backed storage.",
+    "target": "instagram://current-user",
+    "metadata": {
+      "persistence": "/home/alexkahn/alex/absolutejs-rag-vector-example/.absolute/rag-vector-demo-sync-state.json",
+      "schedule": "manual",
+      "provider": "Instagram Business",
+      "accountMode": "live-linked",
+      "liveReady": "Using a durable Instagram business linked-provider binding resolved through auth-backed storage.",
+      "lastTrigger": "manual",
+      "recentRuns": [
+        {
+          "trigger": "manual",
+          "status": "completed",
+          "startedAt": 1776897618693,
+          "finishedAt": 1776897633496,
+          "durationMs": 14803,
+          "documentCount": 1,
+          "chunkCount": 1
+        }
+      ],
+      "linkedConnectorProvider": "instagram",
+      "linkedProviderConfigured": false,
+      "linkedProviderError": "An authenticated user is required to resolve linked Meta bindings",
+      "linkedProviderSelectionMode": "unconfigured"
+    },
+    "status": "completed",
+    "lastSuccessfulSyncAt": 1776897633496,
+    "lastSyncedAt": 1776897633496,
+    "lastSyncDurationMs": 14803,
+    "consecutiveFailures": 0,
+    "documentCount": 1,
+    "chunkCount": 1
   },
   {
     "id": "sync-email-graph",

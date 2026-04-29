@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, mock } from "bun:test";
 
 import { readFileSync } from "node:fs";
 
-import type { DemoActiveRetrievalState, DemoReleaseOpsResponse, SearchFormState } from "../../src/frontend/demo-backends";
+import type {
+  DemoActiveRetrievalState,
+  DemoReleaseOpsResponse,
+  SearchFormState,
+} from "../../src/frontend/demo-backends";
 import {
   buildDemoReleasePanelState,
   loadActiveRetrievalState,
@@ -12,7 +16,11 @@ import {
 
 const originalFetch = globalThis.fetch;
 
-const setFetch = (implementation: (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>) => {
+const setFetch = (
+  implementation: (
+    ...args: Parameters<typeof fetch>
+  ) => ReturnType<typeof fetch>,
+) => {
   globalThis.fetch = mock(implementation) as unknown as typeof fetch;
 };
 
@@ -60,13 +68,17 @@ describe("loadRecentQueries", () => {
   it("returns an empty list for an empty body", async () => {
     setFetch(async () => new Response("", { status: 200 }));
 
-    await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual([]);
+    await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual(
+      [],
+    );
   });
 
   it("returns an empty list for malformed JSON", async () => {
     setFetch(async () => new Response('{"broken":', { status: 200 }));
 
-    await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual([]);
+    await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual(
+      [],
+    );
   });
 
   it("filters invalid entries and caps valid entries", async () => {
@@ -78,7 +90,9 @@ describe("loadRecentQueries", () => {
       { label: "four", state: { ...emptySearchForm, query: "four" } },
       { label: "five", state: { ...emptySearchForm, query: "five" } },
     ];
-    setFetch(async () => new Response(JSON.stringify(payload), { status: 200 }));
+    setFetch(
+      async () => new Response(JSON.stringify(payload), { status: 200 }),
+    );
 
     await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual([
       { label: "one", state: { ...emptySearchForm, query: "one" } },
@@ -93,7 +107,9 @@ describe("loadRecentQueries", () => {
       throw new Error("network down");
     });
 
-    await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual([]);
+    await expect(loadRecentQueries("react", "sqlite-native")).resolves.toEqual(
+      [],
+    );
   });
 });
 
@@ -101,19 +117,27 @@ describe("loadActiveRetrievalState", () => {
   it("returns null for an empty body", async () => {
     setFetch(async () => new Response("", { status: 200 }));
 
-    await expect(loadActiveRetrievalState("react", "sqlite-native")).resolves.toBeNull();
+    await expect(
+      loadActiveRetrievalState("react", "sqlite-native"),
+    ).resolves.toBeNull();
   });
 
   it("returns null for malformed JSON", async () => {
     setFetch(async () => new Response('{"broken":', { status: 200 }));
 
-    await expect(loadActiveRetrievalState("react", "sqlite-native")).resolves.toBeNull();
+    await expect(
+      loadActiveRetrievalState("react", "sqlite-native"),
+    ).resolves.toBeNull();
   });
 
   it("returns the parsed retrieval state for valid JSON", async () => {
-    setFetch(async () => new Response(JSON.stringify(sampleState), { status: 200 }));
+    setFetch(
+      async () => new Response(JSON.stringify(sampleState), { status: 200 }),
+    );
 
-    await expect(loadActiveRetrievalState("react", "sqlite-native")).resolves.toEqual(sampleState);
+    await expect(
+      loadActiveRetrievalState("react", "sqlite-native"),
+    ).resolves.toEqual(sampleState);
   });
 
   it("returns null when fetch rejects", async () => {
@@ -121,10 +145,11 @@ describe("loadActiveRetrievalState", () => {
       throw new Error("network down");
     });
 
-    await expect(loadActiveRetrievalState("react", "sqlite-native")).resolves.toBeNull();
+    await expect(
+      loadActiveRetrievalState("react", "sqlite-native"),
+    ).resolves.toBeNull();
   });
 });
-
 
 describe("buildDemoReleasePanelState", () => {
   it("surfaces active blocker deltas and evidence drills", () => {
@@ -132,7 +157,8 @@ describe("buildDemoReleasePanelState", () => {
       scenario: {
         id: "blocked-multivector",
         label: "Blocked stable lane · multivector",
-        description: "Stable lane is blocked by multivector coverage and collapsed-parent recovery regressions.",
+        description:
+          "Stable lane is blocked by multivector coverage and collapsed-parent recovery regressions.",
         groupKey: "docs-release-multivector",
         laneState: "blocked",
         classification: "multivector",
@@ -141,7 +167,12 @@ describe("buildDemoReleasePanelState", () => {
         retrievalComparisons: {
           activeBaselines: [],
           alerts: [
-            { classification: "multivector", kind: "baseline_gate_failed", message: "multivector collapsed cases delta -1 is below 0", targetRolloutLabel: "stable" },
+            {
+              classification: "multivector",
+              kind: "baseline_gate_failed",
+              message: "multivector collapsed cases delta -1 is below 0",
+              targetRolloutLabel: "stable",
+            },
           ],
           promotionCandidates: [],
           readyToPromoteByLane: [
@@ -197,12 +228,24 @@ describe("buildDemoReleasePanelState", () => {
     const panel = buildDemoReleasePanelState(releaseData);
 
     expect(panel.activeBlockerDeltaSummary).toContain("Passing-rate delta");
-    expect(panel.activeBlockerDeltaLines).toContain("Multivector collapsed delta · -1");
-    expect(panel.runtimePlannerHistorySummary).toContain("No runtime planner regressions");
-    expect(panel.benchmarkSnapshotSummary).toContain("No adaptive native planner benchmark snapshots");
+    expect(panel.activeBlockerDeltaLines).toContain(
+      "Multivector collapsed delta · -1",
+    );
+    expect(panel.runtimePlannerHistorySummary).toContain(
+      "No runtime planner regressions",
+    );
+    expect(panel.benchmarkSnapshotSummary).toContain(
+      "No adaptive native planner benchmark snapshots",
+    );
     expect(panel.releaseEvidenceDrills).toHaveLength(2);
-    expect(panel.releaseEvidenceDrills.find((entry) => entry.classification === "multivector")?.active).toBe(true);
-    expect(panel.releaseEvidenceDrills[0]?.traceExpectation).toContain("Trace expectation");
+    expect(
+      panel.releaseEvidenceDrills.find(
+        (entry) => entry.classification === "multivector",
+      )?.active,
+    ).toBe(true);
+    expect(panel.releaseEvidenceDrills[0]?.traceExpectation).toContain(
+      "Trace expectation",
+    );
   });
 });
 
@@ -225,10 +268,16 @@ describe("demo surface parity smoke", () => {
       expect(content).toContain("Runtime planner history");
       expect(content).toContain("Adaptive planner benchmark");
       expect(content).toContain("Active blocker deltas");
-      expect(content.includes("traceExpectation") || content.includes("Trace expectation")).toBe(true);
+      expect(
+        content.includes("traceExpectation") ||
+          content.includes("Trace expectation"),
+      ).toBe(true);
     }
 
-    const sharedReleaseState = readFileSync(new URL("src/frontend/demo-backends.ts", repoRoot), "utf8");
+    const sharedReleaseState = readFileSync(
+      new URL("src/frontend/demo-backends.ts", repoRoot),
+      "utf8",
+    );
     expect(sharedReleaseState).toContain("General block");
     expect(sharedReleaseState).toContain("Multivector block");
     expect(sharedReleaseState).toContain("Ready");

@@ -1,0 +1,106 @@
+[
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "89adb897-0bf4-4069-a329-679e09f19bac",
+		"policy": {
+			"minAverageF1Delta": 0.01,
+			"minPassingRateDelta": 1,
+			"severity": "fail"
+		},
+		"recordedAt": 1777261463666,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "5ff0c808-3797-4a94-8fa3-64bd48f6038d",
+		"policy": {
+			"minAverageF1Delta": -0.05,
+			"minPassingRateDelta": -5,
+			"severity": "warn"
+		},
+		"recordedAt": 1777261463665,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "9214867e-8a3d-4999-8c84-9ee9e6e0c616",
+		"policy": {
+			"minAverageF1Delta": 0.01,
+			"minPassingRateDelta": 1,
+			"severity": "fail"
+		},
+		"recordedAt": 1777261463665,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "ba4d7dc7-e12d-4339-a553-630c171c89d6",
+		"policy": {
+			"minAverageF1Delta": -0.05,
+			"minPassingRateDelta": -5,
+			"severity": "warn"
+		},
+		"recordedAt": 1777261463659,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "e7a6ea3f-5d3a-43e5-b7f4-f3ae1dfbd63e",
+		"policy": {
+			"minAverageF1Delta": 0.01,
+			"minPassingRateDelta": 1,
+			"severity": "fail"
+		},
+		"recordedAt": 1777261463627,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "1badee25-49ba-4850-a04a-1df8202d0d95",
+		"policy": {
+			"minAverageF1Delta": -0.05,
+			"minPassingRateDelta": -5,
+			"severity": "warn"
+		},
+		"recordedAt": 1777261463627,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "29a06d8f-bb79-4eb3-af69-6f306949a42f",
+		"policy": {
+			"minAverageF1Delta": 0.01,
+			"minPassingRateDelta": 1,
+			"severity": "fail"
+		},
+		"recordedAt": 1777261463618,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "b019c67d-bd31-4060-a4a0-6d38e52ab2df",
+		"policy": {
+			"minAverageF1Delta": -0.05,
+			"minPassingRateDelta": -5,
+			"severity": "warn"
+		},
+		"recordedAt": 1777261463592,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	}
+]

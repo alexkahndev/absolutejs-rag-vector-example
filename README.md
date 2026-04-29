@@ -2,7 +2,7 @@
 
 This demo is pinned to `@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.2 + @absolutejs/rag@0.0.1`.
 
-This example now demonstrates three backend modes in one repo:
+This example now demonstrates four backend modes in one repo:
 
 - `sqlite-native`
   - packaged SQLite `vec0`
@@ -13,6 +13,9 @@ This example now demonstrates three backend modes in one repo:
 - `postgres`
   - PostgreSQL + `pgvector`
   - mode shows as `native_pgvector`
+- `pinecone`
+  - managed Pinecone vector index
+  - reports as `custom` (Pinecone is not in the closed `RAGVectorStoreStatus` backend union)
 
 The frontend stays the same across all six framework pages. The `Backend mode`
 selector swaps the page between explicit backend routes, so the diagnostics and retrieval
@@ -88,6 +91,44 @@ Requirements:
 - PostgreSQL
 - `pgvector` extension available
 - permission to create the extension, or it already enabled
+
+## Use Pinecone
+
+The Pinecone backend is enabled when both `PINECONE_API_KEY` and
+`PINECONE_INDEX_NAME` are set. The package
+(`@absolutejs/absolute-rag-pinecone`) does not auto-provision indexes — create
+the index in the Pinecone console first.
+
+### Create the index
+
+In the Pinecone console (https://app.pinecone.io):
+
+- **Name**: anything (this becomes `PINECONE_INDEX_NAME`)
+- **Dimensions**: `1024` to match the demo's deterministic hash embedder default
+  (override with `PINECONE_DIMENSIONS=<n>` if you create the index at a
+  different dimension; the embedder generates whatever size you ask for)
+- **Metric**: `cosine`
+- **Capacity mode**: serverless is sufficient
+
+### Environment variables
+
+| Variable                  | Required | Notes                                                        |
+| ------------------------- | -------- | ------------------------------------------------------------ |
+| `PINECONE_API_KEY`        | yes      | Account API key from the Pinecone console.                   |
+| `PINECONE_INDEX_NAME`     | yes      | Name of the index you created.                               |
+| `PINECONE_NAMESPACE`      | no       | Logical partition inside the index (default: empty).         |
+| `PINECONE_DIMENSIONS`     | no       | Defaults to `1024`. Must match the index's configured dim.   |
+
+### Run
+
+```bash
+cd ~/alex/absolutejs-rag-vector-example
+PINECONE_API_KEY=... PINECONE_INDEX_NAME=absolute-rag-demo bun dev
+```
+
+Pinecone runs alongside the SQLite/Postgres backends — they don't conflict.
+Each backend has its own `/rag/<mode>/...` route family and its own seeded
+chunks at startup.
 
 ## How To Test
 

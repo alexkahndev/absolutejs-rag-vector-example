@@ -1,0 +1,137 @@
+[
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "1f8a27b0-24a4-4dae-b2d5-fec294e6fce5",
+		"recordedAt": 1777261856523,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "fcf52a7c-bbdf-4851-b676-69abfa58b02b",
+		"recordedAt": 1777261856522,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "0528459b-5a71-40e2-aa0d-e15c4c4c1d58",
+		"recordedAt": 1777261856522,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "e0c5d73f-b74b-4c95-b373-ee19a25781fe",
+		"recordedAt": 1777261856520,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "ed84058c-121b-4c37-a5ad-dac818280eac",
+		"recordedAt": 1777261856519,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "ea432a40-df3a-4879-b1d3-67a7c6310671",
+		"recordedAt": 1777261856518,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "02e2291f-a4be-4172-8884-f039dc4679df",
+		"recordedAt": 1777261856515,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "75e63de3-fdd1-4856-a607-17459b430cf7",
+		"recordedAt": 1777261856510,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "a245f0e7-1acc-4f27-a5de-1574db69659e",
+		"recordedAt": 1777261856508,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "6e5ae57f-ce41-4732-a722-f4dce87c31bd",
+		"recordedAt": 1777261856508,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "4ede8aad-2684-4cc8-9945-33652b6e8685",
+		"recordedAt": 1777261856496,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "2d1d77e1-33b6-4d06-8f6d-047073adc847",
+		"recordedAt": 1777261856489,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "4b424c26-ed29-4a98-9a2c-ba6ac7a453ab",
+		"recordedAt": 1777261856436,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "5200e851-07c1-4d42-baf9-ae3e9a53adb9",
+		"recordedAt": 1777261856435,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	}
+]

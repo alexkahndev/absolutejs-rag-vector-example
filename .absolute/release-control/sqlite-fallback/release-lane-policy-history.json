@@ -1,0 +1,146 @@
+[
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "3fa899d9-0434-4e38-9308-cddfb9d2be38",
+		"recordedAt": 1777261863425,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "69dc2e42-e61f-4179-8f41-8acb8a6029a4",
+		"recordedAt": 1777261863425,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "91dc28df-8784-44c5-aa28-e911b1a0e744",
+		"recordedAt": 1777261863424,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "fd24c3d1-6db5-416c-80ee-8d75ded366ff",
+		"recordedAt": 1777261863423,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "9c490bb7-479d-453f-b04b-b81eab6307aa",
+		"recordedAt": 1777261863423,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "6a6650f2-c047-4f95-9afd-5ccb1e3306e1",
+		"recordedAt": 1777261863423,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "f0b5aa8c-6924-402e-a33e-4a4a0881c634",
+		"recordedAt": 1777261863422,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "47fe2ca1-9750-467e-8eee-dd20980415d3",
+		"recordedAt": 1777261863422,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "eee191f1-b940-4cd9-8d14-386c52ab16f1",
+		"recordedAt": 1777261863421,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "43899436-491e-4f6c-85aa-98209987c2f9",
+		"recordedAt": 1777261863421,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-multivector",
+		"id": "5f46ea99-032e-40cb-afc1-784297cd7294",
+		"recordedAt": 1777261863421,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "d5776e3e-8013-46ac-8f36-c51644dfc67b",
+		"recordedAt": 1777261863420,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "781031e9-add0-4872-af9d-c24ca16879a1",
+		"recordedAt": 1777261863420,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "dc756074-5167-418a-9524-4216c1315936",
+		"recordedAt": 1777261863420,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "6a8f6de2-237c-451d-b878-baf4ff3ec8e3",
+		"recordedAt": 1777261863419,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	}
+]

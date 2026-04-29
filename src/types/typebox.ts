@@ -4,6 +4,7 @@ export const demoBackendModeTypebox = t.Union([
   t.Literal("sqlite-native"),
   t.Literal("sqlite-fallback"),
   t.Literal("postgres"),
+  t.Literal("pinecone"),
 ]);
 
 export const demoBackendModeParamsTypebox = t.Object({

@@ -1,0 +1,80 @@
+[
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "33dc3019-9105-4f4f-891c-87dbfd22e02e",
+		"recordedAt": 1777262688316,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-ready",
+		"id": "33601ef4-efba-4837-8712-e603a4812d5c",
+		"recordedAt": 1777262688316,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "6fd1accb-0724-4529-8ae0-3b9b8f1220f1",
+		"recordedAt": 1777262688315,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"corpusGroupKey": "alpha",
+		"groupKey": "docs-release-multivector",
+		"id": "f59025f9-8e27-43e7-ba49-0d894036aee1",
+		"recordedAt": 1777262688305,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "1cb35596-76d2-453b-9e84-914d705c06f5",
+		"recordedAt": 1777262688304,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-general",
+		"id": "80d54058-23bc-47f8-b57a-3a87bb261cdd",
+		"recordedAt": 1777262688254,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	},
+	{
+		"approvalMaxAgeMs": 86400000,
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "2950c145-4eb9-4a50-b9c9-084991a7e159",
+		"recordedAt": 1777262688254,
+		"requireApprovalBeforePromotion": true,
+		"rolloutLabel": "stable",
+		"scope": "group_rollout_label"
+	},
+	{
+		"changeKind": "snapshot",
+		"groupKey": "docs-release-completed",
+		"id": "d00aaa52-c845-48e4-86d3-45e30da2cf53",
+		"recordedAt": 1777262688247,
+		"requireApprovalBeforePromotion": false,
+		"rolloutLabel": "canary",
+		"scope": "group_rollout_label"
+	}
+]

@@ -24,7 +24,11 @@ const parsePostgresSocket = (connectionString: string) => {
   return { hostname, port };
 };
 
-const waitForSocket = async (hostname: string, port: number, timeoutMs: number) => {
+const waitForSocket = async (
+  hostname: string,
+  port: number,
+  timeoutMs: number,
+) => {
   const startedAt = Date.now();
   let lastError: unknown = null;
 
@@ -47,7 +51,11 @@ const waitForSocket = async (hostname: string, port: number, timeoutMs: number) 
 
         socket.setTimeout(1_500);
         socket.once("connect", () => finish(resolve));
-        socket.once("timeout", () => finish(() => reject(new Error("Timed out waiting for PostgreSQL socket"))));
+        socket.once("timeout", () =>
+          finish(() =>
+            reject(new Error("Timed out waiting for PostgreSQL socket")),
+          ),
+        );
         socket.once("error", (error) => finish(() => reject(error)));
         socket.connect(port, hostname);
       });
@@ -59,8 +67,13 @@ const waitForSocket = async (hostname: string, port: number, timeoutMs: number) 
     }
   }
 
-  const reason = lastError instanceof Error ? lastError.message : String(lastError ?? "unknown error");
-  throw new Error(`PostgreSQL did not become ready at ${hostname}:${port} within ${timeoutMs}ms (${reason})`);
+  const reason =
+    lastError instanceof Error
+      ? lastError.message
+      : String(lastError ?? "unknown error");
+  throw new Error(
+    `PostgreSQL did not become ready at ${hostname}:${port} within ${timeoutMs}ms (${reason})`,
+  );
 };
 
 const stopPostgres = async () => {

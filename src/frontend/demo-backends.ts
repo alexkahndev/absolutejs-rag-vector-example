@@ -74,11 +74,25 @@ import {
 } from "@absolutejs/rag/client/ui";
 
 export type RagDocumentKind = "seed" | "custom";
-export type DemoBackendMode = "sqlite-native" | "sqlite-fallback" | "postgres";
+export type DemoBackendMode =
+  | "sqlite-native"
+  | "sqlite-fallback"
+  | "postgres"
+  | "pinecone";
 export type DemoReleaseWorkspace = "alpha" | "beta";
-export type DemoFrameworkId = "react" | "svelte" | "vue" | "angular" | "html" | "htmx";
+export type DemoFrameworkId =
+  | "react"
+  | "svelte"
+  | "vue"
+  | "angular"
+  | "html"
+  | "htmx";
 export type DemoContentFormat = "text" | "markdown" | "html";
-export type DemoChunkingStrategy = "paragraphs" | "sentences" | "fixed" | "source_aware";
+export type DemoChunkingStrategy =
+  | "paragraphs"
+  | "sentences"
+  | "fixed"
+  | "source_aware";
 
 export type DemoBackendDescriptor = {
   id: DemoBackendMode;
@@ -268,7 +282,13 @@ export type AddFormState = {
   text: string;
 };
 
-export type DemoBenchmarkCategory = "base" | "transformed" | "mixed" | "competition" | "rerank" | "routing";
+export type DemoBenchmarkCategory =
+  | "base"
+  | "transformed"
+  | "mixed"
+  | "competition"
+  | "rerank"
+  | "routing";
 
 export type DemoEvaluationPreset = {
   id: string;
@@ -307,15 +327,24 @@ export const demoReleaseWorkspaces: Array<{
   label: string;
   description: string;
 }> = [
-  { id: "alpha", label: "Alpha workspace", description: "Shows the alpha corpus group inside the shared release-control group." },
-  { id: "beta", label: "Beta workspace", description: "Shows the beta corpus group inside the same shared release-control group." },
+  {
+    id: "alpha",
+    label: "Alpha workspace",
+    description:
+      "Shows the alpha corpus group inside the shared release-control group.",
+  },
+  {
+    id: "beta",
+    label: "Beta workspace",
+    description:
+      "Shows the beta corpus group inside the same shared release-control group.",
+  },
 ];
 
 export type DemoAIModelCatalogResponse = {
   defaultModelKey: string | null;
   models: DemoAIModelOption[];
 };
-
 
 export type DemoReleaseAction = {
   id: string;
@@ -330,7 +359,9 @@ export type DemoReleaseAction = {
   tone?: "primary" | "neutral" | "danger";
 };
 
-type DemoReleaseClassification = NonNullable<RAGRetrievalReleaseIncidentRecord["classification"]>;
+type DemoReleaseClassification = NonNullable<
+  RAGRetrievalReleaseIncidentRecord["classification"]
+>;
 
 export type DemoRetrievalQualityResponse = {
   suite: RAGEvaluationSuite;
@@ -339,7 +370,10 @@ export type DemoRetrievalQualityResponse = {
   rerankerComparison: RAGRerankerComparison;
   groundingEvaluation: RAGAnswerGroundingEvaluationResponse;
   providerGroundingComparison: DemoGroundingProviderComparison | null;
-  providerGroundingHistories: Record<string, RAGAnswerGroundingEvaluationHistory>;
+  providerGroundingHistories: Record<
+    string,
+    RAGAnswerGroundingEvaluationHistory
+  >;
   providerGroundingDifficultyHistory?: RAGAnswerGroundingCaseDifficultyHistory;
   retrievalHistories: Record<string, RAGEvaluationHistory>;
   rerankerHistories: Record<string, RAGEvaluationHistory>;
@@ -668,8 +702,11 @@ const formatCorpusGroupLabel = (corpusGroupKey?: string | null) =>
 export const buildDemoReleasePanelState = (
   releaseData: DemoReleaseOpsResponse | null | undefined,
 ) => {
-  const activeBaselines = releaseData?.releaseStatus?.retrievalComparisons?.activeBaselines ?? [];
-  const formatGovernanceClassificationLabel = (classification?: DemoReleaseClassification) =>
+  const activeBaselines =
+    releaseData?.releaseStatus?.retrievalComparisons?.activeBaselines ?? [];
+  const formatGovernanceClassificationLabel = (
+    classification?: DemoReleaseClassification,
+  ) =>
     classification === "multivector"
       ? "multivector regression"
       : classification === "runtime"
@@ -677,50 +714,97 @@ export const buildDemoReleasePanelState = (
         : classification === "general"
           ? "general regression"
           : undefined;
-  const laneReadiness = (releaseData?.releaseStatus?.retrievalComparisons?.readyToPromoteByLane ?? []).map((entry) => ({
+  const laneReadiness = (
+    releaseData?.releaseStatus?.retrievalComparisons?.readyToPromoteByLane ?? []
+  ).map((entry) => ({
     ...entry,
-    classificationLabel: formatGovernanceClassificationLabel(entry.classification),
+    classificationLabel: formatGovernanceClassificationLabel(
+      entry.classification,
+    ),
   }));
-  const releaseRecommendations =
-    (releaseData?.releaseStatus?.retrievalComparisons?.releaseLaneRecommendations ?? []).map((entry) => ({
-      ...entry,
-      classificationLabel: formatGovernanceClassificationLabel(entry.classification),
-      reasons: entry.reasons ?? entry.recommendedActionReasons ?? [],
-      remediationActions: entry.remediationActions ?? [],
-    }));
-  const releaseCandidates =
-    (releaseData?.releaseStatus?.retrievalComparisons?.promotionCandidates ?? []).map((entry) => ({
-      ...entry,
-      classification: entry.reasons?.some((reason) => reason.toLowerCase().includes("multivector")) ? "multivector" : "general",
-      classificationLabel: formatGovernanceClassificationLabel(
-        entry.reasons?.some((reason) => reason.toLowerCase().includes("multivector")) ? "multivector" : "general",
-      ),
-    }));
-  const releaseAlerts = (releaseData?.releaseStatus?.retrievalComparisons?.alerts ?? []).map((entry) => ({
+  const releaseRecommendations = (
+    releaseData?.releaseStatus?.retrievalComparisons
+      ?.releaseLaneRecommendations ?? []
+  ).map((entry) => ({
     ...entry,
-    classificationLabel: formatGovernanceClassificationLabel(entry.classification),
+    classificationLabel: formatGovernanceClassificationLabel(
+      entry.classification,
+    ),
+    reasons: entry.reasons ?? entry.recommendedActionReasons ?? [],
+    remediationActions: entry.remediationActions ?? [],
   }));
-  const releasePolicyHistory = releaseData?.releaseStatus?.retrievalComparisons?.recentReleaseLanePolicyHistory ?? [];
-  const baselineGatePolicyHistory = releaseData?.releaseStatus?.retrievalComparisons?.recentBaselineGatePolicyHistory ?? [];
-  const releaseEscalationPolicyHistory = releaseData?.releaseStatus?.retrievalComparisons?.recentReleaseLaneEscalationPolicyHistory ?? [];
-  const handoffPolicyHistory = releaseData?.releaseStatus?.retrievalComparisons?.recentHandoffAutoCompletePolicyHistory ?? [];
+  const releaseCandidates = (
+    releaseData?.releaseStatus?.retrievalComparisons?.promotionCandidates ?? []
+  ).map((entry) => ({
+    ...entry,
+    classification: entry.reasons?.some((reason) =>
+      reason.toLowerCase().includes("multivector"),
+    )
+      ? "multivector"
+      : "general",
+    classificationLabel: formatGovernanceClassificationLabel(
+      entry.reasons?.some((reason) =>
+        reason.toLowerCase().includes("multivector"),
+      )
+        ? "multivector"
+        : "general",
+    ),
+  }));
+  const releaseAlerts = (
+    releaseData?.releaseStatus?.retrievalComparisons?.alerts ?? []
+  ).map((entry) => ({
+    ...entry,
+    classificationLabel: formatGovernanceClassificationLabel(
+      entry.classification,
+    ),
+  }));
+  const releasePolicyHistory =
+    releaseData?.releaseStatus?.retrievalComparisons
+      ?.recentReleaseLanePolicyHistory ?? [];
+  const baselineGatePolicyHistory =
+    releaseData?.releaseStatus?.retrievalComparisons
+      ?.recentBaselineGatePolicyHistory ?? [];
+  const releaseEscalationPolicyHistory =
+    releaseData?.releaseStatus?.retrievalComparisons
+      ?.recentReleaseLaneEscalationPolicyHistory ?? [];
+  const handoffPolicyHistory =
+    releaseData?.releaseStatus?.retrievalComparisons
+      ?.recentHandoffAutoCompletePolicyHistory ?? [];
   const handoffs = releaseData?.handoffStatus?.handoffs ?? [];
   const handoffDecisions = releaseData?.handoffStatus?.decisions ?? [];
   const handoffAutoComplete = releaseData?.handoffStatus?.autoComplete ?? [];
-  const handoffIncidents = (releaseData?.handoffStatus?.incidents ?? []).filter((entry) => entry.targetRolloutLabel === "stable");
-  const handoffIncidentHistory = (releaseData?.handoffStatus?.recentHistory ?? []).filter((entry) => entry.targetRolloutLabel === "stable");
-  const stableBaseline = activeBaselines.find((entry) => entry.rolloutLabel === "stable");
-  const canaryBaseline = activeBaselines.find((entry) => entry.rolloutLabel === "canary");
-  const stableReadiness = laneReadiness.find((entry) => entry.targetRolloutLabel === "stable");
-  const canaryReadiness = laneReadiness.find((entry) => entry.targetRolloutLabel === "canary");
-  const stableHandoff = handoffs.find((entry) => entry.targetRolloutLabel === "stable");
+  const handoffIncidents = (releaseData?.handoffStatus?.incidents ?? []).filter(
+    (entry) => entry.targetRolloutLabel === "stable",
+  );
+  const handoffIncidentHistory = (
+    releaseData?.handoffStatus?.recentHistory ?? []
+  ).filter((entry) => entry.targetRolloutLabel === "stable");
+  const stableBaseline = activeBaselines.find(
+    (entry) => entry.rolloutLabel === "stable",
+  );
+  const canaryBaseline = activeBaselines.find(
+    (entry) => entry.rolloutLabel === "canary",
+  );
+  const stableReadiness = laneReadiness.find(
+    (entry) => entry.targetRolloutLabel === "stable",
+  );
+  const canaryReadiness = laneReadiness.find(
+    (entry) => entry.targetRolloutLabel === "canary",
+  );
+  const stableHandoff = handoffs.find(
+    (entry) => entry.targetRolloutLabel === "stable",
+  );
   const stableHandoffDecision = handoffDecisions
     .filter((entry) => entry.targetRolloutLabel === "stable")
     .sort((left, right) => (right.decidedAt ?? 0) - (left.decidedAt ?? 0))[0];
-  const stableHandoffAutoComplete = handoffAutoComplete.find((entry) => entry.targetRolloutLabel === "stable");
-  const stableHandoffDrift = (releaseData?.driftStatus?.handoffDriftCountsByLane ?? [])
-    .find((entry) => entry.targetRolloutLabel === "stable");
-  const stableHandoffIncidentSummary = releaseData?.handoffStatus?.incidentSummary;
+  const stableHandoffAutoComplete = handoffAutoComplete.find(
+    (entry) => entry.targetRolloutLabel === "stable",
+  );
+  const stableHandoffDrift = (
+    releaseData?.driftStatus?.handoffDriftCountsByLane ?? []
+  ).find((entry) => entry.targetRolloutLabel === "stable");
+  const stableHandoffIncidentSummary =
+    releaseData?.handoffStatus?.incidentSummary;
   const stableHandoffIncidentSummaryLabel = stableHandoffIncidentSummary
     ? `${stableHandoffIncidentSummary.openCount ?? 0} open · ${stableHandoffIncidentSummary.acknowledgedOpenCount ?? 0} acknowledged · ${stableHandoffIncidentSummary.resolvedCount ?? 0} resolved`
     : "No handoff incidents";
@@ -730,101 +814,163 @@ export const buildDemoReleasePanelState = (
 
   const policyHistoryEntries = [
     ...releasePolicyHistory.map((entry, index) => ({
-      id: `release-policy-${entry.rolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}` ,
+      id: `release-policy-${entry.rolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}`,
       recordedAt: entry.recordedAt ?? 0,
-      title: `release ${entry.rolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}` ,
+      title: `release ${entry.rolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}`,
       detail: [
-        entry.requireApprovalBeforePromotion === true ? "approval required" : entry.requireApprovalBeforePromotion === false ? "approval open" : undefined,
-        typeof entry.approvalMaxAgeMs === "number" ? `ttl ${(entry.approvalMaxAgeMs / 3600000).toFixed(entry.approvalMaxAgeMs % 3600000 === 0 ? 0 : 1)}h` : undefined,
+        entry.requireApprovalBeforePromotion === true
+          ? "approval required"
+          : entry.requireApprovalBeforePromotion === false
+            ? "approval open"
+            : undefined,
+        typeof entry.approvalMaxAgeMs === "number"
+          ? `ttl ${(entry.approvalMaxAgeMs / 3600000).toFixed(entry.approvalMaxAgeMs % 3600000 === 0 ? 0 : 1)}h`
+          : undefined,
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.recordedAt ? formatDate(entry.recordedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
     ...baselineGatePolicyHistory.map((entry, index) => ({
-      id: `gate-policy-${entry.rolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}` ,
+      id: `gate-policy-${entry.rolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}`,
       recordedAt: entry.recordedAt ?? 0,
-      title: `gate ${entry.rolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}` ,
+      title: `gate ${entry.rolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}`,
       detail: [
         entry.policy?.severity ? `${entry.policy.severity} gate` : undefined,
-        typeof entry.policy?.minAverageF1Delta === "number" ? `f1 ${entry.policy.minAverageF1Delta}` : undefined,
-        typeof entry.policy?.minPassingRateDelta === "number" ? `pass ${entry.policy.minPassingRateDelta}` : undefined,
+        typeof entry.policy?.minAverageF1Delta === "number"
+          ? `f1 ${entry.policy.minAverageF1Delta}`
+          : undefined,
+        typeof entry.policy?.minPassingRateDelta === "number"
+          ? `pass ${entry.policy.minPassingRateDelta}`
+          : undefined,
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.recordedAt ? formatDate(entry.recordedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
     ...releaseEscalationPolicyHistory.map((entry, index) => ({
-      id: `escalation-policy-${entry.targetRolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}` ,
+      id: `escalation-policy-${entry.targetRolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}`,
       recordedAt: entry.recordedAt ?? 0,
-      title: `escalation ${entry.targetRolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}` ,
+      title: `escalation ${entry.targetRolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}`,
       detail: [
-        entry.openIncidentSeverity ? `open ${entry.openIncidentSeverity}` : undefined,
-        entry.gateFailureSeverity ? `gate ${entry.gateFailureSeverity}` : undefined,
+        entry.openIncidentSeverity
+          ? `open ${entry.openIncidentSeverity}`
+          : undefined,
+        entry.gateFailureSeverity
+          ? `gate ${entry.gateFailureSeverity}`
+          : undefined,
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.recordedAt ? formatDate(entry.recordedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
     ...handoffPolicyHistory.map((entry, index) => ({
-      id: `handoff-policy-${entry.targetRolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}` ,
+      id: `handoff-policy-${entry.targetRolloutLabel ?? "lane"}-${entry.recordedAt ?? index}-${index}`,
       recordedAt: entry.recordedAt ?? 0,
-      title: `handoff ${entry.targetRolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}` ,
+      title: `handoff ${entry.targetRolloutLabel ?? "lane"} · ${entry.changeKind ?? "snapshot"}`,
       detail: [
         entry.enabled ? "enabled" : "disabled",
-        typeof entry.maxApprovedDecisionAgeMs === "number" ? `ttl ${(entry.maxApprovedDecisionAgeMs / 3600000).toFixed(entry.maxApprovedDecisionAgeMs % 3600000 === 0 ? 0 : 1)}h` : undefined,
+        typeof entry.maxApprovedDecisionAgeMs === "number"
+          ? `ttl ${(entry.maxApprovedDecisionAgeMs / 3600000).toFixed(entry.maxApprovedDecisionAgeMs % 3600000 === 0 ? 0 : 1)}h`
+          : undefined,
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.recordedAt ? formatDate(entry.recordedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
   ]
     .filter((entry) => entry.recordedAt > 0)
     .sort((left, right) => right.recordedAt - left.recordedAt)
     .slice(0, 6);
-  const policyHistorySummary = policyHistoryEntries.length > 0
-    ? `${policyHistoryEntries.length} recent record${policyHistoryEntries.length === 1 ? "" : "s"}`
-    : "No policy history recorded yet.";
+  const policyHistorySummary =
+    policyHistoryEntries.length > 0
+      ? `${policyHistoryEntries.length} recent record${policyHistoryEntries.length === 1 ? "" : "s"}`
+      : "No policy history recorded yet.";
 
-  const recentIncidents = (releaseData?.incidentStatus?.recentIncidents ?? []).map((entry) => ({
+  const recentIncidents = (
+    releaseData?.incidentStatus?.recentIncidents ?? []
+  ).map((entry) => ({
     ...entry,
-    classificationLabel: formatGovernanceClassificationLabel(entry.classification),
+    classificationLabel: formatGovernanceClassificationLabel(
+      entry.classification,
+    ),
   }));
-  const incidentClassificationSummary = releaseData?.incidentStatus?.incidentClassificationSummary
-    ?? {
-      openGeneralCount: recentIncidents.filter((entry) => entry.status === "open" && entry.classification !== "multivector").length,
-      openMultiVectorCount: recentIncidents.filter((entry) => entry.status === "open" && entry.classification === "multivector").length,
-      resolvedGeneralCount: recentIncidents.filter((entry) => entry.status === "resolved" && entry.classification !== "multivector").length,
-      resolvedMultiVectorCount: recentIncidents.filter((entry) => entry.status === "resolved" && entry.classification === "multivector").length,
-      totalGeneralCount: recentIncidents.filter((entry) => entry.classification !== "multivector").length,
-      totalMultiVectorCount: recentIncidents.filter((entry) => entry.classification === "multivector").length,
-    };
+  const incidentClassificationSummary = releaseData?.incidentStatus
+    ?.incidentClassificationSummary ?? {
+    openGeneralCount: recentIncidents.filter(
+      (entry) =>
+        entry.status === "open" && entry.classification !== "multivector",
+    ).length,
+    openMultiVectorCount: recentIncidents.filter(
+      (entry) =>
+        entry.status === "open" && entry.classification === "multivector",
+    ).length,
+    resolvedGeneralCount: recentIncidents.filter(
+      (entry) =>
+        entry.status === "resolved" && entry.classification !== "multivector",
+    ).length,
+    resolvedMultiVectorCount: recentIncidents.filter(
+      (entry) =>
+        entry.status === "resolved" && entry.classification === "multivector",
+    ).length,
+    totalGeneralCount: recentIncidents.filter(
+      (entry) => entry.classification !== "multivector",
+    ).length,
+    totalMultiVectorCount: recentIncidents.filter(
+      (entry) => entry.classification === "multivector",
+    ).length,
+  };
   const incidentSummary = releaseData?.incidentStatus?.incidentSummary;
   const incidentSummaryLabel = incidentSummary
     ? `${incidentSummary.openCount} open · ${incidentSummary.acknowledgedOpenCount} acknowledged · ${incidentSummary.resolvedCount ?? 0} resolved${incidentClassificationSummary.totalMultiVectorCount > 0 ? ` · ${incidentClassificationSummary.totalMultiVectorCount} multivector` : ""}`
     : "No release incidents";
 
   const actions = releaseData?.actions ?? [];
-  const handoffActions = actions.filter((entry) => entry.id.includes("handoff"));
-  const releaseActions = actions.filter((entry) => !entry.id.includes("handoff"));
-  const primaryReleaseActions = releaseActions.filter((entry) =>
-    entry.id !== "inspect-release-status" && entry.id !== "inspect-release-drift"
+  const handoffActions = actions.filter((entry) =>
+    entry.id.includes("handoff"),
   );
-  const secondaryReleaseActions = releaseActions.filter((entry) =>
-    entry.id === "inspect-release-status" || entry.id === "inspect-release-drift"
+  const releaseActions = actions.filter(
+    (entry) => !entry.id.includes("handoff"),
+  );
+  const primaryReleaseActions = releaseActions.filter(
+    (entry) =>
+      entry.id !== "inspect-release-status" &&
+      entry.id !== "inspect-release-drift",
+  );
+  const secondaryReleaseActions = releaseActions.filter(
+    (entry) =>
+      entry.id === "inspect-release-status" ||
+      entry.id === "inspect-release-drift",
   );
   const scenarioSwitchActions = {
-    blockedGeneral: actions.find((entry) => entry.id === "switch-to-blocked-general-scenario"),
-    blockedMultivector: actions.find((entry) => entry.id === "switch-to-blocked-multivector-scenario"),
+    blockedGeneral: actions.find(
+      (entry) => entry.id === "switch-to-blocked-general-scenario",
+    ),
+    blockedMultivector: actions.find(
+      (entry) => entry.id === "switch-to-blocked-multivector-scenario",
+    ),
     ready: actions.find((entry) => entry.id === "switch-to-ready-scenario"),
-    completed: actions.find((entry) => entry.id === "switch-to-completed-scenario"),
+    completed: actions.find(
+      (entry) => entry.id === "switch-to-completed-scenario",
+    ),
   };
   const recentReleaseDecisions = releaseData?.recentReleaseDecisions ?? [];
-  const recentReleaseRuns = releaseData?.releaseStatus?.retrievalComparisons?.recentRuns ?? [];
+  const recentReleaseRuns =
+    releaseData?.releaseStatus?.retrievalComparisons?.recentRuns ?? [];
   const activeComparisonRun = recentReleaseRuns[0];
   const activeCorpusGroupKey =
     releaseData?.releaseStatus?.retrievalComparisons?.latest?.corpusGroupKey ??
     activeBaselines[0]?.corpusGroupKey ??
     recentReleaseDecisions[0]?.corpusGroupKey ??
     recentReleaseRuns[0]?.corpusGroupKey;
-  const recentIncidentRemediationDecisions = releaseData?.remediationStatus?.recentIncidentRemediationDecisions ?? [];
-  const remediationSummary = releaseData?.remediationStatus?.incidentRemediationExecutionSummary;
+  const recentIncidentRemediationDecisions =
+    releaseData?.remediationStatus?.recentIncidentRemediationDecisions ?? [];
+  const remediationSummary =
+    releaseData?.remediationStatus?.incidentRemediationExecutionSummary;
 
   const auditSurfaceEntries = [
     ...activeBaselines.slice(0, 2).map((entry, index) => ({
@@ -835,7 +981,9 @@ export const buildDemoReleasePanelState = (
         entry.label,
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.approvedAt ? formatDate(entry.approvedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
     ...recentReleaseDecisions.slice(0, 2).map((entry, index) => ({
       id: `audit-decision-${entry.targetRolloutLabel ?? "lane"}-${entry.decidedAt ?? index}`,
@@ -844,7 +992,9 @@ export const buildDemoReleasePanelState = (
         entry.notes,
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.decidedAt ? formatDate(entry.decidedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
     ...recentReleaseRuns.slice(0, 2).map((entry, index) => ({
       id: `audit-history-${entry.groupKey ?? "group"}-${entry.finishedAt ?? index}`,
@@ -852,19 +1002,24 @@ export const buildDemoReleasePanelState = (
       detail: [
         formatCorpusGroupLabel(entry.corpusGroupKey),
         entry.finishedAt ? formatDate(entry.finishedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     })),
     ...recentIncidentRemediationDecisions.slice(0, 2).map((entry, index) => ({
       id: `audit-remediation-${entry.remediationKind ?? "decision"}-${entry.decidedAt ?? index}`,
       title: `remediation ${(entry.remediationKind ?? "decision").replaceAll("_", " ")} · ${entry.status ?? "recorded"}`,
-      detail: [
-        entry.decidedAt ? formatDate(entry.decidedAt) : undefined,
-      ].filter(Boolean).join(" · "),
+      detail: [entry.decidedAt ? formatDate(entry.decidedAt) : undefined]
+        .filter(Boolean)
+        .join(" · "),
     })),
-  ].filter((entry) => entry.detail || entry.title).slice(0, 8);
-  const auditSurfaceSummary = auditSurfaceEntries.length > 0
-    ? `${auditSurfaceEntries.length} audit record${auditSurfaceEntries.length === 1 ? "" : "s"}`
-    : "No audit surfaces recorded yet.";
+  ]
+    .filter((entry) => entry.detail || entry.title)
+    .slice(0, 8);
+  const auditSurfaceSummary =
+    auditSurfaceEntries.length > 0
+      ? `${auditSurfaceEntries.length} audit record${auditSurfaceEntries.length === 1 ? "" : "s"}`
+      : "No audit surfaces recorded yet.";
 
   const pollingSurfaceEntries = [
     {
@@ -877,7 +1032,8 @@ export const buildDemoReleasePanelState = (
     {
       id: "poll-release-remediations",
       title: "GET /status/release/remediations",
-      detail: releaseData?.remediationStatus?.incidentRemediationExecutionSummary
+      detail: releaseData?.remediationStatus
+        ?.incidentRemediationExecutionSummary
         ? `${releaseData.remediationStatus.incidentRemediationExecutionSummary.guardrailBlockedCount} blocked · ${releaseData.remediationStatus.incidentRemediationExecutionSummary.replayCount} replays · ${(releaseData.remediationStatus.recentIncidentRemediationExecutions ?? []).length} executions`
         : `${(releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? []).length} executions`,
     },
@@ -892,28 +1048,36 @@ export const buildDemoReleasePanelState = (
   const latestReleaseDecision = recentReleaseDecisions
     .slice()
     .sort((left, right) => (right.decidedAt ?? 0) - (left.decidedAt ?? 0))[0];
-  const releaseDecisionHeadline = recentReleaseDecisions.length > 0
-    ? recentReleaseDecisions
-        .slice(0, 2)
-        .map((entry) =>
-          `${entry.targetRolloutLabel ?? "lane"} ${(
-            entry.kind ?? "decision"
-          ).replaceAll("_", " ")}`,
-        )
-        .join(" · ")
-    : "No release decisions recorded yet.";
+  const releaseDecisionHeadline =
+    recentReleaseDecisions.length > 0
+      ? recentReleaseDecisions
+          .slice(0, 2)
+          .map(
+            (entry) =>
+              `${entry.targetRolloutLabel ?? "lane"} ${(
+                entry.kind ?? "decision"
+              ).replaceAll("_", " ")}`,
+          )
+          .join(" · ")
+      : "No release decisions recorded yet.";
   const releaseHeroMeta = [
     releaseData?.scenario?.description,
     formatCorpusGroupLabel(activeCorpusGroupKey),
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const releaseScopeNote = [
-    releaseData?.scenario?.groupKey ? `Shared release group ${releaseData.scenario.groupKey}` : undefined,
+    releaseData?.scenario?.groupKey
+      ? `Shared release group ${releaseData.scenario.groupKey}`
+      : undefined,
     releaseData?.workspace?.corpusGroupKey
       ? `active corpus group ${releaseData.workspace.corpusGroupKey}`
       : activeCorpusGroupKey
         ? `active corpus group ${activeCorpusGroupKey}`
         : undefined,
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const handoffStateLabel =
     stableHandoffDecision?.kind === "complete"
       ? "completed"
@@ -936,22 +1100,37 @@ export const buildDemoReleasePanelState = (
             : "muted";
 
   const scenarioId = releaseData?.scenario?.id ?? "blocked-multivector";
-  const releaseHero = stableHandoffDecision?.kind === "complete"
-    ? "Canary handoff completed into the stable lane."
-    : stableReadiness?.ready
-      ? "Stable lane is ready to promote from the current candidate."
-      : stableReadiness?.reasons?.[0] ?? canaryReadiness?.reasons?.[0] ?? "Release control is tracking the current retrieval rollout state.";
+  const releaseHero =
+    stableHandoffDecision?.kind === "complete"
+      ? "Canary handoff completed into the stable lane."
+      : stableReadiness?.ready
+        ? "Stable lane is ready to promote from the current candidate."
+        : (stableReadiness?.reasons?.[0] ??
+          canaryReadiness?.reasons?.[0] ??
+          "Release control is tracking the current retrieval rollout state.");
   const topRecommendation =
-    releaseRecommendations.find((entry) => entry.targetRolloutLabel === "stable")
-    ?? releaseRecommendations.find((entry) => entry.targetRolloutLabel === "canary")
-    ?? releaseRecommendations[0];
-  const stableBlockedCandidateSummary = !stableReadiness?.ready && stableReadiness?.candidateRetrievalId
-    ? `${stableReadiness.candidateRetrievalId} is blocked for stable${stableReadiness.reasons?.[0] ? ` · ${stableReadiness.reasons[0]}` : ""}`
-    : undefined;
+    releaseRecommendations.find(
+      (entry) => entry.targetRolloutLabel === "stable",
+    ) ??
+    releaseRecommendations.find(
+      (entry) => entry.targetRolloutLabel === "canary",
+    ) ??
+    releaseRecommendations[0];
+  const stableBlockedCandidateSummary =
+    !stableReadiness?.ready && stableReadiness?.candidateRetrievalId
+      ? `${stableReadiness.candidateRetrievalId} is blocked for stable${stableReadiness.reasons?.[0] ? ` · ${stableReadiness.reasons[0]}` : ""}`
+      : undefined;
 
-  const scenarioClassification = releaseData?.scenario?.classification
-    ?? (incidentClassificationSummary.totalMultiVectorCount > 0 ? "multivector" : incidentClassificationSummary.totalGeneralCount > 0 ? "general" : undefined);
-  const scenarioClassificationLabel = formatGovernanceClassificationLabel(scenarioClassification);
+  const scenarioClassification =
+    releaseData?.scenario?.classification ??
+    (incidentClassificationSummary.totalMultiVectorCount > 0
+      ? "multivector"
+      : incidentClassificationSummary.totalGeneralCount > 0
+        ? "general"
+        : undefined);
+  const scenarioClassificationLabel = formatGovernanceClassificationLabel(
+    scenarioClassification,
+  );
   const incidentClassificationDetailLines = [
     `Open multivector incidents · ${incidentClassificationSummary.openMultiVectorCount}`,
     `Open general incidents · ${incidentClassificationSummary.openGeneralCount}`,
@@ -959,20 +1138,30 @@ export const buildDemoReleasePanelState = (
     `Resolved general incidents · ${incidentClassificationSummary.resolvedGeneralCount}`,
   ];
   const policyHistoryDetailLines = [
-    scenarioClassificationLabel ? `Current blocker class · ${scenarioClassificationLabel}` : undefined,
+    scenarioClassificationLabel
+      ? `Current blocker class · ${scenarioClassificationLabel}`
+      : undefined,
     scenarioClassification === "multivector"
       ? "Policy focus · protect multivector collapsed-parent and variant-hit coverage before stable promotion."
       : scenarioClassification === "general"
         ? "Policy focus · protect passing-rate and gate regressions before stable promotion."
         : undefined,
-    stableReadiness?.reasons?.[0] ? `Current gate reason · ${stableReadiness.reasons[0]}` : undefined,
-    releaseAlerts[0]?.message ? `Latest alert · ${releaseAlerts[0].message}` : undefined,
+    stableReadiness?.reasons?.[0]
+      ? `Current gate reason · ${stableReadiness.reasons[0]}`
+      : undefined,
+    releaseAlerts[0]?.message
+      ? `Latest alert · ${releaseAlerts[0].message}`
+      : undefined,
   ].filter((entry): entry is string => Boolean(entry));
-  const latestRemediationExecutionLabel = (releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? [])
+  const latestRemediationExecutionLabel = (
+    releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? []
+  )
     .slice()
     .sort((left, right) => (right.executedAt ?? 0) - (left.executedAt ?? 0))[0];
   const remediationDetailLines = [
-    scenarioClassificationLabel ? `Remediation track · ${scenarioClassificationLabel}` : undefined,
+    scenarioClassificationLabel
+      ? `Remediation track · ${scenarioClassificationLabel}`
+      : undefined,
     scenarioClassification === "multivector"
       ? "Operator path · inspect multivector coverage deltas, variant-hit traces, and collapsed-parent recovery before promotion."
       : scenarioClassification === "general"
@@ -986,65 +1175,90 @@ export const buildDemoReleasePanelState = (
       : undefined,
   ].filter((entry): entry is string => Boolean(entry));
   const activeBlockerDeltaLines = [
-    typeof activeComparisonRun?.decisionSummary?.delta?.passingRateDelta === "number"
+    typeof activeComparisonRun?.decisionSummary?.delta?.passingRateDelta ===
+    "number"
       ? `Passing-rate delta · ${activeComparisonRun.decisionSummary.delta.passingRateDelta >= 0 ? "+" : ""}${activeComparisonRun.decisionSummary.delta.passingRateDelta}`
       : undefined,
-    typeof activeComparisonRun?.decisionSummary?.delta?.averageF1Delta === "number"
+    typeof activeComparisonRun?.decisionSummary?.delta?.averageF1Delta ===
+    "number"
       ? `Average F1 delta · ${activeComparisonRun.decisionSummary.delta.averageF1Delta >= 0 ? "+" : ""}${activeComparisonRun.decisionSummary.delta.averageF1Delta.toFixed(2)}`
       : undefined,
-    typeof activeComparisonRun?.decisionSummary?.delta?.elapsedMsDelta === "number"
+    typeof activeComparisonRun?.decisionSummary?.delta?.elapsedMsDelta ===
+    "number"
       ? `Latency delta · ${activeComparisonRun.decisionSummary.delta.elapsedMsDelta >= 0 ? "+" : ""}${activeComparisonRun.decisionSummary.delta.elapsedMsDelta}ms`
       : undefined,
-    typeof activeComparisonRun?.decisionSummary?.delta?.multiVectorCollapsedCasesDelta === "number"
+    typeof activeComparisonRun?.decisionSummary?.delta
+      ?.multiVectorCollapsedCasesDelta === "number"
       ? `Multivector collapsed delta · ${activeComparisonRun.decisionSummary.delta.multiVectorCollapsedCasesDelta >= 0 ? "+" : ""}${activeComparisonRun.decisionSummary.delta.multiVectorCollapsedCasesDelta}`
       : undefined,
-    typeof activeComparisonRun?.decisionSummary?.delta?.multiVectorLexicalHitCasesDelta === "number"
+    typeof activeComparisonRun?.decisionSummary?.delta
+      ?.multiVectorLexicalHitCasesDelta === "number"
       ? `Multivector lexical-hit delta · ${activeComparisonRun.decisionSummary.delta.multiVectorLexicalHitCasesDelta >= 0 ? "+" : ""}${activeComparisonRun.decisionSummary.delta.multiVectorLexicalHitCasesDelta}`
       : undefined,
-    typeof activeComparisonRun?.decisionSummary?.delta?.multiVectorVectorHitCasesDelta === "number"
+    typeof activeComparisonRun?.decisionSummary?.delta
+      ?.multiVectorVectorHitCasesDelta === "number"
       ? `Multivector vector-hit delta · ${activeComparisonRun.decisionSummary.delta.multiVectorVectorHitCasesDelta >= 0 ? "+" : ""}${activeComparisonRun.decisionSummary.delta.multiVectorVectorHitCasesDelta}`
       : undefined,
     activeComparisonRun?.decisionSummary?.gate?.reasons?.[0]
       ? `Gate reason · ${activeComparisonRun.decisionSummary.gate.reasons[0]}`
       : undefined,
   ].filter((entry): entry is string => Boolean(entry));
-  const activeBlockerDeltaSummary = activeBlockerDeltaLines[0] ?? "No comparison delta recorded yet.";
-  const adaptiveNativePlannerBenchmark = releaseData?.releaseStatus?.retrievalComparisons?.adaptiveNativePlannerBenchmark;
-  const benchmarkSnapshotHistory = adaptiveNativePlannerBenchmark?.snapshotHistoryPresentation;
+  const activeBlockerDeltaSummary =
+    activeBlockerDeltaLines[0] ?? "No comparison delta recorded yet.";
+  const adaptiveNativePlannerBenchmark =
+    releaseData?.releaseStatus?.retrievalComparisons
+      ?.adaptiveNativePlannerBenchmark;
+  const benchmarkSnapshotHistory =
+    adaptiveNativePlannerBenchmark?.snapshotHistoryPresentation;
   const runtimePlannerHistoryLines = [
-    releaseData?.releaseStatus?.retrievalComparisons?.latest?.bestByLowestRuntimeCandidateBudgetExhaustedCases
+    releaseData?.releaseStatus?.retrievalComparisons?.latest
+      ?.bestByLowestRuntimeCandidateBudgetExhaustedCases
       ? `Lowest budget exhaustion winner · ${releaseData.releaseStatus.retrievalComparisons.latest.bestByLowestRuntimeCandidateBudgetExhaustedCases}`
       : undefined,
-    releaseData?.releaseStatus?.retrievalComparisons?.latest?.bestByLowestRuntimeUnderfilledTopKCases
+    releaseData?.releaseStatus?.retrievalComparisons?.latest
+      ?.bestByLowestRuntimeUnderfilledTopKCases
       ? `Lowest underfilled TopK winner · ${releaseData.releaseStatus.retrievalComparisons.latest.bestByLowestRuntimeUnderfilledTopKCases}`
       : undefined,
-    ...recentReleaseRuns
-      .slice(0, 3)
-      .flatMap((run) => {
-        const rows: string[] = [];
-        if (run.decisionSummary?.gate?.reasons?.length) {
-          const runtimeReasons = run.decisionSummary.gate.reasons.filter((reason) => /runtime|candidate-budget|underfilled/i.test(reason));
-          if (runtimeReasons.length) {
-            rows.push(`${run.label ?? "run"} · ${runtimeReasons[0]}`);
-          }
+    ...recentReleaseRuns.slice(0, 3).flatMap((run) => {
+      const rows: string[] = [];
+      if (run.decisionSummary?.gate?.reasons?.length) {
+        const runtimeReasons = run.decisionSummary.gate.reasons.filter(
+          (reason) => /runtime|candidate-budget|underfilled/i.test(reason),
+        );
+        if (runtimeReasons.length) {
+          rows.push(`${run.label ?? "run"} · ${runtimeReasons[0]}`);
         }
-        return rows;
-      }),
+      }
+      return rows;
+    }),
   ].filter((entry): entry is string => Boolean(entry));
-  const runtimePlannerHistorySummary = runtimePlannerHistoryLines[0] ?? "No runtime planner regressions recorded in recent release history.";
+  const runtimePlannerHistorySummary =
+    runtimePlannerHistoryLines[0] ??
+    "No runtime planner regressions recorded in recent release history.";
   const benchmarkSnapshotLines = [
-    benchmarkSnapshotHistory?.summary ? `Snapshot history · ${benchmarkSnapshotHistory.summary}` : undefined,
-    adaptiveNativePlannerBenchmark?.recommendedGroupKey ? `Recommended release group · ${adaptiveNativePlannerBenchmark.recommendedGroupKey}` : undefined,
-    adaptiveNativePlannerBenchmark?.recommendedTags?.length ? `Recommended tags · ${adaptiveNativePlannerBenchmark.recommendedTags.join(", ")}` : undefined,
-    ...((benchmarkSnapshotHistory?.rows ?? []).slice(0, 3).map((row) => `${row.label} · ${row.value}`)),
+    benchmarkSnapshotHistory?.summary
+      ? `Snapshot history · ${benchmarkSnapshotHistory.summary}`
+      : undefined,
+    adaptiveNativePlannerBenchmark?.recommendedGroupKey
+      ? `Recommended release group · ${adaptiveNativePlannerBenchmark.recommendedGroupKey}`
+      : undefined,
+    adaptiveNativePlannerBenchmark?.recommendedTags?.length
+      ? `Recommended tags · ${adaptiveNativePlannerBenchmark.recommendedTags.join(", ")}`
+      : undefined,
+    ...(benchmarkSnapshotHistory?.rows ?? [])
+      .slice(0, 3)
+      .map((row) => `${row.label} · ${row.value}`),
   ].filter((entry): entry is string => Boolean(entry));
-  const benchmarkSnapshotSummary = benchmarkSnapshotLines[0] ?? "No adaptive native planner benchmark snapshots have been saved yet.";
+  const benchmarkSnapshotSummary =
+    benchmarkSnapshotLines[0] ??
+    "No adaptive native planner benchmark snapshots have been saved yet.";
 
   const releaseEvidenceDrills = [
     {
       id: "general-regression-evidence",
       label: "Run general evidence",
-      summary: "Launches the support-policy benchmark query so the trace shows a classic stable gate regression path.",
+      summary:
+        "Launches the support-policy benchmark query so the trace shows a classic stable gate regression path.",
       query: "List support policies for shipping and returns.",
       topK: 6,
       benchmarkPresetId: "support-policy-source",
@@ -1052,22 +1266,26 @@ export const buildDemoReleasePanelState = (
       classification: "general" as const,
       classificationLabel: formatGovernanceClassificationLabel("general"),
       expectedSource: "guide/demo.md",
-      traceExpectation: "Trace expectation · gate reason stays general, support-policy source wins, and no multivector cue is required.",
+      traceExpectation:
+        "Trace expectation · gate reason stays general, support-policy source wins, and no multivector cue is required.",
       driver: "benchmark preset: Support policy benchmark",
       active: scenarioClassification === "general",
     },
     {
       id: "multivector-regression-evidence",
       label: "Run multivector evidence",
-      summary: "Launches the late-interaction benchmark query so the trace shows collapsed-parent and variant-hit evidence directly.",
-      query: "Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?",
+      summary:
+        "Launches the late-interaction benchmark query so the trace shows collapsed-parent and variant-hit evidence directly.",
+      query:
+        "Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?",
       topK: 4,
       benchmarkPresetId: "multivector-late-interaction",
       retrievalPresetId: "hybrid",
       classification: "multivector" as const,
       classificationLabel: formatGovernanceClassificationLabel("multivector"),
       expectedSource: "guide/multivector-release-guide.md",
-      traceExpectation: "Trace expectation · collapsedParents, lexicalVariantHits, and the lead multivector cue all stay visible.",
+      traceExpectation:
+        "Trace expectation · collapsedParents, lexicalVariantHits, and the lead multivector cue all stay visible.",
       driver: "benchmark preset: Late interaction benchmark",
       active: scenarioClassification === "multivector",
     },
@@ -1096,28 +1314,33 @@ export const buildDemoReleasePanelState = (
       ],
     },
   ];
-  const releaseHeroSummary = scenarioId === "blocked-general"
-    ? `Blocked on a general stable gate${stableReadiness?.reasons?.[0] ? ` · ${stableReadiness.reasons[0]}` : " · operator triage and override are now visible."}`
-    : scenarioId === "blocked-multivector"
-      ? `Blocked on multivector coverage${stableReadiness?.reasons?.[0] ? ` · ${stableReadiness.reasons[0]}` : " · operator triage and variant-hit remediation are now visible."}`
-      : scenarioId === "ready"
-        ? `Ready to promote${stableReadiness?.candidateRetrievalId ? ` · ${stableReadiness.candidateRetrievalId} is the live stable candidate.` : " · stable is clear for promotion."}`
-        : scenarioId === "completed"
-          ? `Stable is already running the promoted candidate${stableBaseline?.retrievalId ? ` · ${stableBaseline.retrievalId} is active.` : "."}`
-          : topRecommendation
-            ? `${topRecommendation.targetRolloutLabel ?? "lane"} should ${topRecommendation.recommendedAction.replaceAll("_", " ")}${topRecommendation.reasons[0] ? ` · ${topRecommendation.reasons[0]}` : ""}`
-            : incidentSummaryLabel;
+  const releaseHeroSummary =
+    scenarioId === "blocked-general"
+      ? `Blocked on a general stable gate${stableReadiness?.reasons?.[0] ? ` · ${stableReadiness.reasons[0]}` : " · operator triage and override are now visible."}`
+      : scenarioId === "blocked-multivector"
+        ? `Blocked on multivector coverage${stableReadiness?.reasons?.[0] ? ` · ${stableReadiness.reasons[0]}` : " · operator triage and variant-hit remediation are now visible."}`
+        : scenarioId === "ready"
+          ? `Ready to promote${stableReadiness?.candidateRetrievalId ? ` · ${stableReadiness.candidateRetrievalId} is the live stable candidate.` : " · stable is clear for promotion."}`
+          : scenarioId === "completed"
+            ? `Stable is already running the promoted candidate${stableBaseline?.retrievalId ? ` · ${stableBaseline.retrievalId} is active.` : "."}`
+            : topRecommendation
+              ? `${topRecommendation.targetRolloutLabel ?? "lane"} should ${topRecommendation.recommendedAction.replaceAll("_", " ")}${topRecommendation.reasons[0] ? ` · ${topRecommendation.reasons[0]}` : ""}`
+              : incidentSummaryLabel;
   const releaseScenarioActions = [
     {
       id: "blocked-general",
       label: "General block",
-      action: actions.find((entry) => entry.id === "switch-to-blocked-general-scenario"),
+      action: actions.find(
+        (entry) => entry.id === "switch-to-blocked-general-scenario",
+      ),
       active: scenarioId === "blocked-general",
     },
     {
       id: "blocked-multivector",
       label: "Multivector block",
-      action: actions.find((entry) => entry.id === "switch-to-blocked-multivector-scenario"),
+      action: actions.find(
+        (entry) => entry.id === "switch-to-blocked-multivector-scenario",
+      ),
       active: scenarioId === "blocked-multivector",
     },
     {
@@ -1138,33 +1361,41 @@ export const buildDemoReleasePanelState = (
       id: "blocked-general",
       label: "General block",
       summary: "Passing-rate gate fails and opens a classic rollout incident.",
-      detail: "Use this branch to show generic gate regression handling without multivector-specific cues.",
+      detail:
+        "Use this branch to show generic gate regression handling without multivector-specific cues.",
       status:
         scenarioId === "blocked-general"
           ? "current"
           : scenarioId === "ready" || scenarioId === "completed"
             ? "complete"
             : "available",
-      action: actions.find((entry) => entry.id === "switch-to-blocked-general-scenario"),
+      action: actions.find(
+        (entry) => entry.id === "switch-to-blocked-general-scenario",
+      ),
     },
     {
       id: "blocked-multivector",
       label: "Multivector block",
-      summary: "Collapsed-parent and variant-hit coverage regress so stable promotion blocks.",
-      detail: "Use this branch to show multivector-specific release governance and remediation steps.",
+      summary:
+        "Collapsed-parent and variant-hit coverage regress so stable promotion blocks.",
+      detail:
+        "Use this branch to show multivector-specific release governance and remediation steps.",
       status:
         scenarioId === "blocked-multivector"
           ? "current"
           : scenarioId === "ready" || scenarioId === "completed"
             ? "complete"
             : "available",
-      action: actions.find((entry) => entry.id === "switch-to-blocked-multivector-scenario"),
+      action: actions.find(
+        (entry) => entry.id === "switch-to-blocked-multivector-scenario",
+      ),
     },
     {
       id: "ready",
       label: "Ready",
       summary: "Candidate passes stable checks and can be promoted.",
-      detail: "Stable is clear to promote because the candidate passes the lane gate and approval policy for this seeded scenario.",
+      detail:
+        "Stable is clear to promote because the candidate passes the lane gate and approval policy for this seeded scenario.",
       status:
         scenarioId === "ready"
           ? "current"
@@ -1177,55 +1408,82 @@ export const buildDemoReleasePanelState = (
       id: "completed",
       label: "Completed",
       summary: "Canary handoff already landed in stable.",
-      detail: "The handoff decision already completed and the stable baseline now points at the promoted candidate.",
+      detail:
+        "The handoff decision already completed and the stable baseline now points at the promoted candidate.",
       status: scenarioId === "completed" ? "current" : "available",
       action: scenarioSwitchActions.completed,
     },
   ];
 
-  const releaseRailCallout = scenarioId === "completed"
-    ? {
-        tone: "ready",
-        title: "Current success",
-        message: stableBaseline?.retrievalId
-          ? "Stable is already serving " + stableBaseline.retrievalId + "."
-          : "Stable is already serving the promoted candidate.",
-        detail: stableHandoffDecision?.decidedAt
-          ? `Completed handoff · ${formatDate(stableHandoffDecision.decidedAt)}`
-          : stableBaseline?.approvedAt
-            ? `Active stable baseline · ${formatDate(stableBaseline.approvedAt)}`
-            : undefined,
-        nextStep: "Next step · inspect release status or reset the demo to replay the rollout path.",
-      }
-    : stableReadiness?.ready
+  const releaseRailCallout =
+    scenarioId === "completed"
       ? {
-          tone: "watch",
+          tone: "ready",
           title: "Current success",
-          message: stableReadiness.candidateRetrievalId
-            ? stableReadiness.candidateRetrievalId + " is ready for stable promotion."
-            : "Stable is ready for promotion.",
-          detail: [
-            stableReadiness.gateStatus ? `gate ${stableReadiness.gateStatus}` : undefined,
-            stableReadiness.requiresApproval ? "approval still required" : undefined,
-            stableReadiness.requiresOverride ? "override still required" : undefined,
-          ].filter(Boolean).join(" · "),
-          nextStep: "Next step · promote the stable candidate or complete the canary handoff.",
+          message: stableBaseline?.retrievalId
+            ? "Stable is already serving " + stableBaseline.retrievalId + "."
+            : "Stable is already serving the promoted candidate.",
+          detail: stableHandoffDecision?.decidedAt
+            ? `Completed handoff · ${formatDate(stableHandoffDecision.decidedAt)}`
+            : stableBaseline?.approvedAt
+              ? `Active stable baseline · ${formatDate(stableBaseline.approvedAt)}`
+              : undefined,
+          nextStep:
+            "Next step · inspect release status or reset the demo to replay the rollout path.",
         }
-      : {
-          tone: "blocked",
-          title: "Current blocker",
-          message: stableReadiness?.reasons?.[0] ?? releaseHero,
-          detail: [
-            stableReadiness?.candidateRetrievalId ? `candidate ${stableReadiness.candidateRetrievalId}` : undefined,
-            stableReadiness?.requiresApproval ? "explicit approval is required" : undefined,
-            stableReadiness?.requiresOverride ? "override path is open" : undefined,
-          ].filter(Boolean).join(" · "),
-          nextStep: "Next step · inspect the blocker, then approve, reject, or inspect drift.",
-        };
+      : stableReadiness?.ready
+        ? {
+            tone: "watch",
+            title: "Current success",
+            message: stableReadiness.candidateRetrievalId
+              ? stableReadiness.candidateRetrievalId +
+                " is ready for stable promotion."
+              : "Stable is ready for promotion.",
+            detail: [
+              stableReadiness.gateStatus
+                ? `gate ${stableReadiness.gateStatus}`
+                : undefined,
+              stableReadiness.requiresApproval
+                ? "approval still required"
+                : undefined,
+              stableReadiness.requiresOverride
+                ? "override still required"
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            nextStep:
+              "Next step · promote the stable candidate or complete the canary handoff.",
+          }
+        : {
+            tone: "blocked",
+            title: "Current blocker",
+            message: stableReadiness?.reasons?.[0] ?? releaseHero,
+            detail: [
+              stableReadiness?.candidateRetrievalId
+                ? `candidate ${stableReadiness.candidateRetrievalId}`
+                : undefined,
+              stableReadiness?.requiresApproval
+                ? "explicit approval is required"
+                : undefined,
+              stableReadiness?.requiresOverride
+                ? "override path is open"
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            nextStep:
+              "Next step · inspect the blocker, then approve, reject, or inspect drift.",
+          };
 
   const releaseStateBadge = {
     label: releaseData?.scenario?.label ?? "Blocked stable lane",
-    tone: scenarioId === "completed" ? "ready" : stableReadiness?.ready ? "watch" : "blocked",
+    tone:
+      scenarioId === "completed"
+        ? "ready"
+        : stableReadiness?.ready
+          ? "watch"
+          : "blocked",
   };
   const latestReleaseActionKind = latestReleaseDecision?.kind ?? "";
   const latestReleaseAction = latestReleaseDecision
@@ -1235,8 +1493,12 @@ export const buildDemoReleasePanelState = (
         ).replaceAll("_", " ")}`,
         detail: [
           latestReleaseDecision.notes,
-          latestReleaseDecision.decidedAt ? formatDate(latestReleaseDecision.decidedAt) : undefined,
-        ].filter(Boolean).join(" · "),
+          latestReleaseDecision.decidedAt
+            ? formatDate(latestReleaseDecision.decidedAt)
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(" · "),
         nextStep:
           latestReleaseActionKind === "approve"
             ? stableReadiness?.ready
@@ -1250,15 +1512,18 @@ export const buildDemoReleasePanelState = (
                   ? "Next step · inspect release status and confirm the restored stable baseline."
                   : latestReleaseActionKind === "complete"
                     ? "Next step · confirm the stable handoff result or reset the demo to replay the workflow."
-                    : scenarioId === "blocked-general" || scenarioId === "blocked-multivector"
+                    : scenarioId === "blocked-general" ||
+                        scenarioId === "blocked-multivector"
                       ? "Next step · inspect the blocker, then approve, reject, or inspect drift."
                       : scenarioId === "ready"
                         ? "Next step · promote the stable candidate or complete the canary handoff."
                         : "Next step · inspect release status to confirm the finished lane state.",
         tone:
-          latestReleaseDecision.kind === "promote" || latestReleaseDecision.kind === "approve"
+          latestReleaseDecision.kind === "promote" ||
+          latestReleaseDecision.kind === "approve"
             ? "watch"
-            : latestReleaseDecision.kind === "reject" || latestReleaseDecision.kind === "revert"
+            : latestReleaseDecision.kind === "reject" ||
+                latestReleaseDecision.kind === "revert"
               ? "blocked"
               : latestReleaseDecision.kind === "complete"
                 ? "ready"
@@ -1276,8 +1541,13 @@ export const buildDemoReleasePanelState = (
       detail: [
         entry.notes,
         entry.decidedAt ? formatDate(entry.decidedAt) : undefined,
-      ].filter(Boolean).join(" · "),
-      targetCardId: entry.kind === "complete" ? "release-stable-handoff-card" : "release-lane-readiness-card",
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      targetCardId:
+        entry.kind === "complete"
+          ? "release-stable-handoff-card"
+          : "release-lane-readiness-card",
       tone:
         entry.kind === "promote" || entry.kind === "approve"
           ? "watch"
@@ -1287,9 +1557,10 @@ export const buildDemoReleasePanelState = (
               ? "ready"
               : "muted",
     })),
-    ...((releaseData?.incidentStatus?.recentIncidents ?? []).map((entry) => ({
+    ...(releaseData?.incidentStatus?.recentIncidents ?? []).map((entry) => ({
       id: `release-activity-${entry.targetRolloutLabel ?? "lane"}-${entry.kind}-${entry.acknowledgedAt ?? entry.resolvedAt ?? entry.triggeredAt ?? 0}`,
-      sortAt: entry.acknowledgedAt ?? entry.resolvedAt ?? entry.triggeredAt ?? 0,
+      sortAt:
+        entry.acknowledgedAt ?? entry.resolvedAt ?? entry.triggeredAt ?? 0,
       laneLabel: entry.targetRolloutLabel ?? "lane",
       title:
         typeof entry.acknowledgedAt === "number"
@@ -1306,7 +1577,9 @@ export const buildDemoReleasePanelState = (
             : entry.triggeredAt
               ? formatDate(entry.triggeredAt)
               : undefined,
-      ].filter(Boolean).join(" · "),
+      ]
+        .filter(Boolean)
+        .join(" · "),
       targetCardId: "release-open-incidents-card",
       tone:
         typeof entry.acknowledgedAt === "number"
@@ -1316,49 +1589,72 @@ export const buildDemoReleasePanelState = (
             : entry.severity === "critical"
               ? "blocked"
               : "watch",
-    }))),
+    })),
   ]
     .filter((entry) => entry.sortAt > 0)
     .sort((left, right) => right.sortAt - left.sortAt)
     .slice(0, 3);
 
-  const laneDeltaPill = stableReadiness?.ready === canaryReadiness?.ready
-    ? {
-        label: "Lane delta",
-        tone: stableReadiness?.ready ? "ready" : stableReadiness || canaryReadiness ? "watch" : "muted",
-        value: stableReadiness?.ready ? "lanes aligned" : stableReadiness || canaryReadiness ? "both blocked" : "idle",
-        targetCardId: undefined,
-        targetActivityId: undefined,
-      }
-    : stableReadiness?.ready
+  const laneDeltaPill =
+    stableReadiness?.ready === canaryReadiness?.ready
       ? {
           label: "Lane delta",
-          tone: "watch",
-          value: "stable ahead",
+          tone: stableReadiness?.ready
+            ? "ready"
+            : stableReadiness || canaryReadiness
+              ? "watch"
+              : "muted",
+          value: stableReadiness?.ready
+            ? "lanes aligned"
+            : stableReadiness || canaryReadiness
+              ? "both blocked"
+              : "idle",
           targetCardId: undefined,
           targetActivityId: undefined,
         }
-      : {
-          label: "Lane delta",
-          tone: "blocked",
-          value: "stable behind canary",
-          targetCardId: undefined,
-          targetActivityId: undefined,
-        };
+      : stableReadiness?.ready
+        ? {
+            label: "Lane delta",
+            tone: "watch",
+            value: "stable ahead",
+            targetCardId: undefined,
+            targetActivityId: undefined,
+          }
+        : {
+            label: "Lane delta",
+            tone: "blocked",
+            value: "stable behind canary",
+            targetCardId: undefined,
+            targetActivityId: undefined,
+          };
 
   const latestOperationalEvent = recentReleaseActivity[0];
-  const latestIncidentByLane = new Map<string, typeof recentReleaseActivity[number]>();
+  const latestIncidentByLane = new Map<
+    string,
+    (typeof recentReleaseActivity)[number]
+  >();
   for (const entry of recentReleaseActivity) {
-    if (entry.targetCardId !== "release-open-incidents-card" || latestIncidentByLane.has(entry.laneLabel)) {
+    if (
+      entry.targetCardId !== "release-open-incidents-card" ||
+      latestIncidentByLane.has(entry.laneLabel)
+    ) {
       continue;
     }
     latestIncidentByLane.set(entry.laneLabel, entry);
   }
-  const prioritizedIncidentEvent = latestIncidentByLane.get("stable")
-    ?? latestIncidentByLane.get("canary")
-    ?? Array.from(latestIncidentByLane.values())[0];
-  const severityRank: Record<string, number> = { critical: 3, warning: 2, info: 1 };
-  const activeIncidentPostureByLane = new Map<string, { severity: string; tone: "blocked" | "watch" | "ready" }>();
+  const prioritizedIncidentEvent =
+    latestIncidentByLane.get("stable") ??
+    latestIncidentByLane.get("canary") ??
+    Array.from(latestIncidentByLane.values())[0];
+  const severityRank: Record<string, number> = {
+    critical: 3,
+    warning: 2,
+    info: 1,
+  };
+  const activeIncidentPostureByLane = new Map<
+    string,
+    { severity: string; tone: "blocked" | "watch" | "ready" }
+  >();
   for (const incident of releaseData?.incidentStatus?.recentIncidents ?? []) {
     if (incident.status === "resolved") {
       continue;
@@ -1370,42 +1666,62 @@ export const buildDemoReleasePanelState = (
     if (!current || nextRank > currentRank) {
       activeIncidentPostureByLane.set(laneLabel, {
         severity: incident.severity,
-        tone: incident.severity === "critical" ? "blocked" : incident.severity === "warning" ? "watch" : "ready",
+        tone:
+          incident.severity === "critical"
+            ? "blocked"
+            : incident.severity === "warning"
+              ? "watch"
+              : "ready",
       });
     }
   }
-  const transitionPillKinds = new Set(["approve", "promote", "reject", "revert", "complete"]);
-  const operationalPillTitles = new Set(["incident resolved", "incident acknowledged"]);
-  const transitionPill = latestReleaseActionKind && transitionPillKinds.has(latestReleaseActionKind)
-    ? {
-        label: "Latest transition",
-        tone:
-          latestReleaseActionKind === "complete"
-            ? "ready"
-            : latestReleaseActionKind === "reject" || latestReleaseActionKind === "revert"
-              ? "blocked"
-              : "watch",
-        value: `${latestReleaseDecision?.targetRolloutLabel ?? "lane"} ${latestReleaseActionKind}`,
-        targetCardId: latestReleaseActionKind === "complete" ? "release-stable-handoff-card" : "release-lane-readiness-card",
-        targetActivityId: latestReleaseDecision
-          ? `release-activity-${latestReleaseDecision.targetRolloutLabel ?? "lane"}-${latestReleaseDecision.kind ?? "decision"}-${latestReleaseDecision.decidedAt ?? 0}`
-          : undefined,
-      }
-    : prioritizedIncidentEvent && operationalPillTitles.has(prioritizedIncidentEvent.title)
+  const transitionPillKinds = new Set([
+    "approve",
+    "promote",
+    "reject",
+    "revert",
+    "complete",
+  ]);
+  const operationalPillTitles = new Set([
+    "incident resolved",
+    "incident acknowledged",
+  ]);
+  const transitionPill =
+    latestReleaseActionKind && transitionPillKinds.has(latestReleaseActionKind)
       ? {
-          label: "Latest incident",
-          tone: prioritizedIncidentEvent.tone,
-          value: `${prioritizedIncidentEvent.laneLabel} ${prioritizedIncidentEvent.title}`,
-          targetCardId: prioritizedIncidentEvent.targetCardId,
-          targetActivityId: prioritizedIncidentEvent.id,
+          label: "Latest transition",
+          tone:
+            latestReleaseActionKind === "complete"
+              ? "ready"
+              : latestReleaseActionKind === "reject" ||
+                  latestReleaseActionKind === "revert"
+                ? "blocked"
+                : "watch",
+          value: `${latestReleaseDecision?.targetRolloutLabel ?? "lane"} ${latestReleaseActionKind}`,
+          targetCardId:
+            latestReleaseActionKind === "complete"
+              ? "release-stable-handoff-card"
+              : "release-lane-readiness-card",
+          targetActivityId: latestReleaseDecision
+            ? `release-activity-${latestReleaseDecision.targetRolloutLabel ?? "lane"}-${latestReleaseDecision.kind ?? "decision"}-${latestReleaseDecision.decidedAt ?? 0}`
+            : undefined,
         }
-      : {
-        label: "Open incidents",
-        tone: (incidentSummary?.openCount ?? 0) > 0 ? "blocked" : "ready",
-        value: `${incidentSummary?.openCount ?? 0} open`,
-        targetCardId: "release-open-incidents-card",
-        targetActivityId: undefined,
-      };
+      : prioritizedIncidentEvent &&
+          operationalPillTitles.has(prioritizedIncidentEvent.title)
+        ? {
+            label: "Latest incident",
+            tone: prioritizedIncidentEvent.tone,
+            value: `${prioritizedIncidentEvent.laneLabel} ${prioritizedIncidentEvent.title}`,
+            targetCardId: prioritizedIncidentEvent.targetCardId,
+            targetActivityId: prioritizedIncidentEvent.id,
+          }
+        : {
+            label: "Open incidents",
+            tone: (incidentSummary?.openCount ?? 0) > 0 ? "blocked" : "ready",
+            value: `${incidentSummary?.openCount ?? 0} open`,
+            targetCardId: "release-open-incidents-card",
+            targetActivityId: undefined,
+          };
 
   const releaseRailDeltaChip = {
     tone: laneDeltaPill.tone,
@@ -1422,13 +1738,17 @@ export const buildDemoReleasePanelState = (
   };
   const railIncidentPostureChip = {
     tone:
-      (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") === "critical"
+      (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") ===
+      "critical"
         ? "blocked"
-        : (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") === "warning"
+        : (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") ===
+            "warning"
           ? "watch"
-          : (activeIncidentPostureByLane.get("canary")?.severity ?? "clear") === "critical"
+          : (activeIncidentPostureByLane.get("canary")?.severity ?? "clear") ===
+              "critical"
             ? "watch"
-            : (activeIncidentPostureByLane.get("canary")?.severity ?? "clear") === "warning"
+            : (activeIncidentPostureByLane.get("canary")?.severity ??
+                  "clear") === "warning"
               ? "watch"
               : "ready",
     label: `stable ${activeIncidentPostureByLane.get("stable")?.severity ?? "clear"} · canary ${activeIncidentPostureByLane.get("canary")?.severity ?? "clear"}`,
@@ -1446,86 +1766,126 @@ export const buildDemoReleasePanelState = (
   };
 
   const railApprovalChip = {
-    tone:
-      stableReadiness?.requiresApproval
-        ? "blocked"
-        : stableReadiness?.requiresOverride
-          ? "watch"
-          : stableReadiness
-            ? "ready"
-            : "muted",
+    tone: stableReadiness?.requiresApproval
+      ? "blocked"
+      : stableReadiness?.requiresOverride
+        ? "watch"
+        : stableReadiness
+          ? "ready"
+          : "muted",
     label: stableReadiness
       ? [
-          stableReadiness.requiresApproval ? "approval required" : "approval clear",
+          stableReadiness.requiresApproval
+            ? "approval required"
+            : "approval clear",
           stableReadiness.requiresOverride ? "override open" : undefined,
-        ].filter(Boolean).join(" · ")
+        ]
+          .filter(Boolean)
+          .join(" · ")
       : "idle",
   };
 
   const railRemediationChip = {
-    tone:
-      releaseData?.remediationStatus?.incidentRemediationExecutionSummary?.guardrailBlockedCount
-        ? "blocked"
-        : releaseData?.remediationStatus?.incidentRemediationExecutionSummary?.replayCount
+    tone: releaseData?.remediationStatus?.incidentRemediationExecutionSummary
+      ?.guardrailBlockedCount
+      ? "blocked"
+      : releaseData?.remediationStatus?.incidentRemediationExecutionSummary
+            ?.replayCount
+        ? "watch"
+        : releaseData?.remediationStatus?.recentIncidentRemediationExecutions
+              ?.length
           ? "watch"
-          : releaseData?.remediationStatus?.recentIncidentRemediationExecutions?.length
-            ? "watch"
-            : "muted",
+          : "muted",
     label: releaseData?.remediationStatus?.incidentRemediationExecutionSummary
       ? `${releaseData.remediationStatus.incidentRemediationExecutionSummary.guardrailBlockedCount} blocked · ${releaseData.remediationStatus.incidentRemediationExecutionSummary.replayCount} replays`
-      : releaseData?.remediationStatus?.recentIncidentRemediationExecutions?.length
+      : releaseData?.remediationStatus?.recentIncidentRemediationExecutions
+            ?.length
         ? `${releaseData.remediationStatus.recentIncidentRemediationExecutions.length} executions`
         : "idle",
   };
 
   const latestReleaseUpdateAt = Math.max(
     latestReleaseDecision?.decidedAt ?? 0,
-    ...(releaseData?.incidentStatus?.recentIncidents ?? []).map((entry) => entry.acknowledgedAt ?? entry.resolvedAt ?? entry.triggeredAt ?? 0),
-    ...(releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? []).map((entry) => entry.executedAt ?? 0),
+    ...(releaseData?.incidentStatus?.recentIncidents ?? []).map(
+      (entry) =>
+        entry.acknowledgedAt ?? entry.resolvedAt ?? entry.triggeredAt ?? 0,
+    ),
+    ...(
+      releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? []
+    ).map((entry) => entry.executedAt ?? 0),
   );
-  const releaseRailUpdatedLabel = latestReleaseUpdateAt > 0
-    ? Date.now() - latestReleaseUpdateAt < 90_000
-      ? "Updated just now"
-      : `Updated ${formatDate(latestReleaseUpdateAt)}`
-    : "Waiting for release activity";
+  const releaseRailUpdatedLabel =
+    latestReleaseUpdateAt > 0
+      ? Date.now() - latestReleaseUpdateAt < 90_000
+        ? "Updated just now"
+        : `Updated ${formatDate(latestReleaseUpdateAt)}`
+      : "Waiting for release activity";
   const latestDecisionActivityId = latestReleaseDecision
     ? `release-activity-${latestReleaseDecision.targetRolloutLabel ?? "lane"}-${latestReleaseDecision.kind ?? "decision"}-${latestReleaseDecision.decidedAt ?? 0}`
     : undefined;
   const latestIncidentEvent = recentReleaseActivity.find(
-    (entry) => entry.targetCardId === "release-open-incidents-card" && entry.sortAt === latestReleaseUpdateAt,
+    (entry) =>
+      entry.targetCardId === "release-open-incidents-card" &&
+      entry.sortAt === latestReleaseUpdateAt,
   );
-  const latestRemediationExecution = (releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? [])
-    .find((entry) => (entry.executedAt ?? 0) === latestReleaseUpdateAt);
-  const releaseRailUpdateSource = latestReleaseDecision?.decidedAt === latestReleaseUpdateAt
-    ? {
-        label: `Decision: ${latestReleaseDecision?.targetRolloutLabel ?? "lane"} ${latestReleaseActionKind ?? "update"}`,
-        tone: latestReleaseActionKind === "reject" || latestReleaseActionKind === "revert" ? "blocked" : latestReleaseActionKind === "complete" ? "ready" : "watch",
-        targetCardId: latestReleaseActionKind === "complete" ? "release-stable-handoff-card" : "release-lane-readiness-card",
-        targetActivityId: latestDecisionActivityId,
-      }
-    : (releaseData?.incidentStatus?.recentIncidents ?? []).some((entry) => (entry.acknowledgedAt ?? entry.resolvedAt ?? entry.triggeredAt ?? 0) === latestReleaseUpdateAt)
+  const latestRemediationExecution = (
+    releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? []
+  ).find((entry) => (entry.executedAt ?? 0) === latestReleaseUpdateAt);
+  const releaseRailUpdateSource =
+    latestReleaseDecision?.decidedAt === latestReleaseUpdateAt
       ? {
-          label: `Incident: ${latestIncidentEvent?.laneLabel ?? prioritizedIncidentEvent?.laneLabel ?? "lane"} ${latestIncidentEvent?.title ?? prioritizedIncidentEvent?.title ?? "update"}`,
-          tone: latestIncidentEvent?.tone ?? prioritizedIncidentEvent?.tone ?? "watch",
-          targetCardId: latestIncidentEvent?.targetCardId ?? "release-open-incidents-card",
-          targetActivityId: latestIncidentEvent?.id,
+          label: `Decision: ${latestReleaseDecision?.targetRolloutLabel ?? "lane"} ${latestReleaseActionKind ?? "update"}`,
+          tone:
+            latestReleaseActionKind === "reject" ||
+            latestReleaseActionKind === "revert"
+              ? "blocked"
+              : latestReleaseActionKind === "complete"
+                ? "ready"
+                : "watch",
+          targetCardId:
+            latestReleaseActionKind === "complete"
+              ? "release-stable-handoff-card"
+              : "release-lane-readiness-card",
+          targetActivityId: latestDecisionActivityId,
         }
-      : (releaseData?.remediationStatus?.recentIncidentRemediationExecutions ?? []).some((entry) => (entry.executedAt ?? 0) === latestReleaseUpdateAt)
+      : (releaseData?.incidentStatus?.recentIncidents ?? []).some(
+            (entry) =>
+              (entry.acknowledgedAt ??
+                entry.resolvedAt ??
+                entry.triggeredAt ??
+                0) === latestReleaseUpdateAt,
+          )
         ? {
-            label: `Remediation: ${latestRemediationExecution?.action?.kind ?? "execution"}`,
-            tone: "watch",
-            targetCardId: "release-remediation-history-card",
-            targetActivityId: undefined,
+            label: `Incident: ${latestIncidentEvent?.laneLabel ?? prioritizedIncidentEvent?.laneLabel ?? "lane"} ${latestIncidentEvent?.title ?? prioritizedIncidentEvent?.title ?? "update"}`,
+            tone:
+              latestIncidentEvent?.tone ??
+              prioritizedIncidentEvent?.tone ??
+              "watch",
+            targetCardId:
+              latestIncidentEvent?.targetCardId ??
+              "release-open-incidents-card",
+            targetActivityId: latestIncidentEvent?.id,
           }
-        : {
-            label: "Release state: snapshot",
-            tone: "muted",
-            targetCardId: "release-lane-readiness-card",
-            targetActivityId: undefined,
-          };
-  const releaseDiagnosticsUpdatedLabel = latestReleaseUpdateAt > 0
-    ? `Diagnostics snapshot · ${releaseRailUpdatedLabel.replace(/^Updated\s*/, "")}`
-    : "Diagnostics snapshot · waiting for release activity";
+        : (
+              releaseData?.remediationStatus
+                ?.recentIncidentRemediationExecutions ?? []
+            ).some((entry) => (entry.executedAt ?? 0) === latestReleaseUpdateAt)
+          ? {
+              label: `Remediation: ${latestRemediationExecution?.action?.kind ?? "execution"}`,
+              tone: "watch",
+              targetCardId: "release-remediation-history-card",
+              targetActivityId: undefined,
+            }
+          : {
+              label: "Release state: snapshot",
+              tone: "muted",
+              targetCardId: "release-lane-readiness-card",
+              targetActivityId: undefined,
+            };
+  const releaseDiagnosticsUpdatedLabel =
+    latestReleaseUpdateAt > 0
+      ? `Diagnostics snapshot · ${releaseRailUpdatedLabel.replace(/^Updated\s*/, "")}`
+      : "Diagnostics snapshot · waiting for release activity";
 
   const stableReadinessStatSummary = stableReadiness
     ? stableReadiness.ready
@@ -1554,13 +1914,17 @@ export const buildDemoReleasePanelState = (
   const incidentPosturePill = {
     label: "Incident posture",
     tone:
-      (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") === "critical"
+      (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") ===
+      "critical"
         ? "blocked"
-        : (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") === "warning"
+        : (activeIncidentPostureByLane.get("stable")?.severity ?? "clear") ===
+            "warning"
           ? "watch"
-          : (activeIncidentPostureByLane.get("canary")?.severity ?? "clear") === "critical"
+          : (activeIncidentPostureByLane.get("canary")?.severity ?? "clear") ===
+              "critical"
             ? "watch"
-            : (activeIncidentPostureByLane.get("canary")?.severity ?? "clear") === "warning"
+            : (activeIncidentPostureByLane.get("canary")?.severity ??
+                  "clear") === "warning"
               ? "watch"
               : "ready",
     value: `${activeIncidentPostureByLane.get("stable")?.severity ?? "clear"} stable · ${activeIncidentPostureByLane.get("canary")?.severity ?? "clear"} canary`,
@@ -1568,7 +1932,8 @@ export const buildDemoReleasePanelState = (
     targetActivityId: prioritizedIncidentEvent?.id,
   };
 
-  const releaseHeroPills = [    {
+  const releaseHeroPills = [
+    {
       label: "Stable lane",
       tone: stableReadiness?.ready ? "ready" : "blocked",
       value: stableReadiness?.ready ? "ready" : "blocked",
@@ -1577,14 +1942,25 @@ export const buildDemoReleasePanelState = (
     },
     {
       label: "Canary lane",
-      tone: canaryReadiness?.ready ? "ready" : canaryReadiness ? "watch" : "muted",
-      value: canaryReadiness?.ready ? "ready" : canaryReadiness ? "watching" : "idle",
+      tone: canaryReadiness?.ready
+        ? "ready"
+        : canaryReadiness
+          ? "watch"
+          : "muted",
+      value: canaryReadiness?.ready
+        ? "ready"
+        : canaryReadiness
+          ? "watching"
+          : "idle",
       targetCardId: "release-lane-readiness-card",
       targetActivityId: undefined,
     },
     {
       label: "Scenario",
-      tone: scenarioId === "ready" || scenarioId === "completed" ? "ready" : "watch",
+      tone:
+        scenarioId === "ready" || scenarioId === "completed"
+          ? "ready"
+          : "watch",
       value: releaseData?.scenario?.label ?? "default",
       targetCardId: undefined,
       targetActivityId: undefined,
@@ -1607,7 +1983,8 @@ export const buildDemoReleasePanelState = (
     canaryReadiness,
     actions,
     handoffActions,
-    handoffDriftCountsByLane: releaseData?.driftStatus?.handoffDriftCountsByLane ?? [],
+    handoffDriftCountsByLane:
+      releaseData?.driftStatus?.handoffDriftCountsByLane ?? [],
     incidentSummary,
     incidentSummaryLabel,
     laneReadiness,
@@ -1731,7 +2108,11 @@ export type DemoGroundingProviderComparison = {
   };
 };
 
-export const demoContentFormats: DemoContentFormat[] = ["markdown", "html", "text"];
+export const demoContentFormats: DemoContentFormat[] = [
+  "markdown",
+  "html",
+  "text",
+];
 export const demoChunkingStrategies: DemoChunkingStrategy[] = [
   "source_aware",
   "paragraphs",
@@ -1752,6 +2133,7 @@ export const demoBackends: DemoBackendDescriptor[] = [
   { id: "sqlite-native", label: "SQLite Native", available: true },
   { id: "sqlite-fallback", label: "SQLite Fallback", available: true },
   { id: "postgres", label: "PostgreSQL", available: true },
+  { id: "pinecone", label: "Pinecone", available: true },
 ];
 const MAX_RECENT_QUERIES = 4;
 export const DEMO_RERANKER_LABEL = "Absolute heuristic";
@@ -1771,7 +2153,8 @@ const isSearchFormState = (value: unknown): value is SearchFormState => {
     typeof record.kind === "string" &&
     typeof record.source === "string" &&
     typeof record.documentId === "string" &&
-    (typeof record.nativeQueryProfile === "string" || typeof record.nativeQueryProfile === "undefined")
+    (typeof record.nativeQueryProfile === "string" ||
+      typeof record.nativeQueryProfile === "undefined")
   );
 };
 
@@ -1797,12 +2180,18 @@ const isDemoActiveRetrievalState = (
   return (
     isSearchFormState(record.searchForm) &&
     typeof record.scopeDriver === "string" &&
-    (typeof record.lastUpdatedAt === "number" || typeof record.lastUpdatedAt === "undefined") &&
-    (typeof record.retrievalPresetId === "string" || typeof record.retrievalPresetId === "undefined") &&
-    (typeof record.benchmarkPresetId === "string" || typeof record.benchmarkPresetId === "undefined") &&
-    (typeof record.uploadPresetId === "string" || typeof record.uploadPresetId === "undefined") &&
-    (typeof record.streamModelKey === "string" || typeof record.streamModelKey === "undefined") &&
-    (typeof record.streamPrompt === "string" || typeof record.streamPrompt === "undefined")
+    (typeof record.lastUpdatedAt === "number" ||
+      typeof record.lastUpdatedAt === "undefined") &&
+    (typeof record.retrievalPresetId === "string" ||
+      typeof record.retrievalPresetId === "undefined") &&
+    (typeof record.benchmarkPresetId === "string" ||
+      typeof record.benchmarkPresetId === "undefined") &&
+    (typeof record.uploadPresetId === "string" ||
+      typeof record.uploadPresetId === "undefined") &&
+    (typeof record.streamModelKey === "string" ||
+      typeof record.streamModelKey === "undefined") &&
+    (typeof record.streamPrompt === "string" ||
+      typeof record.streamPrompt === "undefined")
   );
 };
 
@@ -1850,12 +2239,12 @@ export const saveRecentQueries = (
   recentQueries: Array<{ label: string; state: SearchFormState }>,
 ) => {
   return fetch(`/demo/ui-state/recent-queries/${frameworkId}/${mode}`, {
-      body: JSON.stringify(recentQueries.slice(0, MAX_RECENT_QUERIES)),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    })
+    body: JSON.stringify(recentQueries.slice(0, MAX_RECENT_QUERIES)),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  })
     .then(() => undefined)
     .catch(() => undefined);
 };
@@ -1882,16 +2271,15 @@ export const saveActiveRetrievalState = (
   state: DemoActiveRetrievalState,
 ) => {
   return fetch(`/demo/ui-state/active-retrieval/${frameworkId}/${mode}`, {
-      body: JSON.stringify(state),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    })
+    body: JSON.stringify(state),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  })
     .then(() => undefined)
     .catch(() => undefined);
 };
-
 
 export const buildDemoAIStreamPrompt = (modelKey: string, prompt: string) => {
   const trimmedPrompt = prompt.trim();
@@ -1933,72 +2321,87 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "support-policy-source",
     label: "Support policy benchmark",
-    description: "Proves the benchmark can pin a customer-facing answer back to the markdown policy source.",
+    description:
+      "Proves the benchmark can pin a customer-facing answer back to the markdown policy source.",
     query: "List support policies for shipping and returns.",
     expectedSources: ["guide/demo.md"],
   },
   {
     id: "metadata-discipline-source",
     label: "Metadata discipline benchmark",
-    description: "Verifies metadata guidance resolves to the dedicated metadata guide instead of a nearby chunk.",
+    description:
+      "Verifies metadata guidance resolves to the dedicated metadata guide instead of a nearby chunk.",
     query: "Why should metadata be stable?",
     expectedSources: ["guides/metadata.md"],
   },
   {
     id: "postgres-portability-source",
     label: "PostgreSQL parity benchmark",
-    description: "Shows the hosted PostgreSQL backend returns the same cross-framework workflow guidance as the local adapters.",
+    description:
+      "Shows the hosted PostgreSQL backend returns the same cross-framework workflow guidance as the local adapters.",
     query: "Which frameworks stay aligned in the retrieval workflow?",
     expectedSources: ["guide/welcome.md"],
   },
   {
     id: "pdf-citation-source",
     label: "PDF page provenance benchmark",
-    description: "Verifies native PDF extraction returns page-aware evidence so the answer can point back to the exact handbook page.",
-    query: "Which PDF page says page-aware evidence should remain inspectable in retrieval diagnostics?",
+    description:
+      "Verifies native PDF extraction returns page-aware evidence so the answer can point back to the exact handbook page.",
+    query:
+      "Which PDF page says page-aware evidence should remain inspectable in retrieval diagnostics?",
     expectedSources: ["files/native-handbook.pdf"],
   },
   {
     id: "ocr-fallback-source",
     label: "OCR receipt benchmark",
-    description: "Verifies scanned PDF OCR keeps receipt evidence retrievable with explicit provenance through the same workflow surface.",
+    description:
+      "Verifies scanned PDF OCR keeps receipt evidence retrievable with explicit provenance through the same workflow surface.",
     query: "Which scanned PDF receipt contains invoice INV-2048?",
     expectedSources: ["files/scanned-receipt.pdf"],
   },
   {
     id: "spreadsheet-source",
     label: "Spreadsheet benchmark",
-    description: "Shows spreadsheet ingestion preserves sheet-aware evidence for retrieval and inspection.",
-    query: "Which revenue forecast workbook sheet named Regional Growth tracks market expansion by territory?",
+    description:
+      "Shows spreadsheet ingestion preserves sheet-aware evidence for retrieval and inspection.",
+    query:
+      "Which revenue forecast workbook sheet named Regional Growth tracks market expansion by territory?",
     expectedSources: ["files/revenue-forecast.xlsx"],
   },
   {
     id: "archive-source",
     label: "Archive benchmark",
-    description: "Shows archive expansion keeps nested source paths stable for retrieval and evaluation.",
+    description:
+      "Shows archive expansion keeps nested source paths stable for retrieval and evaluation.",
     query: "Which archive entry explains recovery procedures?",
     expectedSources: ["archives/support-bundle.zip#runbooks/recovery.md"],
   },
   {
     id: "media-source",
     label: "Media timestamp benchmark",
-    description: "Verifies media transcripts return timestamp-aware evidence so the answer can cite the exact audio segment.",
-    query: "Which daily standup audio timestamp 00:00 to 00:08 says retrieval, citations, evaluation, and ingest workflows stay aligned across every frontend?",
+    description:
+      "Verifies media transcripts return timestamp-aware evidence so the answer can cite the exact audio segment.",
+    query:
+      "Which daily standup audio timestamp 00:00 to 00:08 says retrieval, citations, evaluation, and ingest workflows stay aligned across every frontend?",
     expectedSources: ["files/daily-standup.mp3"],
   },
   {
     id: "multi-source-audit",
     label: "Multi-source audit benchmark",
-    description: "Stresses overlapping phrasing so retrieval has to surface more than one relevant source instead of repeating near-duplicate chunks.",
-    query: "Which sources say evidence should stay inspectable, auditable, and visible to operators reviewing an answer?",
+    description:
+      "Stresses overlapping phrasing so retrieval has to surface more than one relevant source instead of repeating near-duplicate chunks.",
+    query:
+      "Which sources say evidence should stay inspectable, auditable, and visible to operators reviewing an answer?",
     expectedSources: ["files/platform-overview.txt", "files/field-notes.txt"],
     topK: 6,
   },
   {
     id: "multivector-late-interaction",
     label: "Late interaction benchmark",
-    description: "Proves multivector retrieval can match launch-checklist phrasing while still returning one parent source in the final evidence.",
-    query: "Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?",
+    description:
+      "Proves multivector retrieval can match launch-checklist phrasing while still returning one parent source in the final evidence.",
+    query:
+      "Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?",
     expectedSources: ["guide/multivector-release-guide.md"],
     topK: 4,
     retrievalPresetId: "hybrid",
@@ -2006,16 +2409,20 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "policy-metadata-pair",
     label: "Policy and metadata pair benchmark",
-    description: "Checks whether retrieval can bring back both the customer policy source and the metadata discipline source when the query spans auditability and stable filters.",
-    query: "Which sources say support answers stay auditable after ingest and metadata filters stay stable over time?",
+    description:
+      "Checks whether retrieval can bring back both the customer policy source and the metadata discipline source when the query spans auditability and stable filters.",
+    query:
+      "Which sources say support answers stay auditable after ingest and metadata filters stay stable over time?",
     expectedSources: ["guide/demo.md", "guides/metadata.md"],
     topK: 6,
   },
   {
     id: "query-attribution-base",
     label: "Base query attribution benchmark",
-    description: "Uses a query with no transform domain so the section diagnostics stay on the base-query path.",
-    query: "Which sources say support answers stay auditable after ingest and metadata filters stay stable over time?",
+    description:
+      "Uses a query with no transform domain so the section diagnostics stay on the base-query path.",
+    query:
+      "Which sources say support answers stay auditable after ingest and metadata filters stay stable over time?",
     expectedSources: ["guide/demo.md", "guides/metadata.md"],
     topK: 6,
     benchmarkCategory: "base",
@@ -2023,7 +2430,8 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "query-attribution-transformed",
     label: "Transformed attribution benchmark",
-    description: "Uses framework wording that only becomes useful after the heuristic transform expands it into the seeded corpus vocabulary.",
+    description:
+      "Uses framework wording that only becomes useful after the heuristic transform expands it into the seeded corpus vocabulary.",
     query: "Which framework docs and approval gates explain rollout posture?",
     expectedSources: ["files/legacy-brief.doc"],
     topK: 6,
@@ -2033,9 +2441,13 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "query-attribution-benchmark",
     label: "Mixed attribution benchmark",
-    description: "Uses a preserved titled-workbook query plus spreadsheet variants so the same section can show base-query and variant reinforcement together.",
+    description:
+      "Uses a preserved titled-workbook query plus spreadsheet variants so the same section can show base-query and variant reinforcement together.",
     query: "Which workbook titled Regional Growth explains rollout posture?",
-    expectedSources: ["guide/query-attribution.md", "files/revenue-forecast.xlsx"],
+    expectedSources: [
+      "guide/query-attribution.md",
+      "files/revenue-forecast.xlsx",
+    ],
     topK: 6,
     benchmarkCategory: "mixed",
     retrievalPresetId: "hybrid-transform",
@@ -2043,8 +2455,10 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "section-competition-benchmark",
     label: "Section competition benchmark",
-    description: "Uses nested release-guide wording so sibling sections compete and the diagnostics have to explain why one stable-lane section wins.",
-    query: "Which stable lane section explains approval gates and incident review?",
+    description:
+      "Uses nested release-guide wording so sibling sections compete and the diagnostics have to explain why one stable-lane section wins.",
+    query:
+      "Which stable lane section explains approval gates and incident review?",
     expectedSources: ["guide/release-hierarchy.md"],
     topK: 6,
     benchmarkCategory: "competition",
@@ -2052,8 +2466,10 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "rerank-survival-benchmark",
     label: "Rerank survival benchmark",
-    description: "Uses dense compliance wording so the retrieval trace shows a section survive rerank and narrow from a larger candidate set into the final winning evidence.",
-    query: "Which source keeps archive entry paths, spreadsheet sheet names, presentation slide numbers, and email attachment labels visible in retrieval evidence?",
+    description:
+      "Uses dense compliance wording so the retrieval trace shows a section survive rerank and narrow from a larger candidate set into the final winning evidence.",
+    query:
+      "Which source keeps archive entry paths, spreadsheet sheet names, presentation slide numbers, and email attachment labels visible in retrieval evidence?",
     expectedSources: ["cases/compliance.html"],
     topK: 6,
     benchmarkCategory: "rerank",
@@ -2061,8 +2477,10 @@ export const demoEvaluationPresets: DemoEvaluationPreset[] = [
   {
     id: "support-policy-routing-benchmark",
     label: "Support policy routing benchmark",
-    description: "Uses explicit support and policy wording so the built-in retrieval strategy routes the query onto the support lexical path.",
-    query: "Which support policy explains password reset and customer billing access?",
+    description:
+      "Uses explicit support and policy wording so the built-in retrieval strategy routes the query onto the support lexical path.",
+    query:
+      "Which support policy explains password reset and customer billing access?",
     expectedSources: ["guide/demo.md"],
     topK: 6,
     benchmarkCategory: "routing",
@@ -2083,7 +2501,8 @@ export const benchmarkOutcomeRail = [
   {
     id: "mixed",
     label: "Mixed attribution",
-    summary: "One winning section should keep base and expanded evidence together.",
+    summary:
+      "One winning section should keep base and expanded evidence together.",
   },
   {
     id: "competition",
@@ -2093,23 +2512,28 @@ export const benchmarkOutcomeRail = [
   {
     id: "rerank",
     label: "Rerank survival",
-    summary: "One section should survive rerank and narrow from a larger candidate set into the final evidence.",
+    summary:
+      "One section should survive rerank and narrow from a larger candidate set into the final evidence.",
   },
   {
     id: "routing",
     label: "Routing decision",
-    summary: "Built-in retrieval routing should switch the query onto a non-default path.",
+    summary:
+      "Built-in retrieval routing should switch the query onto a non-default path.",
   },
 ] as const;
 
 export const resolveBenchmarkRetrievalPresetId = (presetId: string) =>
-  demoEvaluationPresets.find((preset) => preset.id === presetId)?.retrievalPresetId ?? "";
+  demoEvaluationPresets.find((preset) => preset.id === presetId)
+    ?.retrievalPresetId ?? "";
 
 export const formatBenchmarkOutcomeRailLabel = (
   entry: (typeof benchmarkOutcomeRail)[number],
   activePresetId?: string,
 ) => {
-  const activeCategory = demoEvaluationPresets.find((preset) => preset.id === activePresetId)?.benchmarkCategory;
+  const activeCategory = demoEvaluationPresets.find(
+    (preset) => preset.id === activePresetId,
+  )?.benchmarkCategory;
   return activeCategory === entry.id ? `${entry.label} · active` : entry.label;
 };
 
@@ -2117,7 +2541,8 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-native-pdf",
     label: "Upload native PDF",
-    description: "Exercises the native PDF extractor through the published upload ingest surface.",
+    description:
+      "Exercises the native PDF extractor through the published upload ingest surface.",
     fileName: "native-handbook.pdf",
     fixturePath: "files/native-handbook.pdf",
     contentType: "application/pdf",
@@ -2129,7 +2554,8 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-scanned-pdf",
     label: "Upload scanned PDF",
-    description: "Exercises the scanned PDF OCR fallback path through the published upload ingest surface.",
+    description:
+      "Exercises the scanned PDF OCR fallback path through the published upload ingest surface.",
     fileName: "scanned-receipt.pdf",
     fixturePath: "files/scanned-receipt.pdf",
     contentType: "application/pdf",
@@ -2141,11 +2567,14 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-spreadsheet",
     label: "Upload spreadsheet",
-    description: "Exercises sheet-aware office extraction through the published upload ingest surface.",
+    description:
+      "Exercises sheet-aware office extraction through the published upload ingest surface.",
     fileName: "revenue-forecast.xlsx",
     fixturePath: "files/revenue-forecast.xlsx",
-    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    query: "Which revenue forecast workbook sheet named Regional Growth tracks market expansion by territory?",
+    contentType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    query:
+      "Which revenue forecast workbook sheet named Regional Growth tracks market expansion by territory?",
     expectedSources: ["uploads/revenue-forecast.xlsx"],
     source: "uploads/revenue-forecast.xlsx",
     title: "Uploaded revenue forecast workbook",
@@ -2153,10 +2582,12 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-presentation",
     label: "Upload deck",
-    description: "Exercises slide-aware presentation extraction through the published upload ingest surface.",
+    description:
+      "Exercises slide-aware presentation extraction through the published upload ingest surface.",
     fileName: "workflow-roadmap.pptx",
     fixturePath: "files/workflow-roadmap.pptx",
-    contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    contentType:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     query: "Which slide explains the retrieval workflow rollout?",
     expectedSources: ["uploads/workflow-roadmap.pptx"],
     source: "uploads/workflow-roadmap.pptx",
@@ -2165,7 +2596,8 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-email",
     label: "Upload email thread",
-    description: "Exercises email extraction and thread metadata through the published upload ingest surface.",
+    description:
+      "Exercises email extraction and thread metadata through the published upload ingest surface.",
     fileName: "support-thread.eml",
     fixturePath: "files/support-thread.eml",
     contentType: "message/rfc822",
@@ -2177,7 +2609,8 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-image-ocr",
     label: "Upload image OCR",
-    description: "Exercises image OCR extraction through the published upload ingest surface.",
+    description:
+      "Exercises image OCR extraction through the published upload ingest surface.",
     fileName: "receipt.jpg",
     fixturePath: "files/receipt.jpg",
     contentType: "image/jpeg",
@@ -2189,11 +2622,13 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-audio",
     label: "Upload audio",
-    description: "Exercises media transcription through the published upload ingest surface.",
+    description:
+      "Exercises media transcription through the published upload ingest surface.",
     fileName: "daily-standup.mp3",
     fixturePath: "files/daily-standup.mp3",
     contentType: "audio/mpeg",
-    query: "Which uploaded daily standup audio timestamp 00:00 to 00:08 says retrieval, citations, evaluation, and ingest workflows stay aligned across every frontend?",
+    query:
+      "Which uploaded daily standup audio timestamp 00:00 to 00:08 says retrieval, citations, evaluation, and ingest workflows stay aligned across every frontend?",
     expectedSources: ["uploads/daily-standup.mp3"],
     source: "uploads/daily-standup.mp3",
     title: "Uploaded daily standup audio",
@@ -2201,7 +2636,8 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-video",
     label: "Upload video",
-    description: "Exercises video transcription through the published upload ingest surface.",
+    description:
+      "Exercises video transcription through the published upload ingest surface.",
     fileName: "workflow-walkthrough.mp4",
     fixturePath: "files/workflow-walkthrough.mp4",
     contentType: "video/mp4",
@@ -2213,7 +2649,8 @@ export const demoUploadPresets: DemoUploadPreset[] = [
   {
     id: "upload-archive",
     label: "Upload archive",
-    description: "Exercises archive expansion through the published upload ingest surface.",
+    description:
+      "Exercises archive expansion through the published upload ingest surface.",
     fileName: "support-bundle.zip",
     fixturePath: "archives/support-bundle.zip",
     contentType: "application/zip",
@@ -2280,24 +2717,33 @@ export const formatEvaluationSummary = (response: RAGEvaluationResponse) =>
     `passing ${formatEvaluationPassingRate(response.passingRate)}`,
   ].join(" · ");
 
-export const formatEvaluationLeaderboardEntry = (entry: RAGEvaluationLeaderboardEntry) =>
+export const formatEvaluationLeaderboardEntry = (
+  entry: RAGEvaluationLeaderboardEntry,
+) =>
   `#${entry.rank} · ${entry.label} · passing ${formatEvaluationPassingRate(entry.passingRate)} · f1 ${entry.averageF1.toFixed(3)} · ${entry.averageLatencyMs.toFixed(1)}ms`;
 
 const formatSignedDelta = (value: number, digits = 1, suffix = "") =>
   `${value > 0 ? "+" : ""}${value.toFixed(digits)}${suffix}`;
 
-const formatHistoryCaseLabels = (labels: Array<{ label?: string; caseId: string }>) =>
-  labels.length > 0 ? labels.map((entry) => entry.label ?? entry.caseId).join(", ") : "none";
+const formatHistoryCaseLabels = (
+  labels: Array<{ label?: string; caseId: string }>,
+) =>
+  labels.length > 0
+    ? labels.map((entry) => entry.label ?? entry.caseId).join(", ")
+    : "none";
 
 const buildSnapshotLeadLabel = (snapshot?: Record<string, unknown>) => {
   if (!snapshot) return undefined;
-  return typeof snapshot.topLocatorLabel === "string" && snapshot.topLocatorLabel
+  return typeof snapshot.topLocatorLabel === "string" &&
+    snapshot.topLocatorLabel
     ? snapshot.topLocatorLabel
     : typeof snapshot.topContextLabel === "string" && snapshot.topContextLabel
       ? snapshot.topContextLabel
-      : typeof snapshot.sourceAwareUnitScopeLabel === "string" && snapshot.sourceAwareUnitScopeLabel
+      : typeof snapshot.sourceAwareUnitScopeLabel === "string" &&
+          snapshot.sourceAwareUnitScopeLabel
         ? snapshot.sourceAwareUnitScopeLabel
-        : typeof snapshot.sourceAwareChunkReasonLabel === "string" && snapshot.sourceAwareChunkReasonLabel
+        : typeof snapshot.sourceAwareChunkReasonLabel === "string" &&
+            snapshot.sourceAwareChunkReasonLabel
           ? snapshot.sourceAwareChunkReasonLabel
           : undefined;
 };
@@ -2309,7 +2755,11 @@ const ensureLabeledRow = (
 ) => {
   const existing = rows.find((row) => row.label === label);
   if (existing) {
-    if (existing.value === "none" || existing.value === "n/a" || existing.value === "Unavailable") {
+    if (
+      existing.value === "none" ||
+      existing.value === "n/a" ||
+      existing.value === "Unavailable"
+    ) {
       existing.value = value;
     }
     return rows;
@@ -2317,41 +2767,55 @@ const ensureLabeledRow = (
   return [...rows, { label, value }];
 };
 
-const buildComparisonLeadCueValue = (
-  entry: { caseTraceSnapshots?: unknown[] },
-) => {
-  const values = Array.from(new Set(
-    (entry.caseTraceSnapshots ?? [])
-      .map((snapshot) => buildSnapshotLeadLabel(snapshot as Record<string, unknown>))
-      .filter((value): value is string => typeof value === "string" && value.length > 0),
-  )).slice(0, 3);
+const buildComparisonLeadCueValue = (entry: {
+  caseTraceSnapshots?: unknown[];
+}) => {
+  const values = Array.from(
+    new Set(
+      (entry.caseTraceSnapshots ?? [])
+        .map((snapshot) =>
+          buildSnapshotLeadLabel(snapshot as Record<string, unknown>),
+        )
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0,
+        ),
+    ),
+  ).slice(0, 3);
 
   return values.length > 0 ? values.join(" · ") : "none";
 };
 
 const buildSnapshotLeadMediaCueValue = (snapshot?: Record<string, unknown>) => {
-  const speaker = typeof snapshot?.leadSpeakerCue === "string" && snapshot.leadSpeakerCue
-    ? snapshot.leadSpeakerCue
-    : undefined;
-  const quotedSpeakerAttribution = snapshot?.leadSpeakerAttributionCue === "quoted_match"
-    ? "quoted speaker match"
-    : undefined;
-  const channel = typeof snapshot?.leadChannelCue === "string" && snapshot.leadChannelCue
-    ? snapshot.leadChannelCue
-    : undefined;
-  const quotedChannelAttribution = snapshot?.leadChannelAttributionCue === "quoted_match"
-    ? "quoted channel match"
-    : undefined;
-  const continuity = typeof snapshot?.leadContinuityCue === "string"
-    ? formatLeadContinuityCue(snapshot.leadContinuityCue)
-    : undefined;
+  const speaker =
+    typeof snapshot?.leadSpeakerCue === "string" && snapshot.leadSpeakerCue
+      ? snapshot.leadSpeakerCue
+      : undefined;
+  const quotedSpeakerAttribution =
+    snapshot?.leadSpeakerAttributionCue === "quoted_match"
+      ? "quoted speaker match"
+      : undefined;
+  const channel =
+    typeof snapshot?.leadChannelCue === "string" && snapshot.leadChannelCue
+      ? snapshot.leadChannelCue
+      : undefined;
+  const quotedChannelAttribution =
+    snapshot?.leadChannelAttributionCue === "quoted_match"
+      ? "quoted channel match"
+      : undefined;
+  const continuity =
+    typeof snapshot?.leadContinuityCue === "string"
+      ? formatLeadContinuityCue(snapshot.leadContinuityCue)
+      : undefined;
   const parts = [
     speaker ? `speaker ${speaker}` : undefined,
     quotedSpeakerAttribution,
     channel ? `channel ${channel}` : undefined,
     quotedChannelAttribution,
     continuity,
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+  ].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
 
   return parts.length > 0 ? parts.join(" · ") : "none";
 };
@@ -2373,8 +2837,17 @@ const buildComparisonLeadDriftValue = (
       const caseId = String(record.caseId ?? "");
       const currentLead = buildSnapshotLeadLabel(record);
       const previousLead = buildSnapshotLeadLabel(leaderSnapshots.get(caseId));
-      if (!caseId || !currentLead || !previousLead || currentLead === previousLead) return undefined;
-      const label = typeof record.label === "string" && record.label ? record.label : caseId;
+      if (
+        !caseId ||
+        !currentLead ||
+        !previousLead ||
+        currentLead === previousLead
+      )
+        return undefined;
+      const label =
+        typeof record.label === "string" && record.label
+          ? record.label
+          : caseId;
       return `${label} ${previousLead}→${currentLead}`;
     })
     .filter((value): value is string => typeof value === "string")
@@ -2383,14 +2856,21 @@ const buildComparisonLeadDriftValue = (
   return drifts.length > 0 ? drifts.join(" · ") : "none";
 };
 
-const buildComparisonLeadMediaCueValue = (
-  entry: { caseTraceSnapshots?: unknown[] },
-) => {
-  const values = Array.from(new Set(
-    (entry.caseTraceSnapshots ?? [])
-      .map((snapshot) => buildSnapshotLeadMediaCueValue(snapshot as Record<string, unknown>))
-      .filter((value): value is string => typeof value === "string" && value !== "none"),
-  )).slice(0, 3);
+const buildComparisonLeadMediaCueValue = (entry: {
+  caseTraceSnapshots?: unknown[];
+}) => {
+  const values = Array.from(
+    new Set(
+      (entry.caseTraceSnapshots ?? [])
+        .map((snapshot) =>
+          buildSnapshotLeadMediaCueValue(snapshot as Record<string, unknown>),
+        )
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value !== "none",
+        ),
+    ),
+  ).slice(0, 3);
 
   return values.length > 0 ? values.join(" · ") : "none";
 };
@@ -2411,9 +2891,20 @@ const buildComparisonLeadMediaDriftValue = (
       const record = snapshot as Record<string, unknown>;
       const caseId = String(record.caseId ?? "");
       const currentLead = buildSnapshotLeadMediaCueValue(record);
-      const previousLead = buildSnapshotLeadMediaCueValue(leaderSnapshots.get(caseId));
-      if (!caseId || currentLead === "none" || previousLead === "none" || currentLead === previousLead) return undefined;
-      const label = typeof record.label === "string" && record.label ? record.label : caseId;
+      const previousLead = buildSnapshotLeadMediaCueValue(
+        leaderSnapshots.get(caseId),
+      );
+      if (
+        !caseId ||
+        currentLead === "none" ||
+        previousLead === "none" ||
+        currentLead === previousLead
+      )
+        return undefined;
+      const label =
+        typeof record.label === "string" && record.label
+          ? record.label
+          : caseId;
       return `${label} ${previousLead}→${currentLead}`;
     })
     .filter((value): value is string => typeof value === "string")
@@ -2434,8 +2925,17 @@ const buildHistoryLeadDriftValue = (history?: RAGEvaluationHistory) => {
         sourceAwareUnitScopeLabel: record.previousSourceAwareUnitScopeLabel,
         sourceAwareChunkReasonLabel: record.previousSourceAwareChunkReasonLabel,
       });
-      if (!caseId || !currentLead || !previousLead || currentLead === previousLead) return undefined;
-      const label = typeof record.label === "string" && record.label ? record.label : caseId;
+      if (
+        !caseId ||
+        !currentLead ||
+        !previousLead ||
+        currentLead === previousLead
+      )
+        return undefined;
+      const label =
+        typeof record.label === "string" && record.label
+          ? record.label
+          : caseId;
       return `${label} ${previousLead}→${currentLead}`;
     })
     .filter((value): value is string => typeof value === "string")
@@ -2444,36 +2944,60 @@ const buildHistoryLeadDriftValue = (history?: RAGEvaluationHistory) => {
   return drifts.length > 0 ? drifts.join(" · ") : "none";
 };
 
-const buildSnapshotSQLitePlannerOutcomeValue = (snapshot?: Record<string, unknown>) => {
-  const coverage = typeof snapshot?.sqliteQueryCandidateCoverage === "string" && snapshot.sqliteQueryCandidateCoverage
-    ? snapshot.sqliteQueryCandidateCoverage.replace(/_/g, " ")
-    : undefined;
-  const underfilled = snapshot?.sqliteQueryUnderfilledTopK === true
-    ? "underfilled topK"
-    : undefined;
-  const budgetExhausted = snapshot?.sqliteQueryCandidateBudgetExhausted === true
-    ? "budget exhausted"
-    : undefined;
-  const returned = typeof snapshot?.sqliteQueryReturnedCount === "number"
-    ? `returned ${snapshot.sqliteQueryReturnedCount}`
-    : undefined;
-  const filtered = typeof snapshot?.sqliteQueryFilteredCandidates === "number"
-    ? `filtered ${snapshot.sqliteQueryFilteredCandidates}`
-    : undefined;
-  const parts = [coverage ? `coverage ${coverage}` : undefined, underfilled, budgetExhausted, returned, filtered]
-    .filter((value): value is string => typeof value === "string" && value.length > 0);
+const buildSnapshotSQLitePlannerOutcomeValue = (
+  snapshot?: Record<string, unknown>,
+) => {
+  const coverage =
+    typeof snapshot?.sqliteQueryCandidateCoverage === "string" &&
+    snapshot.sqliteQueryCandidateCoverage
+      ? snapshot.sqliteQueryCandidateCoverage.replace(/_/g, " ")
+      : undefined;
+  const underfilled =
+    snapshot?.sqliteQueryUnderfilledTopK === true
+      ? "underfilled topK"
+      : undefined;
+  const budgetExhausted =
+    snapshot?.sqliteQueryCandidateBudgetExhausted === true
+      ? "budget exhausted"
+      : undefined;
+  const returned =
+    typeof snapshot?.sqliteQueryReturnedCount === "number"
+      ? `returned ${snapshot.sqliteQueryReturnedCount}`
+      : undefined;
+  const filtered =
+    typeof snapshot?.sqliteQueryFilteredCandidates === "number"
+      ? `filtered ${snapshot.sqliteQueryFilteredCandidates}`
+      : undefined;
+  const parts = [
+    coverage ? `coverage ${coverage}` : undefined,
+    underfilled,
+    budgetExhausted,
+    returned,
+    filtered,
+  ].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
 
   return parts.length > 0 ? parts.join(" · ") : "none";
 };
 
-const buildComparisonSQLitePlannerOutcomeValue = (
-  entry: { caseTraceSnapshots?: unknown[] },
-) => {
-  const values = Array.from(new Set(
-    (entry.caseTraceSnapshots ?? [])
-      .map((snapshot) => buildSnapshotSQLitePlannerOutcomeValue(snapshot as Record<string, unknown>))
-      .filter((value): value is string => typeof value === "string" && value !== "none"),
-  )).slice(0, 3);
+const buildComparisonSQLitePlannerOutcomeValue = (entry: {
+  caseTraceSnapshots?: unknown[];
+}) => {
+  const values = Array.from(
+    new Set(
+      (entry.caseTraceSnapshots ?? [])
+        .map((snapshot) =>
+          buildSnapshotSQLitePlannerOutcomeValue(
+            snapshot as Record<string, unknown>,
+          ),
+        )
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value !== "none",
+        ),
+    ),
+  ).slice(0, 3);
 
   return values.length > 0 ? values.join(" · ") : "none";
 };
@@ -2494,9 +3018,20 @@ const buildComparisonSQLitePlannerDriftValue = (
       const record = snapshot as Record<string, unknown>;
       const caseId = String(record.caseId ?? "");
       const currentValue = buildSnapshotSQLitePlannerOutcomeValue(record);
-      const previousValue = buildSnapshotSQLitePlannerOutcomeValue(leaderSnapshots.get(caseId));
-      if (!caseId || currentValue === "none" || previousValue === "none" || currentValue === previousValue) return undefined;
-      const label = typeof record.label === "string" && record.label ? record.label : caseId;
+      const previousValue = buildSnapshotSQLitePlannerOutcomeValue(
+        leaderSnapshots.get(caseId),
+      );
+      if (
+        !caseId ||
+        currentValue === "none" ||
+        previousValue === "none" ||
+        currentValue === previousValue
+      )
+        return undefined;
+      const label =
+        typeof record.label === "string" && record.label
+          ? record.label
+          : caseId;
       return `${label} ${previousValue}→${currentValue}`;
     })
     .filter((value): value is string => typeof value === "string")
@@ -2505,21 +3040,35 @@ const buildComparisonSQLitePlannerDriftValue = (
   return drifts.length > 0 ? drifts.join(" · ") : "none";
 };
 
-const buildHistorySQLitePlannerOutcomeValue = (history?: RAGEvaluationHistory) => {
+const buildHistorySQLitePlannerOutcomeValue = (
+  history?: RAGEvaluationHistory,
+) => {
   const shifts = (history?.caseTraceSnapshots ?? [])
     .map((snapshot) => {
       const record = snapshot as Record<string, unknown>;
       const caseId = String(record.caseId ?? "");
       const currentValue = buildSnapshotSQLitePlannerOutcomeValue(record);
       const previousValue = buildSnapshotSQLitePlannerOutcomeValue({
-        sqliteQueryCandidateCoverage: record.previousSqliteQueryCandidateCoverage,
+        sqliteQueryCandidateCoverage:
+          record.previousSqliteQueryCandidateCoverage,
         sqliteQueryUnderfilledTopK: record.previousSqliteQueryUnderfilledTopK,
-        sqliteQueryCandidateBudgetExhausted: record.previousSqliteQueryCandidateBudgetExhausted,
+        sqliteQueryCandidateBudgetExhausted:
+          record.previousSqliteQueryCandidateBudgetExhausted,
         sqliteQueryReturnedCount: record.previousSqliteQueryReturnedCount,
-        sqliteQueryFilteredCandidates: record.previousSqliteQueryFilteredCandidates,
+        sqliteQueryFilteredCandidates:
+          record.previousSqliteQueryFilteredCandidates,
       });
-      if (!caseId || currentValue === "none" || previousValue === "none" || currentValue === previousValue) return undefined;
-      const label = typeof record.label === "string" && record.label ? record.label : caseId;
+      if (
+        !caseId ||
+        currentValue === "none" ||
+        previousValue === "none" ||
+        currentValue === previousValue
+      )
+        return undefined;
+      const label =
+        typeof record.label === "string" && record.label
+          ? record.label
+          : caseId;
       return `${label} ${previousValue}→${currentValue}`;
     })
     .filter((value): value is string => typeof value === "string")
@@ -2540,8 +3089,12 @@ const formatValueList = (values: Array<string | number>, limit = 8) => {
 const buildSetDelta = (previous: string[] = [], current: string[] = []) => {
   const currentSet = new Set(current);
   const previousSet = new Set(previous);
-  const added = [...currentSet].filter((value) => !previousSet.has(value)).sort();
-  const removed = [...previousSet].filter((value) => !currentSet.has(value)).sort();
+  const added = [...currentSet]
+    .filter((value) => !previousSet.has(value))
+    .sort();
+  const removed = [...previousSet]
+    .filter((value) => !currentSet.has(value))
+    .sort();
   return { added, removed };
 };
 
@@ -2561,9 +3114,13 @@ const formatGroundingHistoryArtifactLine = (
   ];
 };
 
-const formatGroundingHistoryArtifactDeltas = (history?: RAGAnswerGroundingEvaluationHistory) => {
+const formatGroundingHistoryArtifactDeltas = (
+  history?: RAGAnswerGroundingEvaluationHistory,
+) => {
   if (!history?.diff) {
-    return ["Run the provider comparison again to compare grounding evidence changes."];
+    return [
+      "Run the provider comparison again to compare grounding evidence changes.",
+    ];
   }
 
   const caseDiffs = [
@@ -2600,7 +3157,8 @@ const formatGroundingHistoryArtifactDeltas = (history?: RAGAnswerGroundingEvalua
     currentReferenceCount += entry.currentReferenceCount;
     previousResolvedCitationCount += entry.previousResolvedCitationCount ?? 0;
     currentResolvedCitationCount += entry.currentResolvedCitationCount;
-    previousUnresolvedCitationCount += entry.previousUnresolvedCitationCount ?? 0;
+    previousUnresolvedCitationCount +=
+      entry.previousUnresolvedCitationCount ?? 0;
     currentUnresolvedCitationCount += entry.currentUnresolvedCitationCount;
     answerChanges += entry.answerChanged ? 1 : 0;
     allPreviousCitedIds.push(...entry.previousCitedIds);
@@ -2611,8 +3169,12 @@ const formatGroundingHistoryArtifactDeltas = (history?: RAGAnswerGroundingEvalua
     allCurrentMissingIds.push(...entry.currentMissingIds);
     allPreviousExtraIds.push(...entry.previousExtraIds);
     allCurrentExtraIds.push(...entry.currentExtraIds);
-    allPreviousUngroundedRefs.push(...entry.previousUngroundedReferenceNumbers.map(String));
-    allCurrentUngroundedRefs.push(...entry.currentUngroundedReferenceNumbers.map(String));
+    allPreviousUngroundedRefs.push(
+      ...entry.previousUngroundedReferenceNumbers.map(String),
+    );
+    allCurrentUngroundedRefs.push(
+      ...entry.currentUngroundedReferenceNumbers.map(String),
+    );
   }
 
   const lines = [
@@ -2624,26 +3186,54 @@ const formatGroundingHistoryArtifactDeltas = (history?: RAGAnswerGroundingEvalua
 
   return [
     ...lines,
-    ...formatGroundingHistoryArtifactLine("Cited IDs", allPreviousCitedIds, allCurrentCitedIds),
-    ...formatGroundingHistoryArtifactLine("Matched IDs", allPreviousMatchedIds, allCurrentMatchedIds),
-    ...formatGroundingHistoryArtifactLine("Missing IDs", allPreviousMissingIds, allCurrentMissingIds),
-    ...formatGroundingHistoryArtifactLine("Extra IDs", allPreviousExtraIds, allCurrentExtraIds),
-    ...formatGroundingHistoryArtifactLine("Unresolved ref #", allPreviousUngroundedRefs, allCurrentUngroundedRefs),
+    ...formatGroundingHistoryArtifactLine(
+      "Cited IDs",
+      allPreviousCitedIds,
+      allCurrentCitedIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Matched IDs",
+      allPreviousMatchedIds,
+      allCurrentMatchedIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Missing IDs",
+      allPreviousMissingIds,
+      allCurrentMissingIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Extra IDs",
+      allPreviousExtraIds,
+      allCurrentExtraIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Unresolved ref #",
+      allPreviousUngroundedRefs,
+      allCurrentUngroundedRefs,
+    ),
   ];
 };
 
 const formatGroundingHistoryCaseChanges = (
-  labels: Array<{ label?: string; caseId: string; previousCitationF1?: number; currentCitationF1: number }>,
+  labels: Array<{
+    label?: string;
+    caseId: string;
+    previousCitationF1?: number;
+    currentCitationF1: number;
+  }>,
 ) =>
   labels.length > 0
     ? labels
-      .map((entry) => `${entry.label ?? entry.caseId} (${formatSignedDelta(entry.currentCitationF1 - (entry.previousCitationF1 ?? 0), 3)})`)
-      .join(", ")
+        .map(
+          (entry) =>
+            `${entry.label ?? entry.caseId} (${formatSignedDelta(entry.currentCitationF1 - (entry.previousCitationF1 ?? 0), 3)})`,
+        )
+        .join(", ")
     : "none";
 
-export const formatEvaluationHistorySummary = (history?: RAGEvaluationHistory) => [
-  formatEvaluationHistoryPresentation(history).summary,
-];
+export const formatEvaluationHistorySummary = (
+  history?: RAGEvaluationHistory,
+) => [formatEvaluationHistoryPresentation(history).summary];
 
 export const formatEvaluationHistoryDiff = (history?: RAGEvaluationHistory) => {
   if (!history?.diff) {
@@ -2669,7 +3259,9 @@ export const formatEvaluationHistoryDiff = (history?: RAGEvaluationHistory) => {
       `Trace variant coverage change: ${formatSignedDelta(history.diff.traceSummaryDelta.variantCases)}`,
     );
 
-    const stageDelta = Object.entries(history.diff.traceSummaryDelta.stageCounts ?? {})
+    const stageDelta = Object.entries(
+      history.diff.traceSummaryDelta.stageCounts ?? {},
+    )
       .map(([stage, count]) => `${stage} ${formatSignedDelta(count)}`)
       .join(", ");
 
@@ -2703,35 +3295,71 @@ export type DemoGroundingProviderCaseComparisonPresentation = {
   rows: RAGLabelValueRow[];
 };
 
-const formatTraceModes = (modes: string[]) => (modes.length > 0 ? modes.join(" / ") : "n/a");
+const formatTraceModes = (modes: string[]) =>
+  modes.length > 0 ? modes.join(" / ") : "n/a";
 
-export const formatEvaluationHistoryPresentation = buildRAGEvaluationHistoryPresentation;
+export const formatEvaluationHistoryPresentation =
+  buildRAGEvaluationHistoryPresentation;
 export const formatEvaluationHistoryRows = (history?: RAGEvaluationHistory) =>
   ensureLabeledRow(
-    ensureLabeledRow(buildRAGEvaluationHistoryRows(history), "Lead evidence shift", buildHistoryLeadDriftValue(history)),
+    ensureLabeledRow(
+      buildRAGEvaluationHistoryRows(history),
+      "Lead evidence shift",
+      buildHistoryLeadDriftValue(history),
+    ),
     "SQLite planner outcome",
     buildHistorySQLitePlannerOutcomeValue(history),
   );
-export const formatEvaluationHistoryDetails = (history?: RAGEvaluationHistory) =>
-  formatEvaluationHistoryRows(history).map((row) => `${row.label}: ${row.value}`);
+export const formatEvaluationHistoryDetails = (
+  history?: RAGEvaluationHistory,
+) =>
+  formatEvaluationHistoryRows(history).map(
+    (row) => `${row.label}: ${row.value}`,
+  );
 
-export const formatEvaluationHistoryTracePresentations = (history?: RAGEvaluationHistory) => {
-  const snapshots = new Map((history?.caseTraceSnapshots ?? []).map((snapshot) => [snapshot.caseId, snapshot as unknown as Record<string, unknown>]));
+export const formatEvaluationHistoryTracePresentations = (
+  history?: RAGEvaluationHistory,
+) => {
+  const snapshots = new Map(
+    (history?.caseTraceSnapshots ?? []).map((snapshot) => [
+      snapshot.caseId,
+      snapshot as unknown as Record<string, unknown>,
+    ]),
+  );
   return buildRAGEvaluationCaseTracePresentations(history).map((entry) => {
     let rows = [...entry.rows];
     const snapshot = snapshots.get(entry.caseId);
-    const leadContext = typeof snapshot?.topContextLabel === "string" && snapshot.topContextLabel ? snapshot.topContextLabel : undefined;
-    const leadLocation = typeof snapshot?.topLocatorLabel === "string" && snapshot.topLocatorLabel ? snapshot.topLocatorLabel : undefined;
-    const boundary = typeof snapshot?.sourceAwareChunkReasonLabel === "string" && snapshot.sourceAwareChunkReasonLabel ? snapshot.sourceAwareChunkReasonLabel : undefined;
-    const scope = typeof snapshot?.sourceAwareUnitScopeLabel === "string" && snapshot.sourceAwareUnitScopeLabel ? snapshot.sourceAwareUnitScopeLabel : undefined;
-    if (leadContext) rows = ensureLabeledRow(rows, "Lead evidence context", leadContext);
-    if (leadLocation) rows = ensureLabeledRow(rows, "Lead evidence location", leadLocation);
-    if (boundary) rows = ensureLabeledRow(rows, "Chunk boundary rule", boundary);
+    const leadContext =
+      typeof snapshot?.topContextLabel === "string" && snapshot.topContextLabel
+        ? snapshot.topContextLabel
+        : undefined;
+    const leadLocation =
+      typeof snapshot?.topLocatorLabel === "string" && snapshot.topLocatorLabel
+        ? snapshot.topLocatorLabel
+        : undefined;
+    const boundary =
+      typeof snapshot?.sourceAwareChunkReasonLabel === "string" &&
+      snapshot.sourceAwareChunkReasonLabel
+        ? snapshot.sourceAwareChunkReasonLabel
+        : undefined;
+    const scope =
+      typeof snapshot?.sourceAwareUnitScopeLabel === "string" &&
+      snapshot.sourceAwareUnitScopeLabel
+        ? snapshot.sourceAwareUnitScopeLabel
+        : undefined;
+    if (leadContext)
+      rows = ensureLabeledRow(rows, "Lead evidence context", leadContext);
+    if (leadLocation)
+      rows = ensureLabeledRow(rows, "Lead evidence location", leadLocation);
+    if (boundary)
+      rows = ensureLabeledRow(rows, "Chunk boundary rule", boundary);
     if (scope) rows = ensureLabeledRow(rows, "Source scope", scope);
     return { ...entry, rows };
   });
 };
-export const formatEvaluationHistoryTraceSnapshots = (history?: RAGEvaluationHistory) => {
+export const formatEvaluationHistoryTraceSnapshots = (
+  history?: RAGEvaluationHistory,
+) => {
   const presentations = formatEvaluationHistoryTracePresentations(history);
   if (presentations.length > 0) {
     return presentations.map((entry) => `${entry.label}: ${entry.summary}`);
@@ -2741,10 +3369,14 @@ export const formatEvaluationHistoryTraceSnapshots = (history?: RAGEvaluationHis
     return ["No saved case-level retrieval traces yet."];
   }
 
-  return ["Run the benchmark again with trace-aware history to capture case-level retrieval changes."];
+  return [
+    "Run the benchmark again with trace-aware history to capture case-level retrieval changes.",
+  ];
 };
 
-export const formatComparisonTraceSummaryRows = (entry: RAGRerankerComparisonEntry | RAGRetrievalComparisonEntry) =>
+export const formatComparisonTraceSummaryRows = (
+  entry: RAGRerankerComparisonEntry | RAGRetrievalComparisonEntry,
+) =>
   ensureLabeledRow(
     ensureLabeledRow(
       ensureLabeledRow(
@@ -2761,30 +3393,45 @@ export const formatComparisonTraceSummaryRows = (entry: RAGRerankerComparisonEnt
 export const formatComparisonTraceDiffRows = (
   entry: RAGRerankerComparisonEntry | RAGRetrievalComparisonEntry,
   leader?: RAGRerankerComparisonEntry | RAGRetrievalComparisonEntry,
-) => ensureLabeledRow(
+) =>
   ensureLabeledRow(
     ensureLabeledRow(
-      buildRAGComparisonTraceDiffRows(entry, leader),
-      "Lead evidence shift vs leader",
-      buildComparisonLeadDriftValue(entry, leader),
+      ensureLabeledRow(
+        buildRAGComparisonTraceDiffRows(entry, leader),
+        "Lead evidence shift vs leader",
+        buildComparisonLeadDriftValue(entry, leader),
+      ),
+      "Lead media shift vs leader",
+      buildComparisonLeadMediaDriftValue(entry, leader),
     ),
-    "Lead media shift vs leader",
-    buildComparisonLeadMediaDriftValue(entry, leader),
-  ),
-  "SQLite planner outcome shift vs leader",
-  buildComparisonSQLitePlannerDriftValue(entry, leader),
-);
-export const formatRetrievalComparisonPresentations = (comparison: RAGRetrievalComparison) =>
+    "SQLite planner outcome shift vs leader",
+    buildComparisonSQLitePlannerDriftValue(entry, leader),
+  );
+export const formatRetrievalComparisonPresentations = (
+  comparison: RAGRetrievalComparison,
+) =>
   buildRAGRetrievalComparisonPresentations(comparison).map((card, index) => ({
     ...card,
-    traceSummaryRows: formatComparisonTraceSummaryRows(comparison.entries[index]!),
-    diffRows: formatComparisonTraceDiffRows(comparison.entries[index]!, comparison.entries[0]),
+    traceSummaryRows: formatComparisonTraceSummaryRows(
+      comparison.entries[index]!,
+    ),
+    diffRows: formatComparisonTraceDiffRows(
+      comparison.entries[index]!,
+      comparison.entries[0],
+    ),
   }));
-export const formatRerankerComparisonPresentations = (comparison: RAGRerankerComparison) =>
+export const formatRerankerComparisonPresentations = (
+  comparison: RAGRerankerComparison,
+) =>
   buildRAGRerankerComparisonPresentations(comparison).map((card, index) => ({
     ...card,
-    traceSummaryRows: formatComparisonTraceSummaryRows(comparison.entries[index]!),
-    diffRows: formatComparisonTraceDiffRows(comparison.entries[index]!, comparison.entries[0]),
+    traceSummaryRows: formatComparisonTraceSummaryRows(
+      comparison.entries[index]!,
+    ),
+    diffRows: formatComparisonTraceDiffRows(
+      comparison.entries[index]!,
+      comparison.entries[0],
+    ),
   }));
 export const formatRetrievalComparisonOverviewPresentation =
   buildRAGRetrievalComparisonOverviewPresentation;
@@ -2792,7 +3439,9 @@ export const formatRerankerComparisonOverviewPresentation =
   buildRAGRerankerComparisonOverviewPresentation;
 export const buildTracePresentation = buildRAGRetrievalTracePresentation;
 
-export const formatRerankerComparisonEntry = (entry: RAGRerankerComparisonEntry) => {
+export const formatRerankerComparisonEntry = (
+  entry: RAGRerankerComparisonEntry,
+) => {
   const leadMediaCues = buildComparisonLeadMediaCueValue(entry);
   const plannerOutcome = buildComparisonSQLitePlannerOutcomeValue(entry);
   return [
@@ -2802,14 +3451,24 @@ export const formatRerankerComparisonEntry = (entry: RAGRerankerComparisonEntry)
     `latency ${entry.response.summary.averageLatencyMs.toFixed(1)}ms`,
     leadMediaCues !== "none" ? `lead media ${leadMediaCues}` : undefined,
     plannerOutcome !== "none" ? `planner ${plannerOutcome}` : undefined,
-  ].filter((value): value is string => typeof value === "string" && value.length > 0).join(" · ");
+  ]
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    )
+    .join(" · ");
 };
 
-export const formatRerankerComparisonSummary = (comparison: RAGRerankerComparison) => {
-  return formatRerankerComparisonOverviewPresentation(comparison).rows.map((row) => `${row.label}: ${row.value}`);
+export const formatRerankerComparisonSummary = (
+  comparison: RAGRerankerComparison,
+) => {
+  return formatRerankerComparisonOverviewPresentation(comparison).rows.map(
+    (row) => `${row.label}: ${row.value}`,
+  );
 };
 
-export const formatRetrievalComparisonEntry = (entry: RAGRetrievalComparisonEntry) => {
+export const formatRetrievalComparisonEntry = (
+  entry: RAGRetrievalComparisonEntry,
+) => {
   const leadMediaCues = buildComparisonLeadMediaCueValue(entry);
   const plannerOutcome = buildComparisonSQLitePlannerOutcomeValue(entry);
   return [
@@ -2820,11 +3479,19 @@ export const formatRetrievalComparisonEntry = (entry: RAGRetrievalComparisonEntr
     `latency ${entry.response.summary.averageLatencyMs.toFixed(1)}ms`,
     leadMediaCues !== "none" ? `lead media ${leadMediaCues}` : undefined,
     plannerOutcome !== "none" ? `planner ${plannerOutcome}` : undefined,
-  ].filter((value): value is string => typeof value === "string" && value.length > 0).join(" · ");
+  ]
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    )
+    .join(" · ");
 };
 
-export const formatRetrievalComparisonSummary = (comparison: RAGRetrievalComparison) => {
-  return formatRetrievalComparisonOverviewPresentation(comparison).rows.map((row) => `${row.label}: ${row.value}`);
+export const formatRetrievalComparisonSummary = (
+  comparison: RAGRetrievalComparison,
+) => {
+  return formatRetrievalComparisonOverviewPresentation(comparison).rows.map(
+    (row) => `${row.label}: ${row.value}`,
+  );
 };
 
 export const formatGroundingEvaluationSummary = (
@@ -2874,25 +3541,31 @@ export const formatGroundingProviderEntry = (
 
 export const formatGroundingProviderSummary = (
   comparison: DemoGroundingProviderComparison,
-) => formatGroundingProviderOverviewPresentation(comparison).rows.map((row) => `${row.label}: ${row.value}`);
+) =>
+  formatGroundingProviderOverviewPresentation(comparison).rows.map(
+    (row) => `${row.label}: ${row.value}`,
+  );
 
 export const formatGroundingProviderCaseEntry = (
   entry: DemoGroundingProviderCaseEntry,
-) => [
-  entry.label,
-  entry.status.toUpperCase(),
-  `f1 ${entry.citationF1.toFixed(3)}`,
-  `resolved ${formatEvaluationPercent(entry.resolvedCitationRate)}`,
-  `matched ${entry.matchedIds.join(", ") || "none"}`,
-  `missing ${entry.missingIds.join(", ") || "none"}`,
-  `extra ${entry.extraIds.join(", ") || "none"}`,
-].join(" · ");
+) =>
+  [
+    entry.label,
+    entry.status.toUpperCase(),
+    `f1 ${entry.citationF1.toFixed(3)}`,
+    `resolved ${formatEvaluationPercent(entry.resolvedCitationRate)}`,
+    `matched ${entry.matchedIds.join(", ") || "none"}`,
+    `missing ${entry.missingIds.join(", ") || "none"}`,
+    `extra ${entry.extraIds.join(", ") || "none"}`,
+  ].join(" · ");
 
 export const formatGroundingProviderCaseSummary = (
   comparison: DemoGroundingProviderCaseComparison,
 ) => {
   const resolveLabel = (key?: string) =>
-    comparison.entries.find((entry) => entry.providerKey === key)?.label ?? key ?? "n/a";
+    comparison.entries.find((entry) => entry.providerKey === key)?.label ??
+    key ??
+    "n/a";
 
   return [
     `Best grounded: ${resolveLabel(comparison.summary.bestByStatus)}`,
@@ -2911,8 +3584,12 @@ const buildQualityOverviewPlannerOutcomeValue = (input: {
 }) => {
   const retrievalLeader = input.retrievalComparison.entries[0];
   const rerankerLeader = input.rerankerComparison.entries[0];
-  const retrievalOutcome = retrievalLeader ? buildComparisonSQLitePlannerOutcomeValue(retrievalLeader) : "none";
-  const rerankerOutcome = rerankerLeader ? buildComparisonSQLitePlannerOutcomeValue(rerankerLeader) : "none";
+  const retrievalOutcome = retrievalLeader
+    ? buildComparisonSQLitePlannerOutcomeValue(retrievalLeader)
+    : "none";
+  const rerankerOutcome = rerankerLeader
+    ? buildComparisonSQLitePlannerOutcomeValue(rerankerLeader)
+    : "none";
 
   if (retrievalOutcome === "none" && rerankerOutcome === "none") {
     return "none";
@@ -2931,7 +3608,9 @@ const buildQualityOverviewPlannerOutcomeValue = (input: {
   return `reranker `;
 };
 
-export const formatQualityOverviewPresentation = (input: Parameters<typeof buildRAGQualityOverviewPresentation>[0]) => {
+export const formatQualityOverviewPresentation = (
+  input: Parameters<typeof buildRAGQualityOverviewPresentation>[0],
+) => {
   const presentation = buildRAGQualityOverviewPresentation(input);
   const plannerOutcome = buildQualityOverviewPlannerOutcomeValue(input);
 
@@ -2956,15 +3635,16 @@ export const formatGroundingProviderCasePresentations =
 
 export const formatGroundingCaseDifficultyEntry = (
   entry: RAGAnswerGroundingEvaluationCaseDifficultyEntry,
-) => [
-  `#${entry.rank}`,
-  entry.label ?? entry.caseId,
-  `pass ${formatEvaluationPassingRate(entry.passRate)}`,
-  `fail ${formatEvaluationPassingRate(entry.failRate)}`,
-  `grounded ${formatEvaluationPassingRate(entry.groundedRate)}`,
-  `citation f1 ${entry.averageCitationF1.toFixed(3)}`,
-  `resolved ${formatEvaluationPercent(entry.averageResolvedCitationRate)}`,
-].join(" · ");
+) =>
+  [
+    `#${entry.rank}`,
+    entry.label ?? entry.caseId,
+    `pass ${formatEvaluationPassingRate(entry.passRate)}`,
+    `fail ${formatEvaluationPassingRate(entry.failRate)}`,
+    `grounded ${formatEvaluationPassingRate(entry.groundedRate)}`,
+    `citation f1 ${entry.averageCitationF1.toFixed(3)}`,
+    `resolved ${formatEvaluationPercent(entry.averageResolvedCitationRate)}`,
+  ].join(" · ");
 
 export const formatGroundingDifficultyHistorySummary = (
   history?: RAGAnswerGroundingCaseDifficultyHistory,
@@ -2979,29 +3659,45 @@ export const formatGroundingDifficultyHistorySummary = (
   ];
 
   if (history.previousRun) {
-    lines.push(`Previous: ${history.previousRun.label} · ${history.previousRun.entries.length} ranked case(s)`);
+    lines.push(
+      `Previous: ${history.previousRun.label} · ${history.previousRun.entries.length} ranked case(s)`,
+    );
   }
 
-  lines.push(`Most often harder: ${history.trends.mostOftenHarderCaseIds.length > 0 ? history.trends.mostOftenHarderCaseIds.join(", ") : "none"}`);
-  lines.push(`Most often easier: ${history.trends.mostOftenEasierCaseIds.length > 0 ? history.trends.mostOftenEasierCaseIds.join(", ") : "none"}`);
+  lines.push(
+    `Most often harder: ${history.trends.mostOftenHarderCaseIds.length > 0 ? history.trends.mostOftenHarderCaseIds.join(", ") : "none"}`,
+  );
+  lines.push(
+    `Most often easier: ${history.trends.mostOftenEasierCaseIds.length > 0 ? history.trends.mostOftenEasierCaseIds.join(", ") : "none"}`,
+  );
 
   return lines;
 };
 
 const formatGroundingDifficultyCaseLabels = (
-  entries: Array<{ label?: string; caseId: string; currentRank: number; previousRank?: number }>,
+  entries: Array<{
+    label?: string;
+    caseId: string;
+    currentRank: number;
+    previousRank?: number;
+  }>,
 ) =>
   entries.length > 0
     ? entries
-      .map((entry) => `${entry.label ?? entry.caseId} (#${entry.previousRank ?? "new"}→#${entry.currentRank})`)
-      .join(", ")
+        .map(
+          (entry) =>
+            `${entry.label ?? entry.caseId} (#${entry.previousRank ?? "new"}→#${entry.currentRank})`,
+        )
+        .join(", ")
     : "none";
 
 export const formatGroundingDifficultyHistoryDiff = (
   history?: RAGAnswerGroundingCaseDifficultyHistory,
 ) => {
   if (!history?.diff) {
-    return ["Run provider comparisons again to compare hardest-case changes over time."];
+    return [
+      "Run provider comparisons again to compare hardest-case changes over time.",
+    ];
   }
 
   return [
@@ -3018,7 +3714,9 @@ export const formatGroundingDifficultyHistoryDetails = (
 ];
 
 const truncateAnswerSnapshot = (value: string, maxLength = 140) =>
-  value.length <= maxLength ? value : `${value.slice(0, maxLength - 1).trimEnd()}…`;
+  value.length <= maxLength
+    ? value
+    : `${value.slice(0, maxLength - 1).trimEnd()}…`;
 
 export const formatGroundingProviderCaseDetails = (
   entry: DemoGroundingProviderCaseEntry,
@@ -3045,7 +3743,9 @@ const formatGroundingSnapshotArtifacts = (
   ];
 
   if (entry.ungroundedReferenceNumbers.length > 0) {
-    parts.push(`unresolved refs ${entry.ungroundedReferenceNumbers.join(", ")}`);
+    parts.push(
+      `unresolved refs ${entry.ungroundedReferenceNumbers.join(", ")}`,
+    );
   }
 
   parts.push(truncateAnswerSnapshot(entry.answer));
@@ -3061,10 +3761,15 @@ const formatGroundingCaseDiffStatusLabel = (entry: {
   `${entry.label ?? entry.caseId} · ${entry.previousStatus ?? "n/a"}→${entry.currentStatus}`;
 
 const buildGroundingCaseDiffTrail = (
-  entry: NonNullable<RAGAnswerGroundingEvaluationHistory["diff"]>["improvedCases"][number],
+  entry: NonNullable<
+    RAGAnswerGroundingEvaluationHistory["diff"]
+  >["improvedCases"][number],
 ) => {
   const statusLabel = formatGroundingCaseDiffStatusLabel(entry);
-  const citationF1Delta = formatSignedDelta((entry.currentCitationF1 ?? 0) - (entry.previousCitationF1 ?? 0), 3);
+  const citationF1Delta = formatSignedDelta(
+    (entry.currentCitationF1 ?? 0) - (entry.previousCitationF1 ?? 0),
+    3,
+  );
   const resolvedDelta = `${formatSignedDelta((entry.currentResolvedCitationCount ?? 0) - (entry.previousResolvedCitationCount ?? 0))} (${entry.previousResolvedCitationCount ?? 0}→${entry.currentResolvedCitationCount})`;
   const unresolvedDelta = `${formatSignedDelta((entry.currentUnresolvedCitationCount ?? 0) - (entry.previousUnresolvedCitationCount ?? 0))} (${entry.previousUnresolvedCitationCount ?? 0}→${entry.currentUnresolvedCitationCount})`;
   const referenceDelta = `${formatSignedDelta((entry.currentReferenceCount ?? 0) - (entry.previousReferenceCount ?? 0))} (${entry.previousReferenceCount ?? 0}→${entry.currentReferenceCount})`;
@@ -3076,10 +3781,26 @@ const buildGroundingCaseDiffTrail = (
     `unresolved refs ${unresolvedDelta}`,
     `references ${referenceDelta}`,
     `Answer changed: ${entry.answerChanged ? "yes" : "no"}`,
-    ...formatGroundingHistoryArtifactLine("Cited IDs", entry.previousCitedIds, entry.currentCitedIds),
-    ...formatGroundingHistoryArtifactLine("Matched IDs", entry.previousMatchedIds, entry.currentMatchedIds),
-    ...formatGroundingHistoryArtifactLine("Missing IDs", entry.previousMissingIds, entry.currentMissingIds),
-    ...formatGroundingHistoryArtifactLine("Extra IDs", entry.previousExtraIds, entry.currentExtraIds),
+    ...formatGroundingHistoryArtifactLine(
+      "Cited IDs",
+      entry.previousCitedIds,
+      entry.currentCitedIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Matched IDs",
+      entry.previousMatchedIds,
+      entry.currentMatchedIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Missing IDs",
+      entry.previousMissingIds,
+      entry.currentMissingIds,
+    ),
+    ...formatGroundingHistoryArtifactLine(
+      "Extra IDs",
+      entry.previousExtraIds,
+      entry.currentExtraIds,
+    ),
     ...formatGroundingHistoryArtifactLine(
       "Unresolved ref #",
       entry.previousUngroundedReferenceNumbers.map(String),
@@ -3092,7 +3813,9 @@ export const formatGroundingHistoryArtifactTrail = (
   history?: RAGAnswerGroundingEvaluationHistory,
 ) => {
   if (!history?.diff) {
-    return ["Run the provider comparison again to show case-level evidence history."];
+    return [
+      "Run the provider comparison again to show case-level evidence history.",
+    ];
   }
 
   if (
@@ -3100,15 +3823,23 @@ export const formatGroundingHistoryArtifactTrail = (
     history.diff.regressedCases.length === 0 &&
     history.diff.unchangedCases.length === 0
   ) {
-    return ["No case-level evidence history is available for the latest provider comparison."];
+    return [
+      "No case-level evidence history is available for the latest provider comparison.",
+    ];
   }
 
   return [
     `Case history: ${history.diff.improvedCases.length} improved · ${history.diff.regressedCases.length} regressed · ${history.diff.unchangedCases.length} unchanged`,
     `Case history F1 change: ${formatSignedDelta(history.diff.summaryDelta.averageCitationF1, 3)}`,
-    ...history.diff.improvedCases.flatMap((entry) => buildGroundingCaseDiffTrail(entry)),
-    ...history.diff.regressedCases.flatMap((entry) => buildGroundingCaseDiffTrail(entry)),
-    ...history.diff.unchangedCases.flatMap((entry) => buildGroundingCaseDiffTrail(entry)),
+    ...history.diff.improvedCases.flatMap((entry) =>
+      buildGroundingCaseDiffTrail(entry),
+    ),
+    ...history.diff.regressedCases.flatMap((entry) =>
+      buildGroundingCaseDiffTrail(entry),
+    ),
+    ...history.diff.unchangedCases.flatMap((entry) =>
+      buildGroundingCaseDiffTrail(entry),
+    ),
   ];
 };
 
@@ -3116,15 +3847,18 @@ export const formatGroundingHistorySnapshots = (
   history?: RAGAnswerGroundingEvaluationHistory,
 ) => {
   if (history?.caseSnapshots.length) {
-    return history.caseSnapshots.map((entry) => formatGroundingSnapshotArtifacts(entry));
+    return history.caseSnapshots.map((entry) =>
+      formatGroundingSnapshotArtifacts(entry),
+    );
   }
 
   if (!history?.latestRun) {
     return ["No saved provider answer snapshots yet."];
   }
 
-  return history.latestRun.response.cases.map((entry) =>
-    `${entry.label ?? entry.caseId}: no answer change · ${truncateAnswerSnapshot(entry.answer)}`
+  return history.latestRun.response.cases.map(
+    (entry) =>
+      `${entry.label ?? entry.caseId}: no answer change · ${truncateAnswerSnapshot(entry.answer)}`,
   );
 };
 
@@ -3142,7 +3876,9 @@ export const formatGroundingHistoryDiff = (
   history?: RAGAnswerGroundingEvaluationHistory,
 ) => {
   if (!history?.diff) {
-    return ["Run the provider comparison again to compare grounding results over time."];
+    return [
+      "Run the provider comparison again to compare grounding results over time.",
+    ];
   }
 
   return [
@@ -3157,7 +3893,10 @@ export const formatGroundingHistoryDiff = (
 
 export const formatGroundingHistoryDetails = (
   history?: RAGAnswerGroundingEvaluationHistory,
-) => formatGroundingHistoryPresentation(history).rows.map((row) => `${row.label}: ${row.value}`);
+) =>
+  formatGroundingHistoryPresentation(history).rows.map(
+    (row) => `${row.label}: ${row.value}`,
+  );
 
 export const formatGroundingHistoryLeaderboardEntry = (
   entry: RAGAnswerGroundingEvaluationLeaderboardEntry,
@@ -3165,10 +3904,18 @@ export const formatGroundingHistoryLeaderboardEntry = (
   `#${entry.rank} · ${entry.label} · passing ${formatEvaluationPassingRate(entry.passingRate)} · citation f1 ${entry.averageCitationF1.toFixed(3)} · resolved ${formatEvaluationPercent(entry.averageResolvedCitationRate)}`;
 
 export const isBackendMode = (value: unknown): value is DemoBackendMode =>
-  value === "sqlite-native" || value === "sqlite-fallback" || value === "postgres";
+  value === "sqlite-native" ||
+  value === "sqlite-fallback" ||
+  value === "postgres" ||
+  value === "pinecone";
 
 export const isFrameworkId = (value: unknown): value is DemoFrameworkId =>
-  value === "react" || value === "svelte" || value === "vue" || value === "angular" || value === "html" || value === "htmx";
+  value === "react" ||
+  value === "svelte" ||
+  value === "vue" ||
+  value === "angular" ||
+  value === "html" ||
+  value === "htmx";
 
 export const getBackendLabel = (mode: DemoBackendMode) =>
   demoBackends.find((backend) => backend.id === mode)?.label ?? mode;
@@ -3179,8 +3926,10 @@ export const getAvailableDemoBackends = (backends?: DemoBackendDescriptor[]) =>
 export const getFrameworkLabel = (framework: DemoFrameworkId) =>
   demoFrameworks.find((entry) => entry.id === framework)?.label ?? framework;
 
-export const getDemoPagePath = (framework: DemoFrameworkId, mode: DemoBackendMode) =>
-  `/${framework}/${mode}`;
+export const getDemoPagePath = (
+  framework: DemoFrameworkId,
+  mode: DemoBackendMode,
+) => `/${framework}/${mode}`;
 
 export const getRAGPathForMode = (mode: DemoBackendMode) => {
   switch (mode) {
@@ -3210,7 +3959,9 @@ export const readFrameworkFromPath = (
   return isFrameworkId(framework) ? framework : defaultFramework;
 };
 
-export const getInitialBackendMode = (defaultMode: DemoBackendMode = "sqlite-native") => {
+export const getInitialBackendMode = (
+  defaultMode: DemoBackendMode = "sqlite-native",
+) => {
   if (typeof window === "undefined") {
     return defaultMode;
   }
@@ -3218,14 +3969,15 @@ export const getInitialBackendMode = (defaultMode: DemoBackendMode = "sqlite-nat
   return readBackendModeFromPath(window.location.pathname, defaultMode);
 };
 
-export const getInitialFramework = (defaultFramework: DemoFrameworkId = "react") => {
+export const getInitialFramework = (
+  defaultFramework: DemoFrameworkId = "react",
+) => {
   if (typeof window === "undefined") {
     return defaultFramework;
   }
 
   return readFrameworkFromPath(window.location.pathname, defaultFramework);
 };
-
 
 export const navigateToBackendMode = (
   frameworkOrMode: DemoFrameworkId | DemoBackendMode,
@@ -3235,12 +3987,16 @@ export const navigateToBackendMode = (
     return;
   }
 
-  const framework = maybeMode ? frameworkOrMode as DemoFrameworkId : getInitialFramework();
-  const mode = maybeMode ?? frameworkOrMode as DemoBackendMode;
+  const framework = maybeMode
+    ? (frameworkOrMode as DemoFrameworkId)
+    : getInitialFramework();
+  const mode = maybeMode ?? (frameworkOrMode as DemoBackendMode);
   window.location.href = getDemoPagePath(framework, mode);
 };
 
-export const buildSearchPayload = (query: SearchFormState & { retrievalPresetId?: string }) => {
+export const buildSearchPayload = (
+  query: SearchFormState & { retrievalPresetId?: string },
+) => {
   const payload: Record<string, unknown> = {
     query: query.query,
     topK: query.topK,
@@ -3252,10 +4008,16 @@ export const buildSearchPayload = (query: SearchFormState & { retrievalPresetId?
   if (query.kind.length > 0) payload.kind = query.kind;
   if (query.source.length > 0) payload.source = query.source;
   if (query.documentId.length > 0) payload.documentId = query.documentId;
-  if (typeof query.nativeQueryProfile === "string" && query.nativeQueryProfile.length > 0) {
+  if (
+    typeof query.nativeQueryProfile === "string" &&
+    query.nativeQueryProfile.length > 0
+  ) {
     payload.nativeQueryProfile = query.nativeQueryProfile;
   }
-  if (typeof query.retrievalPresetId === "string" && query.retrievalPresetId.length > 0) {
+  if (
+    typeof query.retrievalPresetId === "string" &&
+    query.retrievalPresetId.length > 0
+  ) {
     payload.retrievalPresetId = query.retrievalPresetId;
   }
 
@@ -3263,7 +4025,10 @@ export const buildSearchPayload = (query: SearchFormState & { retrievalPresetId?
 };
 
 const buildSearchTargetId = (prefix: string, value: string) => {
-  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const normalized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return `${prefix}-${normalized || "item"}`;
 };
 
@@ -3274,7 +4039,7 @@ const buildSearchSectionJump = (
 ): SearchResultSectionJump => ({
   id: `${kind}:${section.id}`,
   kind,
-  label: `${kind[0].toUpperCase()}${kind.slice(1)} · ${formatChunkSectionGroupLabel(section)}` ,
+  label: `${kind[0].toUpperCase()}${kind.slice(1)} · ${formatChunkSectionGroupLabel(section)}`,
   targetId,
 });
 
@@ -3309,30 +4074,39 @@ const formatLeadContinuityCue = (value?: string) =>
 const buildLeadMediaCueLine = (trace?: RAGRetrievalTrace) => {
   const rerankStep = trace?.steps.find((step) => step.stage === "rerank");
   const metadata = (rerankStep?.metadata ?? {}) as Record<string, unknown>;
-  const speaker = typeof metadata.leadSpeakerCue === "string" && metadata.leadSpeakerCue
-    ? metadata.leadSpeakerCue
-    : undefined;
-  const quotedSpeakerAttribution = metadata.leadSpeakerAttributionCue === "quoted_match"
-    ? "quoted speaker match"
-    : undefined;
-  const channel = typeof metadata.leadChannelCue === "string" && metadata.leadChannelCue
-    ? metadata.leadChannelCue
-    : undefined;
-  const quotedChannelAttribution = metadata.leadChannelAttributionCue === "quoted_match"
-    ? "quoted channel match"
-    : undefined;
-  const continuity = typeof metadata.leadContinuityCue === "string"
-    ? formatLeadContinuityCue(metadata.leadContinuityCue)
-    : undefined;
+  const speaker =
+    typeof metadata.leadSpeakerCue === "string" && metadata.leadSpeakerCue
+      ? metadata.leadSpeakerCue
+      : undefined;
+  const quotedSpeakerAttribution =
+    metadata.leadSpeakerAttributionCue === "quoted_match"
+      ? "quoted speaker match"
+      : undefined;
+  const channel =
+    typeof metadata.leadChannelCue === "string" && metadata.leadChannelCue
+      ? metadata.leadChannelCue
+      : undefined;
+  const quotedChannelAttribution =
+    metadata.leadChannelAttributionCue === "quoted_match"
+      ? "quoted channel match"
+      : undefined;
+  const continuity =
+    typeof metadata.leadContinuityCue === "string"
+      ? formatLeadContinuityCue(metadata.leadContinuityCue)
+      : undefined;
   const parts = [
     speaker ? `speaker ${speaker}` : undefined,
     quotedSpeakerAttribution,
     channel ? `channel ${channel}` : undefined,
     quotedChannelAttribution,
     continuity,
-  ].filter((value): value is string => typeof value === "string" && value.length > 0);
+  ].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
 
-  return parts.length > 0 ? `Lead media cues · ${parts.join(" · ")}` : undefined;
+  return parts.length > 0
+    ? `Lead media cues · ${parts.join(" · ")}`
+    : undefined;
 };
 
 const buildSearchStoryHighlights = (
@@ -3347,23 +4121,27 @@ const buildSearchStoryHighlights = (
   const leadMetadata = (results[0]?.metadata ?? {}) as Record<string, unknown>;
   const traceMode = leadDiagnostic?.retrievalMode ?? trace?.mode ?? "hybrid";
 
-  let mode: "primary" | "transformed" | "variant" | "mixed" | undefined = leadDiagnostic?.queryAttribution?.mode;
+  let mode: "primary" | "transformed" | "variant" | "mixed" | undefined =
+    leadDiagnostic?.queryAttribution?.mode;
   if (!mode) {
     const seen = new Set<string>();
     for (const result of results) {
       const metadata = (result.metadata ?? {}) as Record<string, unknown>;
       const origins = Array.isArray(metadata.retrievalQueryOrigins)
-        ? metadata.retrievalQueryOrigins.filter((value): value is string => typeof value === "string")
+        ? metadata.retrievalQueryOrigins.filter(
+            (value): value is string => typeof value === "string",
+          )
         : typeof metadata.retrievalQueryOrigin === "string"
           ? [metadata.retrievalQueryOrigin]
           : [];
       origins.forEach((origin) => seen.add(origin));
     }
-    mode = seen.size === 1
-      ? ([...seen][0] as "primary" | "transformed" | "variant")
-      : seen.size > 1
-        ? "mixed"
-        : undefined;
+    mode =
+      seen.size === 1
+        ? ([...seen][0] as "primary" | "transformed" | "variant")
+        : seen.size > 1
+          ? "mixed"
+          : undefined;
   }
 
   if (leadDiagnostic) {
@@ -3379,11 +4157,12 @@ const buildSearchStoryHighlights = (
     lines.push(leadMediaCueLine);
   }
   if (trace?.multiVector?.configured) {
-    const matchedVariantLabel = typeof leadMetadata.multivectorMatchedVariantLabel === "string"
-      ? leadMetadata.multivectorMatchedVariantLabel
-      : typeof leadMetadata.multivectorMatchedVariantId === "string"
-        ? leadMetadata.multivectorMatchedVariantId
-        : "variant match";
+    const matchedVariantLabel =
+      typeof leadMetadata.multivectorMatchedVariantLabel === "string"
+        ? leadMetadata.multivectorMatchedVariantLabel
+        : typeof leadMetadata.multivectorMatchedVariantId === "string"
+          ? leadMetadata.multivectorMatchedVariantId
+          : "variant match";
     lines.push(
       `Late interaction · ${matchedVariantLabel} · collapsed ${trace.multiVector.collapsedParents} parent${trace.multiVector.collapsedParents === 1 ? "" : "s"} · vector variants ${trace.multiVector.vectorVariantHits} · lexical variants ${trace.multiVector.lexicalVariantHits}`,
     );
@@ -3397,11 +4176,13 @@ const buildSearchStoryHighlights = (
           ? `Reading target · expect transformed vocabulary to carry the winning source, even if it is not sectioned.`
           : mode === "variant"
             ? `Reading target · expect expanded variants to dominate the winning evidence.`
-            : `Reading target · expect the original wording to resolve without transform support.`
+            : `Reading target · expect the original wording to resolve without transform support.`,
     );
     lines.push(`Diagnostic focus · ${label}`);
   } else if (queryTransformApplied) {
-    lines.push("Reading target · inspect whether transformed wording, not the base query, is carrying the winning source.");
+    lines.push(
+      "Reading target · inspect whether transformed wording, not the base query, is carrying the winning source.",
+    );
   }
   return lines;
 };
@@ -3412,10 +4193,21 @@ const buildSearchAttributionOverview = (
   trace?: RAGRetrievalTrace,
 ) => {
   const lines: string[] = [];
-  const modes = new Set(diagnostics.map((entry) => entry.queryAttribution?.mode ?? "mixed"));
-  let primaryHits = diagnostics.reduce((total, entry) => total + (entry.queryAttribution?.primaryHits ?? 0), 0);
-  let transformedHits = diagnostics.reduce((total, entry) => total + (entry.queryAttribution?.transformedHits ?? 0), 0);
-  let variantHits = diagnostics.reduce((total, entry) => total + (entry.queryAttribution?.variantHits ?? 0), 0);
+  const modes = new Set(
+    diagnostics.map((entry) => entry.queryAttribution?.mode ?? "mixed"),
+  );
+  let primaryHits = diagnostics.reduce(
+    (total, entry) => total + (entry.queryAttribution?.primaryHits ?? 0),
+    0,
+  );
+  let transformedHits = diagnostics.reduce(
+    (total, entry) => total + (entry.queryAttribution?.transformedHits ?? 0),
+    0,
+  );
+  let variantHits = diagnostics.reduce(
+    (total, entry) => total + (entry.queryAttribution?.variantHits ?? 0),
+    0,
+  );
   const leadDiagnostic = diagnostics[0];
   const leadSource = results[0]?.source ?? leadDiagnostic?.topSource;
 
@@ -3424,7 +4216,9 @@ const buildSearchAttributionOverview = (
     for (const result of results) {
       const metadata = (result.metadata ?? {}) as Record<string, unknown>;
       const origins = Array.isArray(metadata.retrievalQueryOrigins)
-        ? metadata.retrievalQueryOrigins.filter((value): value is string => typeof value === "string")
+        ? metadata.retrievalQueryOrigins.filter(
+            (value): value is string => typeof value === "string",
+          )
         : typeof metadata.retrievalQueryOrigin === "string"
           ? [metadata.retrievalQueryOrigin]
           : [];
@@ -3453,10 +4247,14 @@ const buildSearchAttributionOverview = (
     const onlyMode = [...modes][0] ?? "mixed";
     lines.push(`Attribution mode · ${formatAttributionModeLabel(onlyMode)}`);
   } else if (modes.size > 1) {
-    lines.push(`Attribution mode · mixed sections (${[...modes].sort().join(", ")})`);
+    lines.push(
+      `Attribution mode · mixed sections (${[...modes].sort().join(", ")})`,
+    );
   }
   if (primaryHits + transformedHits + variantHits > 0) {
-    lines.push(`Attribution counts · base ${primaryHits} · transformed ${transformedHits} · variant ${variantHits}`);
+    lines.push(
+      `Attribution counts · base ${primaryHits} · transformed ${transformedHits} · variant ${variantHits}`,
+    );
   }
   if (leadDiagnostic) {
     lines.push(`Leading section · ${leadDiagnostic.label}`);
@@ -3490,21 +4288,69 @@ export const buildSearchResponse = (
   elapsedMs: number,
   trace?: RAGRetrievalTrace,
 ): SearchResponse => {
-  const traceRoutingStep = trace?.steps.find((step) => step.stage === "routing");
-  const traceRoutingMetadata = (traceRoutingStep?.metadata ?? {}) as Record<string, unknown>;
-  const traceQueryTransformStep = trace?.steps.find((step) => step.stage === "query_transform");
-  const traceQueryTransformMetadata = (traceQueryTransformStep?.metadata ?? {}) as Record<string, unknown>;
-  const rawSectionDiagnostics = buildRAGSectionRetrievalDiagnostics(results, trace) as DemoSectionDiagnostic[];
-  const sectionDiagnostics: DemoSectionDiagnostic[] = rawSectionDiagnostics.map((diagnostic) => ({
-    ...diagnostic,
-    requestedMode: diagnostic.requestedMode ?? trace?.requestedMode ?? (typeof traceRoutingMetadata.requestedMode === "string" ? traceRoutingMetadata.requestedMode as DemoSectionDiagnostic["requestedMode"] : undefined),
-    routingLabel: diagnostic.routingLabel ?? trace?.routingLabel ?? (typeof traceRoutingMetadata.label === "string" ? traceRoutingMetadata.label : undefined),
-    routingProvider: diagnostic.routingProvider ?? trace?.routingProvider ?? (typeof traceRoutingMetadata.providerName === "string" ? traceRoutingMetadata.providerName : undefined),
-    routingReason: diagnostic.routingReason ?? trace?.routingReason ?? (typeof traceRoutingMetadata.reason === "string" ? traceRoutingMetadata.reason : undefined),
-    queryTransformLabel: diagnostic.queryTransformLabel ?? trace?.queryTransformLabel ?? (typeof traceQueryTransformMetadata.label === "string" ? traceQueryTransformMetadata.label : undefined),
-    queryTransformProvider: diagnostic.queryTransformProvider ?? trace?.queryTransformProvider ?? (typeof traceQueryTransformMetadata.providerName === "string" ? traceQueryTransformMetadata.providerName : undefined),
-    queryTransformReason: diagnostic.queryTransformReason ?? trace?.queryTransformReason ?? (typeof traceQueryTransformMetadata.reason === "string" ? traceQueryTransformMetadata.reason : undefined),
-  }));
+  const traceRoutingStep = trace?.steps.find(
+    (step) => step.stage === "routing",
+  );
+  const traceRoutingMetadata = (traceRoutingStep?.metadata ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const traceQueryTransformStep = trace?.steps.find(
+    (step) => step.stage === "query_transform",
+  );
+  const traceQueryTransformMetadata = (traceQueryTransformStep?.metadata ??
+    {}) as Record<string, unknown>;
+  const rawSectionDiagnostics = buildRAGSectionRetrievalDiagnostics(
+    results,
+    trace,
+  ) as DemoSectionDiagnostic[];
+  const sectionDiagnostics: DemoSectionDiagnostic[] = rawSectionDiagnostics.map(
+    (diagnostic) => ({
+      ...diagnostic,
+      requestedMode:
+        diagnostic.requestedMode ??
+        trace?.requestedMode ??
+        (typeof traceRoutingMetadata.requestedMode === "string"
+          ? (traceRoutingMetadata.requestedMode as DemoSectionDiagnostic["requestedMode"])
+          : undefined),
+      routingLabel:
+        diagnostic.routingLabel ??
+        trace?.routingLabel ??
+        (typeof traceRoutingMetadata.label === "string"
+          ? traceRoutingMetadata.label
+          : undefined),
+      routingProvider:
+        diagnostic.routingProvider ??
+        trace?.routingProvider ??
+        (typeof traceRoutingMetadata.providerName === "string"
+          ? traceRoutingMetadata.providerName
+          : undefined),
+      routingReason:
+        diagnostic.routingReason ??
+        trace?.routingReason ??
+        (typeof traceRoutingMetadata.reason === "string"
+          ? traceRoutingMetadata.reason
+          : undefined),
+      queryTransformLabel:
+        diagnostic.queryTransformLabel ??
+        trace?.queryTransformLabel ??
+        (typeof traceQueryTransformMetadata.label === "string"
+          ? traceQueryTransformMetadata.label
+          : undefined),
+      queryTransformProvider:
+        diagnostic.queryTransformProvider ??
+        trace?.queryTransformProvider ??
+        (typeof traceQueryTransformMetadata.providerName === "string"
+          ? traceQueryTransformMetadata.providerName
+          : undefined),
+      queryTransformReason:
+        diagnostic.queryTransformReason ??
+        trace?.queryTransformReason ??
+        (typeof traceQueryTransformMetadata.reason === "string"
+          ? traceQueryTransformMetadata.reason
+          : undefined),
+    }),
+  );
 
   return {
     query,
@@ -3532,9 +4378,17 @@ export const buildSearchResponse = (
         )
         .map(([key, value]) => [key, value as string]),
     ),
-    storyHighlights: buildSearchStoryHighlights(results, sectionDiagnostics, trace),
+    storyHighlights: buildSearchStoryHighlights(
+      results,
+      sectionDiagnostics,
+      trace,
+    ),
     sectionDiagnostics,
-    attributionOverview: buildSearchAttributionOverview(results, sectionDiagnostics, trace),
+    attributionOverview: buildSearchAttributionOverview(
+      results,
+      sectionDiagnostics,
+      trace,
+    ),
     trace,
   };
 };
@@ -3554,7 +4408,11 @@ const buildChunkPreviewSources = (preview: DemoChunkPreview): RAGSource[] =>
 export const buildChunkPreviewSectionDiagnostics = (
   preview?: DemoChunkPreview | null,
 ): DemoSectionDiagnostic[] =>
-  preview ? (buildRAGSectionRetrievalDiagnostics(buildChunkPreviewSources(preview)) as DemoSectionDiagnostic[]) : [];
+  preview
+    ? (buildRAGSectionRetrievalDiagnostics(
+        buildChunkPreviewSources(preview),
+      ) as DemoSectionDiagnostic[])
+    : [];
 
 export const buildActiveChunkPreviewSectionDiagnostic = (
   preview?: DemoChunkPreview | null,
@@ -3563,12 +4421,15 @@ export const buildActiveChunkPreviewSectionDiagnostic = (
   if (!preview) return null;
 
   const previewSources = buildChunkPreviewSources(preview);
-  const diagnostics = buildRAGSectionRetrievalDiagnostics(previewSources) as DemoSectionDiagnostic[];
+  const diagnostics = buildRAGSectionRetrievalDiagnostics(
+    previewSources,
+  ) as DemoSectionDiagnostic[];
   const navigation = buildRAGChunkGraphNavigation(
     buildRAGChunkGraph(previewSources),
     activeChunkId ?? undefined,
   );
-  const sectionKey = navigation.section?.path?.join(" > ") ?? navigation.section?.title;
+  const sectionKey =
+    navigation.section?.path?.join(" > ") ?? navigation.section?.title;
   if (!sectionKey) return null;
 
   return (
@@ -3585,16 +4446,22 @@ export const buildSearchSectionGroups = (
   if (chunks.length === 0) return [];
 
   const graph = buildRAGChunkGraph(chunks);
-  const groups = new Map<string, {
-    id: string;
-    label: string;
-    targetId: string;
-    leadChunkId: string;
-    score: number;
-    index: number;
-    section?: Pick<RAGChunkGraphSectionGroup, "id" | "path" | "title" | "leadChunkId">;
-    chunks: SearchResultChunk[];
-  }>();
+  const groups = new Map<
+    string,
+    {
+      id: string;
+      label: string;
+      targetId: string;
+      leadChunkId: string;
+      score: number;
+      index: number;
+      section?: Pick<
+        RAGChunkGraphSectionGroup,
+        "id" | "path" | "title" | "leadChunkId"
+      >;
+      chunks: SearchResultChunk[];
+    }
+  >();
 
   chunks.forEach((chunk, index) => {
     const navigation = buildRAGChunkGraphNavigation(graph, chunk.chunkId);
@@ -3609,12 +4476,23 @@ export const buildSearchSectionGroups = (
 
     groups.set(groupId, {
       id: groupId,
-      label: section ? formatChunkSectionGroupLabel(section) : chunk.labels?.contextLabel ?? chunk.title,
-      targetId: section ? buildSearchTargetId("search-section", section.id) : chunk.targetId,
+      label: section
+        ? formatChunkSectionGroupLabel(section)
+        : (chunk.labels?.contextLabel ?? chunk.title),
+      targetId: section
+        ? buildSearchTargetId("search-section", section.id)
+        : chunk.targetId,
       leadChunkId: section?.leadChunkId ?? chunk.chunkId,
       score: chunk.score,
       index,
-      section: section ? { id: section.id, path: section.path, title: section.title, leadChunkId: section.leadChunkId } : undefined,
+      section: section
+        ? {
+            id: section.id,
+            path: section.path,
+            title: section.title,
+            leadChunkId: section.leadChunkId,
+          }
+        : undefined,
       chunks: [chunk],
     });
   });
@@ -3635,20 +4513,29 @@ export const buildSearchSectionGroups = (
       const jumps: SearchResultSectionJump[] = [];
       if (navigation.parentSection) {
         const targetId = groupTargetIds.get(navigation.parentSection.id);
-        if (targetId) jumps.push(buildSearchSectionJump("parent", navigation.parentSection, targetId));
+        if (targetId)
+          jumps.push(
+            buildSearchSectionJump(
+              "parent",
+              navigation.parentSection,
+              targetId,
+            ),
+          );
       }
       navigation.siblingSections.forEach((section) => {
         const targetId = groupTargetIds.get(section.id);
-        if (targetId) jumps.push(buildSearchSectionJump("sibling", section, targetId));
+        if (targetId)
+          jumps.push(buildSearchSectionJump("sibling", section, targetId));
       });
       navigation.childSections.forEach((section) => {
         const targetId = groupTargetIds.get(section.id);
-        if (targetId) jumps.push(buildSearchSectionJump("child", section, targetId));
+        if (targetId)
+          jumps.push(buildSearchSectionJump("child", section, targetId));
       });
       return {
         id: group.id,
         label: group.label,
-        summary: `${group.chunks.length} matching chunk${group.chunks.length === 1 ? "" : "s"}` ,
+        summary: `${group.chunks.length} matching chunk${group.chunks.length === 1 ? "" : "s"}`,
         targetId: group.targetId,
         leadChunkId: group.leadChunkId,
         jumps,
@@ -3679,8 +4566,12 @@ export const buildSourceSummarySectionGroups = (
     });
   }
   return [...groups.values()].sort((left, right) => {
-    const leftScore = Math.max(...left.summaries.map((summary) => summary.bestScore));
-    const rightScore = Math.max(...right.summaries.map((summary) => summary.bestScore));
+    const leftScore = Math.max(
+      ...left.summaries.map((summary) => summary.bestScore),
+    );
+    const rightScore = Math.max(
+      ...right.summaries.map((summary) => summary.bestScore),
+    );
     return rightScore - leftScore;
   });
 };
@@ -3689,7 +4580,11 @@ export const buildGroundingReferenceGroups = (
 ): DemoGroundingReferenceGroup[] => {
   const groups = new Map<string, DemoGroundingReferenceGroup>();
   for (const reference of references ?? []) {
-    const label = reference.contextLabel ?? reference.label ?? reference.source ?? reference.chunkId;
+    const label =
+      reference.contextLabel ??
+      reference.label ??
+      reference.source ??
+      reference.chunkId;
     const id = buildSearchTargetId("grounding-reference-section", label);
     const existing = groups.get(id);
     if (existing) {
@@ -3706,8 +4601,12 @@ export const buildGroundingReferenceGroups = (
     });
   }
   return [...groups.values()].sort((left, right) => {
-    const leftScore = Math.max(...left.references.map((reference) => reference.score));
-    const rightScore = Math.max(...right.references.map((reference) => reference.score));
+    const leftScore = Math.max(
+      ...left.references.map((reference) => reference.score),
+    );
+    const rightScore = Math.max(
+      ...right.references.map((reference) => reference.score),
+    );
     return rightScore - leftScore;
   });
 };
@@ -3717,7 +4616,11 @@ export const buildCitationGroups = (
 ): DemoCitationGroup[] => {
   const groups = new Map<string, DemoCitationGroup>();
   for (const citation of citations ?? []) {
-    const label = citation.contextLabel ?? citation.label ?? citation.source ?? citation.chunkId;
+    const label =
+      citation.contextLabel ??
+      citation.label ??
+      citation.source ??
+      citation.chunkId;
     const id = buildSearchTargetId("citation-section", label);
     const existing = groups.get(id);
     if (existing) {
@@ -3734,8 +4637,12 @@ export const buildCitationGroups = (
     });
   }
   return [...groups.values()].sort((left, right) => {
-    const leftScore = Math.max(...left.citations.map((citation) => citation.score));
-    const rightScore = Math.max(...right.citations.map((citation) => citation.score));
+    const leftScore = Math.max(
+      ...left.citations.map((citation) => citation.score),
+    );
+    const rightScore = Math.max(
+      ...right.citations.map((citation) => citation.score),
+    );
     return rightScore - leftScore;
   });
 };
@@ -3743,7 +4650,9 @@ export const buildCitationGroups = (
 const buildNativeSourceLabel = (status: RAGVectorStoreStatus) => {
   const vectorMode = status.vectorMode as string;
   const nativeResolution =
-    status.native && "resolution" in status.native ? status.native.resolution : undefined;
+    status.native && "resolution" in status.native
+      ? status.native.resolution
+      : undefined;
 
   if (vectorMode === "native_vec0") {
     return nativeResolution?.source === "absolute-package"
@@ -3805,8 +4714,12 @@ export const buildStatusView = (
 
   const capabilityLabels = [
     `${capabilities?.persistence ?? "unknown"} persistence`,
-    capabilities?.nativeVectorSearch ? "native vector search" : "owned JSON fallback search",
-    capabilities?.serverSideFiltering ? "server-side filtering" : "client-side filtering",
+    capabilities?.nativeVectorSearch
+      ? "native vector search"
+      : "owned JSON fallback search",
+    capabilities?.serverSideFiltering
+      ? "server-side filtering"
+      : "client-side filtering",
   ];
 
   return {
@@ -3836,7 +4749,9 @@ const formatCompactList = (values: string[]) =>
   values.length > 0 ? values.join(", ") : "none";
 
 const formatDuration = (value?: number) =>
-  typeof value === "number" && Number.isFinite(value) ? `${value}${value === 1 ? "ms" : "ms"}` : "n/a";
+  typeof value === "number" && Number.isFinite(value)
+    ? `${value}${value === 1 ? "ms" : "ms"}`
+    : "n/a";
 
 const formatAge = (value?: number) => {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
@@ -3867,11 +4782,15 @@ const formatAge = (value?: number) => {
 
 const formatCoverageMap = (entries: Record<string, number>) =>
   Object.entries(entries)
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .sort(
+      (left, right) => right[1] - left[1] || left[0].localeCompare(right[0]),
+    )
     .map(([key, count]) => `${key}: ${count}`)
     .join(" · ") || "none";
 
-export const formatGroundingCoverage = (coverage: RAGGroundedAnswer["coverage"]) => {
+export const formatGroundingCoverage = (
+  coverage: RAGGroundedAnswer["coverage"],
+) => {
   switch (coverage) {
     case "grounded":
       return "Grounded";
@@ -3901,26 +4820,40 @@ export const formatGroundingSummary = (answer?: RAGGroundedAnswer | null) => {
 export const formatGroundedAnswerSectionSummaryDetails = (
   summary: RAGGroundedAnswerSectionSummary,
 ) => {
-  const citationList = summary.referenceNumbers.map((number) => `[${number}]`).join(" ");
+  const citationList = summary.referenceNumbers
+    .map((number) => `[${number}]`)
+    .join(" ");
   return [
     `${summary.count} reference${summary.count === 1 ? "" : "s"}${citationList ? ` · citations ${citationList}` : ""}`,
     summary.locatorLabel ? `location: ${summary.locatorLabel}` : undefined,
-    summary.contextLabel && summary.contextLabel !== summary.label ? `context: ${summary.contextLabel}` : undefined,
-    summary.provenanceLabel ? `provenance: ${summary.provenanceLabel}` : undefined,
+    summary.contextLabel && summary.contextLabel !== summary.label
+      ? `context: ${summary.contextLabel}`
+      : undefined,
+    summary.provenanceLabel
+      ? `provenance: ${summary.provenanceLabel}`
+      : undefined,
   ].filter((line): line is string => Boolean(line));
 };
 
-export const formatGroundingReferenceLabel = (reference: RAGGroundingReference) =>
-  [reference.label, reference.contextLabel, reference.locatorLabel].filter(Boolean).join(" · ");
+export const formatGroundingReferenceLabel = (
+  reference: RAGGroundingReference,
+) =>
+  [reference.label, reference.contextLabel, reference.locatorLabel]
+    .filter(Boolean)
+    .join(" · ");
 
-export const formatGroundingReferenceSummary = (reference: RAGGroundingReference) =>
-  reference.source ?? reference.title ?? reference.chunkId;
+export const formatGroundingReferenceSummary = (
+  reference: RAGGroundingReference,
+) => reference.source ?? reference.title ?? reference.chunkId;
 
-export const formatGroundingReferenceExcerpt = (reference: RAGGroundingReference) =>
-  reference.excerpt || reference.text;
+export const formatGroundingReferenceExcerpt = (
+  reference: RAGGroundingReference,
+) => reference.excerpt || reference.text;
 
 export const formatCitationLabel = (citation: RAGCitation) =>
-  [citation.label, citation.contextLabel, citation.locatorLabel].filter(Boolean).join(" · ");
+  [citation.label, citation.contextLabel, citation.locatorLabel]
+    .filter(Boolean)
+    .join(" · ");
 
 export const formatCitationSummary = (citation: RAGCitation) =>
   citation.source ?? citation.title ?? citation.chunkId;
@@ -3930,16 +4863,27 @@ export const formatCitationExcerpt = (citation: RAGCitation) =>
 
 export const formatGroundedAnswerPartExcerpt = (part: RAGGroundedAnswerPart) =>
   part.type === "citation"
-    ? part.referenceDetails[0]?.excerpt || part.references[0]?.excerpt || part.references[0]?.text || part.text
+    ? part.referenceDetails[0]?.excerpt ||
+      part.references[0]?.excerpt ||
+      part.references[0]?.text ||
+      part.text
     : part.text;
 
-export const formatGroundedAnswerSectionSummaryExcerpt = (summary: RAGGroundedAnswerSectionSummary) =>
-  summary.excerpt || summary.references[0]?.excerpt || summary.references[0]?.text || "";
+export const formatGroundedAnswerSectionSummaryExcerpt = (
+  summary: RAGGroundedAnswerSectionSummary,
+) =>
+  summary.excerpt ||
+  summary.references[0]?.excerpt ||
+  summary.references[0]?.text ||
+  "";
 
 const formatEvidenceDetailLine = (label: string, value?: string | null) =>
   value && value.length > 0 ? `${label}: ${value}` : "";
 
-const formatEvidenceContextLine = (contextLabel?: string | null, locatorLabel?: string | null) => {
+const formatEvidenceContextLine = (
+  contextLabel?: string | null,
+  locatorLabel?: string | null,
+) => {
   const value = [locatorLabel, contextLabel]
     .filter((entry): entry is string => Boolean(entry && entry.length > 0))
     .join(" · ");
@@ -3954,9 +4898,14 @@ export const formatSourceSummaryDetails = (summary: RAGSourceSummary) =>
     formatEvidenceDetailLine("provenance", summary.provenanceLabel),
   ].filter((value) => value.length > 0);
 
-export const formatGroundingReferenceDetails = (reference: RAGGroundingReference) =>
+export const formatGroundingReferenceDetails = (
+  reference: RAGGroundingReference,
+) =>
   [
-    formatEvidenceDetailLine("evidence", reference.source ?? reference.title ?? reference.chunkId),
+    formatEvidenceDetailLine(
+      "evidence",
+      reference.source ?? reference.title ?? reference.chunkId,
+    ),
     formatEvidenceContextLine(reference.contextLabel, reference.locatorLabel),
     formatEvidenceDetailLine("provenance", reference.provenanceLabel),
     `score: ${formatScore(reference.score)}`,
@@ -3964,7 +4913,10 @@ export const formatGroundingReferenceDetails = (reference: RAGGroundingReference
 
 export const formatCitationDetails = (citation: RAGCitation) =>
   [
-    formatEvidenceDetailLine("evidence", citation.source ?? citation.title ?? citation.chunkId),
+    formatEvidenceDetailLine(
+      "evidence",
+      citation.source ?? citation.title ?? citation.chunkId,
+    ),
     formatEvidenceContextLine(citation.contextLabel, citation.locatorLabel),
     formatEvidenceDetailLine("provenance", citation.provenanceLabel),
     `score: ${formatScore(citation.score)}`,
@@ -3980,7 +4932,9 @@ export const formatGroundedAnswerPartDetails = (
     [detail.evidenceLabel, detail.evidenceSummary]
       .filter((value): value is string => Boolean(value && value.length > 0))
       .map((value, index) =>
-        index === 0 ? `evidence ${detail.number}: ${value}` : `summary ${detail.number}: ${value}`,
+        index === 0
+          ? `evidence ${detail.number}: ${value}`
+          : `summary ${detail.number}: ${value}`,
       ),
   ),
   ...(part.unresolvedReferenceNumbers.length > 0
@@ -3994,31 +4948,53 @@ export const formatGroundedAnswerPartDetails = (
 
 export const formatReadinessSummary = (readiness?: RAGExtractorReadiness) => {
   const presentation = buildRAGReadinessPresentation(readiness);
-  return presentation.sections.map((section) => `${section.label}: ${section.title} · ${section.summary}`);
+  return presentation.sections.map(
+    (section) => `${section.label}: ${section.title} · ${section.summary}`,
+  );
 };
 
 export const formatHealthSummary = (health?: RAGCorpusHealth) => {
   const presentation = buildRAGCorpusHealthPresentation(health);
-  const coverage = presentation.sections.find((section) => section.label === "Corpus coverage");
-  const quality = presentation.sections.find((section) => section.label === "Chunk quality");
-  const freshness = presentation.sections.find((section) => section.label === "Freshness");
-  const failures = presentation.sections.find((section) => section.label === "Failures");
-  const oldest = freshness?.rows?.find((row) => row.label === "Oldest age")?.value ?? "";
-  const newest = freshness?.rows?.find((row) => row.label === "Newest age")?.value ?? "";
+  const coverage = presentation.sections.find(
+    (section) => section.label === "Corpus coverage",
+  );
+  const quality = presentation.sections.find(
+    (section) => section.label === "Chunk quality",
+  );
+  const freshness = presentation.sections.find(
+    (section) => section.label === "Freshness",
+  );
+  const failures = presentation.sections.find(
+    (section) => section.label === "Failures",
+  );
+  const oldest =
+    freshness?.rows?.find((row) => row.label === "Oldest age")?.value ?? "";
+  const newest =
+    freshness?.rows?.find((row) => row.label === "Newest age")?.value ?? "";
 
   return [
-    coverage ? `Coverage by format: ${coverage.title.replace(/^Formats:\s*/, "")}` : "",
-    coverage ? `Coverage by kind: ${coverage.summary.replace(/^Kinds:\s*/, "")}` : "",
+    coverage
+      ? `Coverage by format: ${coverage.title.replace(/^Formats:\s*/, "")}`
+      : "",
+    coverage
+      ? `Coverage by kind: ${coverage.summary.replace(/^Kinds:\s*/, "")}`
+      : "",
     coverage?.rows?.find((row) => row.label === "Average chunks per document")
       ? `Average chunks per document: ${coverage.rows.find((row) => row.label === "Average chunks per document")?.value ?? ""}`
       : "",
-    freshness ? `Stale documents: ${freshness.title} within ${freshness.summary.replace(/^Stale threshold\s*/, "")}` : "",
-    failures ? `Duplicates: ${failures.summary.replace(/^Duplicate\s*/, "").replace(/ · duplicate ids /, " · document ids ")}` : "",
+    freshness
+      ? `Stale documents: ${freshness.title} within ${freshness.summary.replace(/^Stale threshold\s*/, "")}`
+      : "",
+    failures
+      ? `Duplicates: ${failures.summary.replace(/^Duplicate\s*/, "").replace(/ · duplicate ids /, " · document ids ")}`
+      : "",
     quality
       ? `Missing fields: source ${quality.rows?.find((row) => row.label === "Missing source")?.value ?? "0"} · title ${quality.rows?.find((row) => row.label === "Missing title")?.value ?? "0"} · metadata ${quality.rows?.find((row) => row.label === "Missing metadata")?.value ?? "0"}`
       : "",
     quality ? `Chunk quality: ${quality.summary}` : "",
-    freshness && oldest.length > 0 && newest.length > 0 ? `Document age window: oldest ${oldest} · newest ${newest}` : "",
+    freshness && oldest.length > 0 && newest.length > 0
+      ? `Document age window: oldest ${oldest} · newest ${newest}`
+      : "",
   ].filter((value) => value.length > 0);
 };
 
@@ -4047,7 +5023,9 @@ export const formatInspectionSummary = (health?: RAGCorpusHealth) => {
     .join(" · ");
 
   return [
-    nativeKinds.length > 0 ? `Source-native kinds: ${nativeKinds}` : "Source-native kinds: none detected",
+    nativeKinds.length > 0
+      ? `Source-native kinds: ${nativeKinds}`
+      : "Source-native kinds: none detected",
     `Labeled inspection: documents ${inspection.documentsWithSourceLabels} · chunks ${inspection.chunksWithSourceLabels}`,
   ];
 };
@@ -4084,7 +5062,10 @@ export const formatInspectionSamples = (health?: RAGCorpusHealth) => {
   ];
 };
 
-export const buildInspectionEntryHref = (mode: DemoBackendMode, entry: DemoInspectionEntry) => {
+export const buildInspectionEntryHref = (
+  mode: DemoBackendMode,
+  entry: DemoInspectionEntry,
+) => {
   const params = new URLSearchParams();
   if (entry.sourceQuery) params.set("query", entry.sourceQuery);
   if (entry.documentId) params.set("documentId", entry.documentId);
@@ -4093,7 +5074,9 @@ export const buildInspectionEntryHref = (mode: DemoBackendMode, entry: DemoInspe
   return `/demo/documents/${mode}${query ? `?${query}` : ""}`;
 };
 
-export const buildInspectionEntries = (health?: RAGCorpusHealth): DemoInspectionEntry[] => {
+export const buildInspectionEntries = (
+  health?: RAGCorpusHealth,
+): DemoInspectionEntry[] => {
   const inspection = health?.inspection;
   if (!inspection) {
     return [];
@@ -4103,8 +5086,14 @@ export const buildInspectionEntries = (health?: RAGCorpusHealth): DemoInspection
     ...(inspection.sampleDocuments ?? []).map((entry) => ({
       id: `document:${entry.id}`,
       kind: "document" as const,
-      label: [entry.sourceNativeKind, entry.labels?.locatorLabel ?? entry.labels?.contextLabel ?? entry.title]
-        .filter((value): value is string => typeof value === "string" && value.length > 0)
+      label: [
+        entry.sourceNativeKind,
+        entry.labels?.locatorLabel ?? entry.labels?.contextLabel ?? entry.title,
+      ]
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0,
+        )
         .join(" · "),
       detail: entry.source,
       documentId: entry.id,
@@ -4114,8 +5103,16 @@ export const buildInspectionEntries = (health?: RAGCorpusHealth): DemoInspection
     ...(inspection.sampleChunks ?? []).map((entry) => ({
       id: `chunk:${entry.chunkId}`,
       kind: "chunk" as const,
-      label: [entry.sourceNativeKind, entry.labels?.locatorLabel ?? entry.labels?.contextLabel ?? entry.chunkId]
-        .filter((value): value is string => typeof value === "string" && value.length > 0)
+      label: [
+        entry.sourceNativeKind,
+        entry.labels?.locatorLabel ??
+          entry.labels?.contextLabel ??
+          entry.chunkId,
+      ]
+        .filter(
+          (value): value is string =>
+            typeof value === "string" && value.length > 0,
+        )
         .join(" · "),
       detail: entry.source ?? entry.chunkId,
       documentId: entry.documentId,
@@ -4138,28 +5135,188 @@ export const formatAdminJobList = (jobs?: RAGAdminJobRecord[]) =>
 export const formatAdminActionList = (actions?: RAGAdminActionRecord[]) =>
   buildRAGAdminActionPresentations(actions).map((action) => action.summary);
 
+const readMetadataString = (value: unknown) =>
+  typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+
+const readMetadataNumber = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined;
+
+const isLinkedProviderSource = (source: RAGSyncSourceRecord) =>
+  source.metadata?.accountMode === "live-linked" &&
+  typeof source.metadata?.linkedConnectorProvider === "string";
+
+export type LinkedConnectorAccountSummary = {
+  sourceId: string;
+  sourceLabel: string;
+  providerId: string;
+  providerLabel: string;
+  ownerRef?: string;
+  accountLabel?: string;
+  email?: string;
+  bindingId?: string;
+  bindingLabel?: string;
+  bindingStatus?: string;
+  grantStatus?: string;
+  selectionMode?: string;
+  scopeSummary?: string;
+  availableBindingCount?: number;
+  providerConfigured: boolean;
+  providerFound?: boolean;
+  providerError?: string;
+};
+
+const formatLinkedConnectorProviderLabel = (provider?: string) => {
+  switch (provider) {
+    case "gmail":
+      return "Gmail";
+    case "google_contacts":
+      return "Google Contacts";
+    case "facebook":
+      return "Facebook";
+    case "instagram":
+      return "Instagram";
+    default:
+      return provider ?? "Linked provider";
+  }
+};
+
+export const listLinkedConnectorAccounts = (
+  syncSources?: RAGSyncSourceRecord[],
+) =>
+  (syncSources ?? [])
+    .filter((source) => isLinkedProviderSource(source))
+    .map((source) => {
+      const metadata = source.metadata ?? {};
+      const providerId =
+        readMetadataString(metadata.linkedConnectorProvider) ?? "linked";
+      const accountLabel =
+        readMetadataString(metadata.linkedAccountLabel) ??
+        readMetadataString(metadata.linkedMailboxLabel) ??
+        readMetadataString(metadata.linkedExternalAccountId);
+
+      return {
+        accountLabel,
+        availableBindingCount: readMetadataNumber(
+          metadata.linkedAvailableBindingCount,
+        ),
+        bindingId: readMetadataString(metadata.linkedBindingId),
+        bindingLabel: readMetadataString(metadata.linkedBindingLabel),
+        bindingStatus: readMetadataString(metadata.linkedBindingStatus),
+        email: readMetadataString(metadata.linkedEmail),
+        grantStatus: readMetadataString(metadata.linkedGrantStatus),
+        ownerRef: readMetadataString(metadata.linkedOwnerRef),
+        providerConfigured: metadata.linkedProviderConfigured !== false,
+        providerError: readMetadataString(metadata.linkedProviderError),
+        providerFound:
+          metadata.linkedProviderFound === true
+            ? true
+            : metadata.linkedProviderFound === false
+              ? false
+              : undefined,
+        providerId,
+        providerLabel: formatLinkedConnectorProviderLabel(providerId),
+        scopeSummary: readMetadataString(metadata.linkedProviderScopeSummary),
+        selectionMode: readMetadataString(metadata.linkedProviderSelectionMode),
+        sourceId: source.id,
+        sourceLabel: source.label,
+      } satisfies LinkedConnectorAccountSummary;
+    });
+
+const formatLinkedProviderPrimaryDetails = (source: RAGSyncSourceRecord) => {
+  if (!isLinkedProviderSource(source)) {
+    return [] as string[];
+  }
+
+  const metadata = source.metadata ?? {};
+  const provider = readMetadataString(metadata.linkedConnectorProvider);
+  const ownerRef = readMetadataString(metadata.linkedOwnerRef);
+  const account =
+    readMetadataString(metadata.linkedAccountLabel) ??
+    readMetadataString(metadata.linkedMailboxLabel) ??
+    readMetadataString(metadata.linkedExternalAccountId);
+  const bindingStatus = readMetadataString(metadata.linkedBindingStatus);
+  const grantStatus = readMetadataString(metadata.linkedGrantStatus);
+
+  return [
+    provider ? `linked provider: ${provider}` : "",
+    ownerRef ? `linked owner: ${ownerRef}` : "",
+    account ? `linked account: ${account}` : "",
+    bindingStatus ? `binding status: ${bindingStatus}` : "",
+    grantStatus ? `grant status: ${grantStatus}` : "",
+  ].filter((value) => value.length > 0);
+};
+
+const formatLinkedProviderExtendedDetails = (source: RAGSyncSourceRecord) => {
+  if (!isLinkedProviderSource(source)) {
+    return [] as string[];
+  }
+
+  const metadata = source.metadata ?? {};
+  const bindingId = readMetadataString(metadata.linkedBindingId);
+  const selectionMode = readMetadataString(
+    metadata.linkedProviderSelectionMode,
+  );
+  const scopeSummary = readMetadataString(metadata.linkedProviderScopeSummary);
+  const expiresAt = readMetadataNumber(metadata.linkedGrantExpiresAt);
+  const refreshError = readMetadataString(metadata.linkedGrantLastRefreshError);
+  const configError = readMetadataString(metadata.linkedProviderError);
+  const availableBindingCount = readMetadataNumber(
+    metadata.linkedAvailableBindingCount,
+  );
+  const found =
+    metadata.linkedProviderFound === true
+      ? "resolved"
+      : metadata.linkedProviderFound === false
+        ? "missing"
+        : undefined;
+
+  return [
+    found ? `linked credential: ${found}` : "",
+    bindingId ? `binding id: ${bindingId}` : "",
+    selectionMode ? `selection mode: ${selectionMode}` : "",
+    typeof availableBindingCount === "number"
+      ? `available bindings: ${availableBindingCount}`
+      : "",
+    scopeSummary ? `granted scopes: ${scopeSummary}` : "",
+    typeof expiresAt === "number"
+      ? `token expiry: ${new Date(expiresAt).toLocaleString()}`
+      : "",
+    refreshError ? `refresh error: ${refreshError}` : "",
+    configError ? `linked provider error: ${configError}` : "",
+  ].filter((value) => value.length > 0);
+};
+
 export const formatSyncSourceSummary = (source: RAGSyncSourceRecord) =>
   (() => {
     const discoverySummary = buildSyncDiscoverySummary(source);
-    return [source.label, buildRAGSyncSourcePresentation(source).summary, discoverySummary]
+    return [
+      source.label,
+      buildRAGSyncSourcePresentation(source).summary,
+      discoverySummary,
+    ]
       .filter((value) => value.length > 0)
       .join(" · ");
   })();
 
-export const formatSyncSourceDetails = (source: RAGSyncSourceRecord) =>
-  [
-    ...buildRAGSyncSourcePresentation(source).rows.map((row) => `${row.label.toLowerCase()}: ${row.value}`),
-    ...formatSyncSourceRecentRuns(source).map(
-      (run, index) =>
-        `recent run ${index + 1}: ${run.trigger} ${run.status} ${run.output} ${run.duration} ${run.finishedAt}${run.error ? ` error ${run.error}` : ""}`,
-    ),
-  ];
+export const formatSyncSourceDetails = (source: RAGSyncSourceRecord) => [
+  ...formatLinkedProviderPrimaryDetails(source),
+  ...buildRAGSyncSourcePresentation(source).rows.map(
+    (row) => `${row.label.toLowerCase()}: ${row.value}`,
+  ),
+  ...formatSyncSourceRecentRuns(source).map(
+    (run, index) =>
+      `recent run ${index + 1}: ${run.trigger} ${run.status} ${run.output} ${run.duration} ${run.finishedAt}${run.error ? ` error ${run.error}` : ""}`,
+  ),
+];
 
 export const formatSyncSourceRecentRuns = (source: RAGSyncSourceRecord) =>
   (buildRAGSyncSourcePresentation(source).runs ?? []).map((run) => ({
     duration: run.rows?.find((row) => row.label === "Duration")?.value ?? "n/a",
     error: run.rows?.find((row) => row.label === "Error")?.value ?? "",
-    finishedAt: run.rows?.find((row) => row.label === "Finished")?.value ?? "n/a",
+    finishedAt:
+      run.rows?.find((row) => row.label === "Finished")?.value ?? "n/a",
     label: run.label,
     output: run.rows?.find((row) => row.label === "Output")?.value ?? "n/a",
     status: run.status,
@@ -4168,25 +5325,37 @@ export const formatSyncSourceRecentRuns = (source: RAGSyncSourceRecord) =>
 
 export const formatSyncSourceExtendedDetails = (source: RAGSyncSourceRecord) =>
   [
+    ...formatLinkedProviderExtendedDetails(source),
     buildSyncDiscoverySummary(source),
     buildRAGSyncSourcePresentation(source).extendedSummary ?? "",
-  ].filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
+  ].filter(
+    (value, index, values) =>
+      value.length > 0 && values.indexOf(value) === index,
+  );
 
 export const formatSyncSourceOverview = (sources?: RAGSyncSourceRecord[]) => {
-  return buildRAGSyncOverviewPresentation(sources).rows.map((row) => `${row.label}: ${row.value}`);
+  return buildRAGSyncOverviewPresentation(sources).rows.map(
+    (row) => `${row.label}: ${row.value}`,
+  );
 };
 
 export const formatSyncSourceActionSummary = (source: RAGSyncSourceRecord) =>
   (() => {
     const presentation = buildRAGSyncSourcePresentation(source);
-    const lastSuccess = presentation.rows.find((row) => row.label === "Last success")?.value;
+    const lastSuccess = presentation.rows.find(
+      (row) => row.label === "Last success",
+    )?.value;
     const discoverySummary = buildSyncDiscoverySummary(source);
 
     return [
       source.status.toUpperCase(),
       lastSuccess ? `last sync ${lastSuccess}` : "no completed sync yet",
-      typeof source.documentCount === "number" ? `${source.documentCount} docs` : "",
-      typeof source.chunkCount === "number" ? `${source.chunkCount} chunks` : "",
+      typeof source.documentCount === "number"
+        ? `${source.documentCount} docs`
+        : "",
+      typeof source.chunkCount === "number"
+        ? `${source.chunkCount} chunks`
+        : "",
       discoverySummary,
     ]
       .filter((value) => value.length > 0)
@@ -4199,14 +5368,22 @@ export const formatSyncSourceActionBadges = (source: RAGSyncSourceRecord) =>
 export const formatSyncSourceCollapsedSummary = (source: RAGSyncSourceRecord) =>
   (() => {
     const presentation = buildRAGSyncSourcePresentation(source);
-    const lastSuccess = presentation.rows.find((row) => row.label === "Last success")?.value;
-    const error = presentation.rows.find((row) => row.label === "Last error")?.value;
+    const lastSuccess = presentation.rows.find(
+      (row) => row.label === "Last success",
+    )?.value;
+    const error = presentation.rows.find(
+      (row) => row.label === "Last error",
+    )?.value;
     const discoverySummary = buildSyncDiscoverySummary(source);
 
     return [
       source.label,
       source.status.toUpperCase(),
-      error && source.status === "failed" ? `error: ${error}` : lastSuccess ? `last sync ${lastSuccess}` : "",
+      error && source.status === "failed"
+        ? `error: ${error}`
+        : lastSuccess
+          ? `last sync ${lastSuccess}`
+          : "",
       discoverySummary,
     ]
       .filter((value) => value.length > 0)
@@ -4281,9 +5458,7 @@ export const formatSyncDeltaChips = (sources?: RAGSyncSourceRecord[]) => {
     `sync running: ${countByStatus("running")}`,
     `sync completed: ${countByStatus("completed")}`,
     `sync discovery hints: ${records.filter((record) => hasSyncDiscoveryDiagnostics(record)).length}`,
-    latest
-      ? `latest sync: ${latest.label}`
-      : "latest sync: none",
+    latest ? `latest sync: ${latest.label}` : "latest sync: none",
   ];
 };
 
@@ -4297,7 +5472,9 @@ const syncDiscoveryDiagnosticLabelByCode: Partial<Record<string, string>> = {
 const buildSyncDiscoverySummary = (source: RAGSyncSourceRecord) => {
   const labels = (source.diagnostics?.entries ?? [])
     .map((entry) => syncDiscoveryDiagnosticLabelByCode[entry.code])
-    .filter((value): value is string => typeof value === "string" && value.length > 0);
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
   if (labels.length === 0) {
     return "";
   }
@@ -4305,13 +5482,18 @@ const buildSyncDiscoverySummary = (source: RAGSyncSourceRecord) => {
 };
 
 const hasSyncDiscoveryDiagnostics = (source: RAGSyncSourceRecord) =>
-  (source.diagnostics?.entries ?? []).some((entry) => typeof syncDiscoveryDiagnosticLabelByCode[entry.code] === "string");
+  (source.diagnostics?.entries ?? []).some(
+    (entry) =>
+      typeof syncDiscoveryDiagnosticLabelByCode[entry.code] === "string",
+  );
 
 export const formatRetrievalScopeSummary = (search: SearchFormState) => {
   const parts = [
     search.kind ? `kind ${search.kind}` : "",
     search.source.trim().length > 0 ? `source ${search.source.trim()}` : "",
-    search.documentId.trim().length > 0 ? `document ${search.documentId.trim()}` : "",
+    search.documentId.trim().length > 0
+      ? `document ${search.documentId.trim()}`
+      : "",
     search.nativeQueryProfile ? `planner ${search.nativeQueryProfile}` : "",
   ].filter((value) => value.length > 0);
 
@@ -4356,7 +5538,9 @@ const formatMetadataValue = (value: unknown): string => {
   return typeof value === "string" ? value : "";
 };
 
-export const formatDemoMetadataSummary = (metadata?: Record<string, unknown>) => {
+export const formatDemoMetadataSummary = (
+  metadata?: Record<string, unknown>,
+) => {
   if (!metadata) {
     return [] as string[];
   }
@@ -4417,17 +5601,27 @@ export const formatChunkStrategy = (value: DemoChunkingStrategy) => {
 };
 
 export const formatOptionalContentFormat = (value?: string | null) =>
-  formatContentFormat(value === "markdown" || value === "html" ? value : "text");
+  formatContentFormat(
+    value === "markdown" || value === "html" ? value : "text",
+  );
 
 export const formatOptionalChunkStrategy = (value?: string | null) =>
   formatChunkStrategy(
-    value === "source_aware" || value === "sentences" || value === "fixed" ? value : "paragraphs",
+    value === "source_aware" || value === "sentences" || value === "fixed"
+      ? value
+      : "paragraphs",
   );
 
-export const formatChunkNavigationNodeLabel = (node?: Pick<RAGChunkGraphNode, "chunkId" | "locatorLabel" | "contextLabel"> | null) =>
-  node?.locatorLabel ?? node?.contextLabel ?? node?.chunkId ?? "";
+export const formatChunkNavigationNodeLabel = (
+  node?: Pick<
+    RAGChunkGraphNode,
+    "chunkId" | "locatorLabel" | "contextLabel"
+  > | null,
+) => node?.locatorLabel ?? node?.contextLabel ?? node?.chunkId ?? "";
 
-export const formatChunkNavigationSectionLabel = (navigation?: Pick<RAGChunkGraphNavigation, "section"> | null) => {
+export const formatChunkNavigationSectionLabel = (
+  navigation?: Pick<RAGChunkGraphNavigation, "section"> | null,
+) => {
   const path = navigation?.section?.path ?? [];
   if (path.length > 0) {
     return path.join(" > ");
@@ -4436,7 +5630,9 @@ export const formatChunkNavigationSectionLabel = (navigation?: Pick<RAGChunkGrap
   return navigation?.section?.title ?? "Current section";
 };
 
-export const formatChunkSectionGroupLabel = (section?: Pick<RAGChunkGraphSectionGroup, "id" | "path" | "title"> | null) => {
+export const formatChunkSectionGroupLabel = (
+  section?: Pick<RAGChunkGraphSectionGroup, "id" | "path" | "title"> | null,
+) => {
   const path = section?.path ?? [];
   if (path.length > 0) {
     return path.join(" > ");
@@ -4448,20 +5644,23 @@ export const formatChunkSectionGroupLabel = (section?: Pick<RAGChunkGraphSection
 const formatSectionDiagnosticPercent = (value?: number) =>
   typeof value === "number" ? `${Math.round(value * 100)}%` : null;
 
-const formatSectionDiagnosticReason = (reason: string) => reason.replaceAll("_", " ");
+const formatSectionDiagnosticReason = (reason: string) =>
+  reason.replaceAll("_", " ");
 
-const formatSectionDiagnosticStage = (stage: string) => stage.replaceAll("_", " ");
+const formatSectionDiagnosticStage = (stage: string) =>
+  stage.replaceAll("_", " ");
 
 const formatSectionDiagnosticWeightReason = (reason: string) =>
   ({
     final_stage_concentration: "final stage concentrated on this section",
-    final_stage_dominant_within_parent: "final stage stayed ahead inside its parent",
+    final_stage_dominant_within_parent:
+      "final stage stayed ahead inside its parent",
     rerank_preserved_lead: "rerank kept this section in front",
     stage_runner_up_pressure: "runner-up stayed close in this stage",
     stage_expanded: "this section expanded in this stage",
     stage_held: "this section held steady in this stage",
     stage_narrowed: "this section narrowed in this stage",
-  }[reason] ?? reason.replaceAll("_", " "));
+  })[reason] ?? reason.replaceAll("_", " ");
 
 const formatSectionQueryAttributionReason = (reason: string) =>
   ({
@@ -4471,50 +5670,80 @@ const formatSectionQueryAttributionReason = (reason: string) =>
     transform_introduced: "the transformed query introduced this section",
     variant_supported: "query variants reinforced this section",
     mixed_query_sources: "multiple query forms contributed",
-  }[reason] ?? reason.replaceAll("_", " "));
+  })[reason] ?? reason.replaceAll("_", " ");
 
-export const formatSectionDiagnosticChannels = (diagnostic: RAGSectionRetrievalDiagnostic) =>
+export const formatSectionDiagnosticChannels = (
+  diagnostic: RAGSectionRetrievalDiagnostic,
+) =>
   `Channels · hybrid ${diagnostic.hybridHits} · vector ${diagnostic.vectorHits} · lexical ${diagnostic.lexicalHits}`;
 
-export const formatSectionDiagnosticAttributionFocus = (diagnostic: DemoSectionDiagnostic) => {
+export const formatSectionDiagnosticAttributionFocus = (
+  diagnostic: DemoSectionDiagnostic,
+) => {
   const mode = diagnostic.queryAttribution?.mode ?? "mixed";
-  const label = mode === "primary"
-    ? "Attribution · base-query-only"
-    : mode === "transformed"
-      ? "Attribution · transformed-only"
-      : mode === "variant"
-        ? "Attribution · variant-only"
-        : "Attribution · mixed";
+  const label =
+    mode === "primary"
+      ? "Attribution · base-query-only"
+      : mode === "transformed"
+        ? "Attribution · transformed-only"
+        : mode === "variant"
+          ? "Attribution · variant-only"
+          : "Attribution · mixed";
   const parts = [label];
-  if ((diagnostic.queryAttribution?.primaryHits ?? 0) > 0) parts.push(`base ${diagnostic.queryAttribution?.primaryHits}`);
-  if ((diagnostic.queryAttribution?.transformedHits ?? 0) > 0) parts.push(`transformed ${diagnostic.queryAttribution?.transformedHits}`);
-  if ((diagnostic.queryAttribution?.variantHits ?? 0) > 0) parts.push(`variant ${diagnostic.queryAttribution?.variantHits}`);
+  if ((diagnostic.queryAttribution?.primaryHits ?? 0) > 0)
+    parts.push(`base ${diagnostic.queryAttribution?.primaryHits}`);
+  if ((diagnostic.queryAttribution?.transformedHits ?? 0) > 0)
+    parts.push(`transformed ${diagnostic.queryAttribution?.transformedHits}`);
+  if ((diagnostic.queryAttribution?.variantHits ?? 0) > 0)
+    parts.push(`variant ${diagnostic.queryAttribution?.variantHits}`);
   return parts.join(" · ");
 };
 
-export const formatSectionDiagnosticPipeline = (diagnostic: DemoSectionDiagnostic) => {
-  const requestedMode = diagnostic.requestedMode ?? diagnostic.retrievalMode ?? "n/a";
+export const formatSectionDiagnosticPipeline = (
+  diagnostic: DemoSectionDiagnostic,
+) => {
+  const requestedMode =
+    diagnostic.requestedMode ?? diagnostic.retrievalMode ?? "n/a";
   const selectedMode = diagnostic.retrievalMode ?? "n/a";
   const routeLabel = diagnostic.routingLabel ?? "default route";
   const transformLabel = diagnostic.queryTransformLabel ?? "no transform";
   return `Mode ${selectedMode} · requested ${requestedMode} · route ${routeLabel} · transform ${transformLabel} · rerank ${diagnostic.rerankApplied ? "on" : "off"} · source balance ${diagnostic.sourceBalanceApplied ? "on" : "off"} · threshold ${diagnostic.scoreThresholdApplied ? "on" : "off"} · query ${diagnostic.queryAttribution?.mode ?? "n/a"}`;
 };
 
-export const formatSectionDiagnosticStageFlow = (diagnostic: RAGSectionRetrievalDiagnostic) =>
+export const formatSectionDiagnosticStageFlow = (
+  diagnostic: RAGSectionRetrievalDiagnostic,
+) =>
   diagnostic.stageCounts.length > 0
     ? `Stage flow · ${diagnostic.stageCounts
-        .map((entry) => `${formatSectionDiagnosticStage(entry.stage)} ${entry.count}`)
+        .map(
+          (entry) =>
+            `${formatSectionDiagnosticStage(entry.stage)} ${entry.count}`,
+        )
         .join(" → ")}`
     : null;
 
-export const formatSectionDiagnosticStageBounds = (diagnostic: DemoSectionDiagnostic) => {
+export const formatSectionDiagnosticStageBounds = (
+  diagnostic: DemoSectionDiagnostic,
+) => {
   const parts: string[] = [];
-  if (diagnostic.firstSeenStage) parts.push(`first seen ${formatSectionDiagnosticStage(diagnostic.firstSeenStage)}`);
-  if (diagnostic.lastSeenStage) parts.push(`last seen ${formatSectionDiagnosticStage(diagnostic.lastSeenStage)}`);
-  if (diagnostic.peakStage) parts.push(`peak ${formatSectionDiagnosticStage(diagnostic.peakStage)} ${diagnostic.peakCount}`);
-  const finalRetention = formatSectionDiagnosticPercent(diagnostic.finalRetentionRate);
+  if (diagnostic.firstSeenStage)
+    parts.push(
+      `first seen ${formatSectionDiagnosticStage(diagnostic.firstSeenStage)}`,
+    );
+  if (diagnostic.lastSeenStage)
+    parts.push(
+      `last seen ${formatSectionDiagnosticStage(diagnostic.lastSeenStage)}`,
+    );
+  if (diagnostic.peakStage)
+    parts.push(
+      `peak ${formatSectionDiagnosticStage(diagnostic.peakStage)} ${diagnostic.peakCount}`,
+    );
+  const finalRetention = formatSectionDiagnosticPercent(
+    diagnostic.finalRetentionRate,
+  );
   if (finalRetention) parts.push(`final retention ${finalRetention}`);
-  if (typeof diagnostic.dropFromPeak === "number") parts.push(`drop from peak ${diagnostic.dropFromPeak}`);
+  if (typeof diagnostic.dropFromPeak === "number")
+    parts.push(`drop from peak ${diagnostic.dropFromPeak}`);
   return parts.length > 0 ? parts.join(" · ") : null;
 };
 
@@ -4522,23 +5751,32 @@ export const formatSectionDiagnosticStageWeightRows = (
   diagnostic: DemoSectionDiagnostic,
 ) =>
   (diagnostic.stageWeights ?? [])
-    .filter((entry: DemoSectionDiagnostic["stageWeights"][number]) => entry.reasons.length > 0 || entry.stage === "rerank" || entry.stage === "finalize")
+    .filter(
+      (entry: DemoSectionDiagnostic["stageWeights"][number]) =>
+        entry.reasons.length > 0 ||
+        entry.stage === "rerank" ||
+        entry.stage === "finalize",
+    )
     .map((entry: DemoSectionDiagnostic["stageWeights"][number]) => {
       const parts = [
         `${formatSectionDiagnosticStage(entry.stage)} ${(entry.stageShare * 100).toFixed(0)}% of stage`,
         typeof entry.stageScoreShare === "number"
           ? `${(entry.stageScoreShare * 100).toFixed(0)}% of stage score`
           : null,
-        typeof entry.retentionRate === "number" && entry.previousStage && entry.retentionRate !== 1
+        typeof entry.retentionRate === "number" &&
+        entry.previousStage &&
+        entry.retentionRate !== 1
           ? `${(entry.retentionRate * 100).toFixed(0)}% retained from ${formatSectionDiagnosticStage(entry.previousStage)}`
           : null,
         typeof entry.countDelta === "number" && entry.countDelta !== 0
           ? `delta ${entry.countDelta >= 0 ? "+" : ""}${entry.countDelta}`
           : null,
-        typeof entry.parentStageShare === "number" && entry.strongestSiblingLabel
+        typeof entry.parentStageShare === "number" &&
+        entry.strongestSiblingLabel
           ? `${(entry.parentStageShare * 100).toFixed(0)}% of parent stage`
           : null,
-        typeof entry.parentStageScoreShare === "number" && entry.strongestSiblingLabel
+        typeof entry.parentStageScoreShare === "number" &&
+        entry.strongestSiblingLabel
           ? `${(entry.parentStageScoreShare * 100).toFixed(0)}% of parent stage score`
           : null,
         typeof entry.stageShareGap === "number"
@@ -4547,7 +5785,9 @@ export const formatSectionDiagnosticStageWeightRows = (
         typeof entry.stageScoreShareGap === "number"
           ? `score gap ${(entry.stageScoreShareGap * 100).toFixed(0)}%`
           : null,
-        entry.strongestSiblingLabel ? `runner-up ${entry.strongestSiblingLabel}` : null,
+        entry.strongestSiblingLabel
+          ? `runner-up ${entry.strongestSiblingLabel}`
+          : null,
       ].filter((value): value is string => Boolean(value));
       return parts.join(" · ");
     });
@@ -4555,20 +5795,34 @@ export const formatSectionDiagnosticStageWeightRows = (
 export const formatSectionDiagnosticStageWeightReasons = (
   diagnostic: DemoSectionDiagnostic,
 ) =>
-  (diagnostic.stageWeights ?? []).flatMap((entry: DemoSectionDiagnostic["stageWeights"][number]) =>
-    entry.reasons.map((reason: string) => `${formatSectionDiagnosticStage(entry.stage)} · ${formatSectionDiagnosticWeightReason(reason)}`),
+  (diagnostic.stageWeights ?? []).flatMap(
+    (entry: DemoSectionDiagnostic["stageWeights"][number]) =>
+      entry.reasons.map(
+        (reason: string) =>
+          `${formatSectionDiagnosticStage(entry.stage)} · ${formatSectionDiagnosticWeightReason(reason)}`,
+      ),
   );
 
-export const formatSectionDiagnosticQueryAttribution = (diagnostic: DemoSectionDiagnostic) =>
+export const formatSectionDiagnosticQueryAttribution = (
+  diagnostic: DemoSectionDiagnostic,
+) =>
   `Query attribution · ${diagnostic.queryAttribution?.mode ?? "n/a"} · primary ${diagnostic.queryAttribution?.primaryHits ?? 0} · transformed ${diagnostic.queryAttribution?.transformedHits ?? 0} · variant ${diagnostic.queryAttribution?.variantHits ?? 0}`;
 
-export const formatSectionDiagnosticQueryAttributionReasons = (diagnostic: DemoSectionDiagnostic) =>
-  (diagnostic.queryAttribution?.reasons ?? []).map((reason: string) => formatSectionQueryAttributionReason(reason));
+export const formatSectionDiagnosticQueryAttributionReasons = (
+  diagnostic: DemoSectionDiagnostic,
+) =>
+  (diagnostic.queryAttribution?.reasons ?? []).map((reason: string) =>
+    formatSectionQueryAttributionReason(reason),
+  );
 
-export const formatSectionDiagnosticCompetition = (diagnostic: RAGSectionRetrievalDiagnostic) => {
+export const formatSectionDiagnosticCompetition = (
+  diagnostic: RAGSectionRetrievalDiagnostic,
+) => {
   const parts: string[] = [];
   const parentShare = formatSectionDiagnosticPercent(diagnostic.parentShare);
-  const parentShareGap = formatSectionDiagnosticPercent(diagnostic.parentShareGap);
+  const parentShareGap = formatSectionDiagnosticPercent(
+    diagnostic.parentShareGap,
+  );
   if (!diagnostic.strongestSiblingLabel) return "";
   if (parentShare) parts.push(`parent share ${parentShare}`);
   if (parentShareGap) parts.push(`gap ${parentShareGap}`);
@@ -4576,28 +5830,40 @@ export const formatSectionDiagnosticCompetition = (diagnostic: RAGSectionRetriev
   return parts.join(" · ");
 };
 
-export const formatSectionDiagnosticTopEntry = (diagnostic: DemoSectionDiagnostic) => {
+export const formatSectionDiagnosticTopEntry = (
+  diagnostic: DemoSectionDiagnostic,
+) => {
   const parts: string[] = [];
   if (diagnostic.topSource) parts.push(`top source ${diagnostic.topSource}`);
   if (diagnostic.topChunkId) parts.push(`lead chunk ${diagnostic.topChunkId}`);
-  parts.push(`${diagnostic.sourceCount} source${diagnostic.sourceCount === 1 ? "" : "s"}`);
-  parts.push(`primary ${diagnostic.queryAttribution?.primaryHits ?? 0} · transformed ${diagnostic.queryAttribution?.transformedHits ?? 0} · variant ${diagnostic.queryAttribution?.variantHits ?? 0}`);
+  parts.push(
+    `${diagnostic.sourceCount} source${diagnostic.sourceCount === 1 ? "" : "s"}`,
+  );
+  parts.push(
+    `primary ${diagnostic.queryAttribution?.primaryHits ?? 0} · transformed ${diagnostic.queryAttribution?.transformedHits ?? 0} · variant ${diagnostic.queryAttribution?.variantHits ?? 0}`,
+  );
   return parts.join(" · ");
 };
 
-export const formatSectionDiagnosticReasons = (diagnostic: DemoSectionDiagnostic) =>
-  [
-    ...diagnostic.reasons.map((reason) => formatSectionDiagnosticReason(reason)),
-    ...formatSectionDiagnosticQueryAttributionReasons(diagnostic),
-    ...(diagnostic.routingReason ? [`routing · ${diagnostic.routingReason}`] : []),
-    ...(diagnostic.queryTransformReason ? [`transform · ${diagnostic.queryTransformReason}`] : []),
-  ];
+export const formatSectionDiagnosticReasons = (
+  diagnostic: DemoSectionDiagnostic,
+) => [
+  ...diagnostic.reasons.map((reason) => formatSectionDiagnosticReason(reason)),
+  ...formatSectionDiagnosticQueryAttributionReasons(diagnostic),
+  ...(diagnostic.routingReason
+    ? [`routing · ${diagnostic.routingReason}`]
+    : []),
+  ...(diagnostic.queryTransformReason
+    ? [`transform · ${diagnostic.queryTransformReason}`]
+    : []),
+];
 
 export const formatSectionDiagnosticDistributionRows = (
   diagnostic: RAGSectionRetrievalDiagnostic,
 ) =>
-  diagnostic.parentDistribution.map((entry) =>
-    `${entry.isActive ? "Active" : "Peer"} · ${entry.label} · ${entry.count} hit${entry.count === 1 ? "" : "s"} · ${formatSectionDiagnosticPercent(entry.parentShare) ?? "0%"}`
+  diagnostic.parentDistribution.map(
+    (entry) =>
+      `${entry.isActive ? "Active" : "Peer"} · ${entry.label} · ${entry.count} hit${entry.count === 1 ? "" : "s"} · ${formatSectionDiagnosticPercent(entry.parentShare) ?? "0%"}`,
   );
 
 export const getDemoUploadPreset = (id: string) =>

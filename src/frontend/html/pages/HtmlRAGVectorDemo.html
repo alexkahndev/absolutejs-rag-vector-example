@@ -35,28 +35,55 @@
       <section class="demo-card">
         <span class="demo-hero-kicker">HTML workflow surface</span>
         <h1>AbsoluteJS RAG Workflow Demo - HTML</h1>
-        <p>Use one route to ingest, sync, retrieve, stream grounded answers, and inspect ops health against the same stuffed multi-format knowledge base.</p>
-        <p class="demo-metadata">Pinned to <code>@absolutejs/absolute@0.19.0-beta.644 + @absolutejs/ai@0.0.3 + @absolutejs/rag@0.0.2</code> and surfacing the shared <code>@absolutejs/rag</code> plus <code>@absolutejs/rag/ui</code> diagnostics on this page.</p>
+        <div id="rag-readiness-badge" class="demo-metadata">
+          Loading RAG readiness...
+        </div>
+        <p>
+          Use one route to ingest, sync, retrieve, stream grounded answers, and
+          inspect ops health against the same stuffed multi-format knowledge
+          base.
+        </p>
+        <p class="demo-metadata">
+          Pinned to
+          <code
+            >@absolutejs/absolute@0.19.0-beta.655 + @absolutejs/ai@0.0.5 +
+            @absolutejs/rag@0.0.5</code
+          >
+          and surfacing the shared <code>@absolutejs/rag</code> plus
+          <code>@absolutejs/rag/ui</code> diagnostics on this page.
+        </p>
         <div class="demo-hero-grid">
           <article class="demo-stat-card">
             <span class="demo-stat-label">Corpus</span>
             <strong>Stuffed multi-format index</strong>
-            <p>PDF, Office, archive, image, audio, video, EPUB, email, markdown, and legacy files on one page.</p>
+            <p>
+              PDF, Office, archive, image, audio, video, EPUB, email, markdown,
+              and legacy files on one page.
+            </p>
           </article>
           <article class="demo-stat-card">
             <span class="demo-stat-label">Retrieval</span>
             <strong>Search with source proof</strong>
-            <p>Row actions jump straight into scoped retrieval and inline chunk inspection instead of making you type filters by hand.</p>
+            <p>
+              Row actions jump straight into scoped retrieval and inline chunk
+              inspection instead of making you type filters by hand.
+            </p>
           </article>
           <article class="demo-stat-card">
             <span class="demo-stat-label">Workflow</span>
             <strong>Grounded answers and citations</strong>
-            <p>Drive the first-class workflow primitive, then inspect coverage, references, and resolved citations without leaving the route.</p>
+            <p>
+              Drive the first-class workflow primitive, then inspect coverage,
+              references, and resolved citations without leaving the route.
+            </p>
           </article>
           <article class="demo-stat-card">
             <span class="demo-stat-label">Ops</span>
             <strong>Ingest, sync, benchmark</strong>
-            <p>Exercise directory, URL, storage, and email sync adapters alongside ingest mutations, benchmarks, and admin status.</p>
+            <p>
+              Exercise directory, URL, storage, and email sync adapters
+              alongside ingest mutations, benchmarks, and admin status.
+            </p>
           </article>
         </div>
         <div class="demo-pill-row">
@@ -65,17 +92,37 @@
           <span class="demo-pill">3. Sync a source</span>
           <span class="demo-pill">4. Run quality benchmarks</span>
         </div>
+        <div class="demo-section-card-grid" id="rag-section-card-grid"></div>
       </section>
 
-      <div class="demo-results">
+      <section
+        class="demo-card demo-full-lab-placeholder"
+        id="rag-section-overview"
+      >
+        <h2>Choose a RAG capability card</h2>
+        <p class="demo-metadata">
+          HTML now follows the same card-driven demo structure as React. Pick a
+          lane to show that part of the RAG package example.
+        </p>
+      </section>
+
+      <div class="demo-results demo-section-hidden" id="sync-feedback-panel">
         <h3>Sync Feedback</h3>
-        <p class="demo-metadata">Run a sync, ingest, reset, or delete action to see the latest mutation summary here.</p>
-        <p class="demo-metadata">This panel stays on the same route as diagnostics and retrieval so ops feedback is always visible.</p>
+        <p class="demo-metadata">
+          Run a sync, ingest, reset, or delete action to see the latest mutation
+          summary here.
+        </p>
+        <p class="demo-metadata">
+          This panel stays on the same route as diagnostics and retrieval so ops
+          feedback is always visible.
+        </p>
         <p id="demo-message" class="demo-banner" hidden></p>
         <p id="demo-loading" class="demo-banner" hidden></p>
-        <p id="demo-restored" class="demo-banner" hidden>Restored from shared demo state.</p>
+        <p id="demo-restored" class="demo-banner" hidden>
+          Restored from shared demo state.
+        </p>
       </div>
-      <section class="demo-grid">
+      <section class="demo-grid demo-section-hidden" data-rag-section="main">
         <article class="demo-card">
           <h2>Diagnostics</h2>
           <dl class="demo-stat-grid">
@@ -133,7 +180,11 @@
           </p>
           <div class="demo-results demo-release-card">
             <h3>Release Control</h3>
-            <p class="demo-metadata">This panel exercises the same AbsoluteJS release-control surface that backs retrieval baselines, lane readiness, incidents, and remediation execution tracking.</p>
+            <p class="demo-metadata">
+              This panel exercises the same AbsoluteJS release-control surface
+              that backs retrieval baselines, lane readiness, incidents, and
+              remediation execution tracking.
+            </p>
             <div class="demo-release-hero">
               <div class="demo-release-hero-copy">
                 <p class="demo-release-kicker">AbsoluteJS release workflow</p>
@@ -141,12 +192,18 @@
                 <p id="release-summary" class="demo-release-summary"></p>
                 <p id="release-decision-meta" class="demo-metadata"></p>
                 <div id="release-pill-row" class="demo-release-pills"></div>
-                <div id="release-scenario-switcher" class="demo-release-scenario-switcher"></div>
+                <div
+                  id="release-scenario-switcher"
+                  class="demo-release-scenario-switcher"
+                ></div>
                 <div id="release-path-row" class="demo-release-path"></div>
               </div>
               <div class="demo-release-action-rail">
                 <span class="demo-release-action-label">Live actions</span>
-                <div id="release-action-row" class="demo-release-action-stack"></div>
+                <div
+                  id="release-action-row"
+                  class="demo-release-action-stack"
+                ></div>
               </div>
             </div>
             <div id="release-stat-grid" class="demo-stat-grid"></div>
@@ -163,38 +220,78 @@
         <article class="demo-card">
           <h2>Retrieve And Verify</h2>
           <p class="demo-metadata">
-            Run a check, then confirm the returned chunk text and source
-            label match what you expect from the indexed documents below.
+            Run a check, then confirm the returned chunk text and source label
+            match what you expect from the indexed documents below.
           </p>
           <p class="demo-metadata">
-            Reranking is active: AbsoluteJS reorders the first vector hits with the built-in heuristic provider before results render.
+            Reranking is active: AbsoluteJS reorders the first vector hits with
+            the built-in heuristic provider before results render.
           </p>
           <div class="demo-preset-grid" id="search-presets">
-            <button type="button" data-query="How do metadata filters change retrieval quality?" data-kind="seed">
+            <button
+              type="button"
+              data-query="How do metadata filters change retrieval quality?"
+              data-kind="seed"
+            >
               Filter behavior
             </button>
-            <button type="button" data-query="What should I verify after ingesting a new source?" data-kind="">
+            <button
+              type="button"
+              data-query="What should I verify after ingesting a new source?"
+              data-kind=""
+            >
               Verify ingestion
             </button>
-            <button type="button" data-query="List support policies for shipping and returns." data-source="guide/demo.md">
+            <button
+              type="button"
+              data-query="List support policies for shipping and returns."
+              data-source="guide/demo.md"
+            >
               Source filter
             </button>
-            <button type="button" data-query="Why should metadata be stable?" data-source="guides/metadata.md">
+            <button
+              type="button"
+              data-query="Why should metadata be stable?"
+              data-source="guides/metadata.md"
+            >
               Metadata discipline
             </button>
-            <button type="button" data-query="Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?" data-retrieval-preset-id="hybrid">
+            <button
+              type="button"
+              data-query="Which aurora launch packet phrase shows late interaction can match precise wording without splitting the parent document?"
+              data-retrieval-preset-id="hybrid"
+            >
               Late interaction / multivector
             </button>
-            <button type="button" data-query="Which synced site discovery guide says discovery diagnostics stay visible on the same sync surface as every other source?" data-source="sync/site/demo/sync-fixtures/site/docs/guide">
+            <button
+              type="button"
+              data-query="Which synced site discovery guide says discovery diagnostics stay visible on the same sync surface as every other source?"
+              data-source="sync/site/demo/sync-fixtures/site/docs/guide"
+            >
               Site discovery (sync first)
             </button>
-            <button type="button" data-query="release" data-native-query-profile="latency" data-topk="4">
+            <button
+              type="button"
+              data-query="release"
+              data-native-query-profile="latency"
+              data-topk="4"
+            >
               Planner profile · latency
             </button>
-            <button type="button" data-query="release" data-native-query-profile="balanced" data-topk="4">
+            <button
+              type="button"
+              data-query="release"
+              data-native-query-profile="balanced"
+              data-topk="4"
+            >
               Planner profile · balanced
             </button>
-            <button type="button" data-query="release" data-native-query-profile="recall" data-topk="4">
+            <button
+              type="button"
+              data-query="release"
+              data-native-query-profile="recall"
+              data-topk="4"
+            >
               Planner profile · recall
             </button>
           </div>
@@ -209,7 +306,14 @@
             />
 
             <label for="topK">Top K</label>
-            <input id="topK" name="topK" max="20" min="1" type="number" value="6" />
+            <input
+              id="topK"
+              name="topK"
+              max="20"
+              min="1"
+              type="number"
+              value="6"
+            />
 
             <label for="scoreThreshold">Minimum score (0-1)</label>
             <input
@@ -250,15 +354,35 @@
           <div class="demo-results">
             <h3>Active Retrieval Scope</h3>
             <div class="demo-badge-row">
-              <button id="state-scope-chip" class="demo-state-chip" type="button"></button>
-              <button id="state-driver-chip" class="demo-state-chip" type="button"></button>
+              <button
+                id="state-scope-chip"
+                class="demo-state-chip"
+                type="button"
+              ></button>
+              <button
+                id="state-driver-chip"
+                class="demo-state-chip"
+                type="button"
+              ></button>
               <span id="state-results-chip" class="demo-state-chip"></span>
             </div>
             <p id="search-scope-summary" class="demo-metadata"></p>
             <p id="search-scope-hint" class="demo-metadata"></p>
             <div class="demo-actions">
-              <button id="state-rerun-chip" class="demo-state-chip" type="button">Rerun query</button>
-              <button id="state-clear-chip" class="demo-state-chip demo-state-chip-danger" type="button">Clear search</button>
+              <button
+                id="state-rerun-chip"
+                class="demo-state-chip"
+                type="button"
+              >
+                Rerun query
+              </button>
+              <button
+                id="state-clear-chip"
+                class="demo-state-chip demo-state-chip-danger"
+                type="button"
+              >
+                Clear search
+              </button>
             </div>
             <p class="demo-section-caption">Recent Searches</p>
             <div id="state-recent-row" class="demo-badge-row"></div>
@@ -273,11 +397,17 @@
           <div class="demo-results">
             <h3>Benchmark Retrieval</h3>
             <p class="demo-metadata">
-              This section uses the core <code>createRAGClient().evaluate</code> surface directly to run a built-in benchmark suite. Each case names the source we expect retrieval to surface so you can compare expected, retrieved, and missing evidence directly.
+              This section uses the core
+              <code>createRAGClient().evaluate</code> surface directly to run a
+              built-in benchmark suite. Each case names the source we expect
+              retrieval to surface so you can compare expected, retrieved, and
+              missing evidence directly.
             </p>
             <div class="demo-preset-grid" id="evaluation-presets"></div>
             <div class="demo-actions">
-              <button id="evaluate-btn" type="button">Run benchmark suite</button>
+              <button id="evaluate-btn" type="button">
+                Run benchmark suite
+              </button>
             </div>
             <p id="evaluation-message" class="demo-metadata" hidden></p>
             <p id="evaluation-error" class="demo-error" hidden></p>
@@ -286,10 +416,18 @@
 
           <div class="demo-results">
             <h3>Retrieval Quality Tooling</h3>
-            <p class="demo-metadata">This section now behaves like an evaluation dashboard instead of a log dump. The summary cards answer who is winning, the strategy tab shows why, the grounding tab keeps case drill-downs collapsed until needed, and the history tab only expands when you want regression detail.</p>
+            <p class="demo-metadata">
+              This section now behaves like an evaluation dashboard instead of a
+              log dump. The summary cards answer who is winning, the strategy
+              tab shows why, the grounding tab keeps case drill-downs collapsed
+              until needed, and the history tab only expands when you want
+              regression detail.
+            </p>
             <div id="quality-suite-list" class="demo-pill-row"></div>
             <div class="demo-actions">
-              <button id="quality-suite-btn" type="button">Run saved suite</button>
+              <button id="quality-suite-btn" type="button">
+                Run saved suite
+              </button>
             </div>
             <div id="quality-tab-row" class="demo-tab-row"></div>
             <div id="quality-stat-grid" class="demo-stat-grid"></div>
@@ -306,8 +444,12 @@
               <article class="demo-result-item">
                 <h4>Sync Sources</h4>
                 <div class="demo-actions">
-                  <button id="sync-all-btn" type="button">Sync all sources</button>
-                  <button id="sync-all-background-btn" type="button">Queue background sync</button>
+                  <button id="sync-all-btn" type="button">
+                    Sync all sources
+                  </button>
+                  <button id="sync-all-background-btn" type="button">
+                    Queue background sync
+                  </button>
                 </div>
                 <div id="state-sync-row" class="demo-badge-row"></div>
                 <ul id="ops-sync-summary-list" class="demo-detail-list"></ul>
@@ -328,16 +470,30 @@
           <div class="demo-stream-panel">
             <h3>Stream Retrieval Workflow</h3>
             <p class="demo-metadata">
-              This page uses the core client routes for the broader demo, and this stream section proves the canonical <code>createRAGWorkflow()</code> surface directly.
+              This page uses the core client routes for the broader demo, and
+              this stream section proves the canonical
+              <code>createRAGWorkflow()</code> surface directly.
             </p>
             <form class="demo-stream-form" id="stream-form">
               <label for="stream-model-key">Answer model</label>
               <select id="stream-model-key" name="modelKey"></select>
-              <p class="demo-metadata">Model switching stays on the official AbsoluteJS plugin path by selecting the provider and model sent with the retrieval stream request.</p>
+              <p class="demo-metadata">
+                Model switching stays on the official AbsoluteJS plugin path by
+                selecting the provider and model sent with the retrieval stream
+                request.
+              </p>
               <label for="stream-query">Question</label>
-              <input id="stream-query" name="query" placeholder="e.g. What should I verify after ingesting a new source?" type="text" value="How do metadata filters change retrieval quality?" />
+              <input
+                id="stream-query"
+                name="query"
+                placeholder="e.g. What should I verify after ingesting a new source?"
+                type="text"
+                value="How do metadata filters change retrieval quality?"
+              />
               <div class="demo-actions">
-                <button id="stream-action-btn" type="submit">Ask with retrieval stream</button>
+                <button id="stream-action-btn" type="submit">
+                  Ask with retrieval stream
+                </button>
               </div>
             </form>
             <div class="demo-result-grid">
@@ -352,32 +508,85 @@
             </div>
             <div id="stream-stage-row" class="demo-stage-row"></div>
             <dl id="stream-stats" class="demo-stream-stats" hidden></dl>
-            <div id="stream-trace" class="demo-results" hidden><h4>Workflow Retrieval Trace</h4><p class="demo-metadata">This is the retrieval trace attached to the workflow answer path. It explains how the answer workflow found evidence before grounding and citations were built.</p><div id="stream-trace-grid" class="demo-result-grid"></div></div>
+            <div id="stream-trace" class="demo-results" hidden>
+              <h4>Workflow Retrieval Trace</h4>
+              <p class="demo-metadata">
+                This is the retrieval trace attached to the workflow answer
+                path. It explains how the answer workflow found evidence before
+                grounding and citations were built.
+              </p>
+              <div id="stream-trace-grid" class="demo-result-grid"></div>
+            </div>
             <p id="stream-error" class="demo-error" hidden></p>
-            <div id="stream-thinking" class="demo-stream-block" hidden><h4>Thinking</h4><p id="stream-thinking-text" class="demo-result-text"></p></div>
-            <div id="stream-answer" class="demo-stream-block" hidden><h4>Answer</h4><p id="stream-answer-text" class="demo-result-text"></p></div>
-            <div id="stream-grounding" class="demo-results" hidden><h4>Answer Grounding</h4><p id="stream-grounding-badge" class="demo-grounding-badge"></p><ul id="stream-grounding-list" class="demo-detail-list"></ul><div id="stream-grounding-parts" class="demo-result-grid"></div></div>
-            <div id="stream-grounding-sections" class="demo-results" hidden><h4>Grounding by Section</h4><div id="stream-grounding-sections-grid" class="demo-result-grid"></div></div>
-            <div id="stream-grounding-references" class="demo-results" hidden><h4>Grounding Reference Map</h4><p class="demo-metadata">Each reference resolves answer citations back to concrete evidence with page, sheet, slide, archive, or thread context when available.</p><div id="stream-grounding-references-grid" class="demo-result-grid"></div></div>
-            <div id="stream-sources" class="demo-results" hidden><h4>Evidence Sources</h4><div id="stream-sources-grid" class="demo-result-grid"></div></div>
-            <div id="stream-citations" class="demo-results" hidden><h4>Citation Trail</h4><p class="demo-metadata">Each citation maps a concrete retrieved chunk to a stable reference number you can carry into the answer UI.</p><div id="stream-citations-grid" class="demo-result-grid"></div></div>
+            <div id="stream-thinking" class="demo-stream-block" hidden>
+              <h4>Thinking</h4>
+              <p id="stream-thinking-text" class="demo-result-text"></p>
+            </div>
+            <div id="stream-answer" class="demo-stream-block" hidden>
+              <h4>Answer</h4>
+              <p id="stream-answer-text" class="demo-result-text"></p>
+            </div>
+            <div id="stream-grounding" class="demo-results" hidden>
+              <h4>Answer Grounding</h4>
+              <p id="stream-grounding-badge" class="demo-grounding-badge"></p>
+              <ul id="stream-grounding-list" class="demo-detail-list"></ul>
+              <div id="stream-grounding-parts" class="demo-result-grid"></div>
+            </div>
+            <div id="stream-grounding-sections" class="demo-results" hidden>
+              <h4>Grounding by Section</h4>
+              <div
+                id="stream-grounding-sections-grid"
+                class="demo-result-grid"
+              ></div>
+            </div>
+            <div id="stream-grounding-references" class="demo-results" hidden>
+              <h4>Grounding Reference Map</h4>
+              <p class="demo-metadata">
+                Each reference resolves answer citations back to concrete
+                evidence with page, sheet, slide, archive, or thread context
+                when available.
+              </p>
+              <div
+                id="stream-grounding-references-grid"
+                class="demo-result-grid"
+              ></div>
+            </div>
+            <div id="stream-sources" class="demo-results" hidden>
+              <h4>Evidence Sources</h4>
+              <div id="stream-sources-grid" class="demo-result-grid"></div>
+            </div>
+            <div id="stream-citations" class="demo-results" hidden>
+              <h4>Citation Trail</h4>
+              <p class="demo-metadata">
+                Each citation maps a concrete retrieved chunk to a stable
+                reference number you can carry into the answer UI.
+              </p>
+              <div id="stream-citations-grid" class="demo-result-grid"></div>
+            </div>
           </div>
         </article>
       </section>
 
-      <section class="demo-grid">
+      <section class="demo-grid demo-section-hidden" data-rag-section="ingest">
         <article class="demo-card">
           <h2>Ingest Document</h2>
           <p class="demo-metadata">
-            Add a document, choose its source format and chunking strategy, then verify how AbsoluteJS indexes it.
+            Add a document, choose its source format and chunking strategy, then
+            verify how AbsoluteJS indexes it.
           </p>
           <div class="demo-results">
             <h3>Upload Extracted Fixtures</h3>
             <p class="demo-metadata">
-              These buttons use <code>createRAGClient().ingestUploads</code> directly. Each fixture is fetched from the local demo corpus, sent through the published upload ingest route, and then verified with a retrieval query against the uploaded source path.
+              These buttons use
+              <code>createRAGClient().ingestUploads</code> directly. Each
+              fixture is fetched from the local demo corpus, sent through the
+              published upload ingest route, and then verified with a retrieval
+              query against the uploaded source path.
             </p>
             <p class="demo-metadata">
-              Upload fixtures validate the extractor pipeline immediately. The managed document list below stays focused on authored example documents, while uploaded binaries are verified through retrieval.
+              Upload fixtures validate the extractor pipeline immediately. The
+              managed document list below stays focused on authored example
+              documents, while uploaded binaries are verified through retrieval.
             </p>
             <div class="demo-preset-grid" id="upload-presets"></div>
             <div class="demo-upload-row">
@@ -430,12 +639,19 @@
             </article>
           </div>
           <div class="demo-source-filter-row">
-            <input id="document-search" placeholder="Search indexed sources by title, source, or text" type="text" />
+            <input
+              id="document-search"
+              placeholder="Search indexed sources by title, source, or text"
+              type="text"
+            />
             <select id="document-type-filter"></select>
           </div>
           <div class="demo-pagination-row">
             <p id="document-pagination-summary" class="demo-metadata"></p>
-            <div id="document-pagination-controls" class="demo-pagination-controls"></div>
+            <div
+              id="document-pagination-controls"
+              class="demo-pagination-controls"
+            ></div>
           </div>
           <div id="document-list"></div>
         </article>

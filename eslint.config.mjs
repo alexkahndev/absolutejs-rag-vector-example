@@ -214,7 +214,7 @@ export default defineConfig([
     },
   },
   {
-    files: ["src/backend/server.ts"],
+    files: ["src/backend/web/server.ts"],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
     },
